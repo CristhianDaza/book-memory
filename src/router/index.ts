@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/auth'
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../modules/auth/views/LoginView.vue'
 import BooksView from '../modules/books/views/BooksView.vue'
+import BookDetailView from '../modules/books/views/BookDetailView.vue'
 import ReadingView from '../modules/reading/views/ReadingView.vue'
 import StatsView from '../modules/stats/views/StatsView.vue'
 
@@ -25,6 +26,12 @@ export const router = createRouter({
       path: '/books',
       name: 'books',
       component: BooksView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/books/:id',
+      name: 'book-detail',
+      component: BookDetailView,
       meta: { requiresAuth: true },
     },
     {

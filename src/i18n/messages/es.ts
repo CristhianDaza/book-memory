@@ -85,6 +85,8 @@ export const es = {
     detailTitle: 'Detalle del libro',
     selectedBook: 'Libro seleccionado',
     noSelectedBook: 'Selecciona un libro para ver su detalle.',
+    notFound: 'No encontramos este libro en tu biblioteca.',
+    backToLibrary: 'Volver a biblioteca',
     favorite: 'Favorito',
     notFavorite: 'No favorito',
     markFavorite: 'Marcar favorito',

@@ -99,6 +99,11 @@ export const useBooksStore = defineStore('books', () => {
     }
   }
 
+  async function ensureLibraryLoaded() {
+    if (library.value.length > 0 || loadingLibrary.value) return
+    await loadLibrary()
+  }
+
   async function addSearchResultToLibrary(book: BookSearchResult) {
     clearError()
     const authStore = useAuthStore()
@@ -129,6 +134,10 @@ export const useBooksStore = defineStore('books', () => {
 
   function selectLibraryBook(bookId: string) {
     selectedLibraryBookId.value = bookId
+  }
+
+  function getLibraryBookById(bookId: string): LibraryBook | null {
+    return library.value.find((book) => book.id === bookId) ?? null
   }
 
   async function toggleFavorite(bookId: string) {
@@ -204,9 +213,11 @@ export const useBooksStore = defineStore('books', () => {
     errorDetails,
     search,
     loadLibrary,
+    ensureLibraryLoaded,
     addSearchResultToLibrary,
     isBookInLibrary,
     selectLibraryBook,
+    getLibraryBookById,
     toggleFavorite,
     removeFromLibrary,
     clearSearch,
