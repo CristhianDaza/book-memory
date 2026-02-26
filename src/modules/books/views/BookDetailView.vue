@@ -3,14 +3,19 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import { fetchRecentSessionsForBook } from '../../../services/readingSessionService'
+import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
+import type { ReadingSessionRecord } from '../../../types/reading'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const booksStore = useBooksStore()
+const authStore = useAuthStore()
 
 const { favoriteUpdatingIds, metadataUpdatingIds, deletingIds } = storeToRefs(booksStore)
+const { user } = storeToRefs(authStore)
 
 const bookId = computed(() => String(route.params.id ?? ''))
 const book = computed(() => booksStore.getLibraryBookById(bookId.value))
@@ -18,6 +23,8 @@ const editMode = ref(false)
 const formTotalPages = ref<string>('')
 const formCurrentPage = ref<string>('0')
 const formStatus = ref<'reading' | 'finished' | 'wishlist'>('reading')
+const recentSessions = ref<ReadingSessionRecord[]>([])
+const loadingSessions = ref(false)
 
 function isFavoriteUpdating() {
   return favoriteUpdatingIds.value.includes(bookId.value)
@@ -31,6 +38,11 @@ function isMetadataUpdating() {
   return metadataUpdatingIds.value.includes(bookId.value)
 }
 
+const remainingPages = computed(() => {
+  if (!book.value?.totalPages) return null
+  return Math.max(0, book.value.totalPages - book.value.currentPage)
+})
+
 async function onToggleFavorite() {
   if (!book.value) return
   await booksStore.toggleFavorite(book.value.id)
@@ -43,6 +55,22 @@ async function onRemoveBook() {
 
   await booksStore.removeFromLibrary(book.value.id)
   await router.push({ name: 'books' })
+}
+
+async function loadRecentSessions() {
+  if (!book.value || !user.value?.uid) {
+    recentSessions.value = []
+    return
+  }
+
+  loadingSessions.value = true
+  try {
+    recentSessions.value = await fetchRecentSessionsForBook(user.value.uid, book.value.id)
+  } catch {
+    recentSessions.value = []
+  } finally {
+    loadingSessions.value = false
+  }
 }
 
 function syncFormFromBook() {
@@ -84,17 +112,34 @@ async function onSaveMetadata() {
   editMode.value = false
 }
 
+async function onStartReadingSession() {
+  if (!book.value) return
+  await router.push({ name: 'reading', query: { bookId: book.value.id } })
+}
+
+function formatSessionDate(value: unknown): string {
+  if (!value) return '—'
+  if (typeof value === 'object' && 'toDate' in value) {
+    const converted = (value as { toDate: () => Date }).toDate()
+    return converted.toLocaleDateString()
+  }
+  if (value instanceof Date) return value.toLocaleDateString()
+  return '—'
+}
+
 watch(
   () => book.value?.id,
-  () => {
+  async () => {
     syncFormFromBook()
     editMode.value = false
+    await loadRecentSessions()
   },
 )
 
 onMounted(async () => {
   await booksStore.ensureLibraryLoaded()
   if (bookId.value) booksStore.selectLibraryBook(bookId.value)
+  await loadRecentSessions()
 })
 </script>
 
@@ -125,12 +170,24 @@ onMounted(async () => {
             {{ t('books.progress') }}: {{ book.currentPage }}
             <template v-if="book.totalPages">/ {{ book.totalPages }}</template>
           </p>
+          <p class="text-sm text-slate-400">
+            {{ t('books.remainingPages') }}:
+            {{ remainingPages === null ? t('books.unknownPages') : remainingPages }}
+          </p>
           <p class="text-sm text-slate-400">{{ t('books.status') }}: {{ t(`books.status_${book.status}`) }}</p>
           <p class="text-sm" :class="book.favorite ? 'text-amber-300' : 'text-slate-400'">
             {{ book.favorite ? t('books.favorite') : t('books.notFavorite') }}
           </p>
 
           <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              class="cursor-pointer rounded-xl border border-cyan-500/60 px-3 py-2 text-sm font-medium text-cyan-200 transition hover:bg-cyan-500/10"
+              @click="onStartReadingSession"
+            >
+              {{ t('books.startSession') }}
+            </button>
+
             <button
               type="button"
               class="cursor-pointer rounded-xl border border-amber-500/60 px-3 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-60"
@@ -151,9 +208,9 @@ onMounted(async () => {
               class="cursor-pointer rounded-xl border border-rose-500/60 px-3 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="isDeleting() || isFavoriteUpdating()"
               @click="onRemoveBook"
-            >
-              {{ isDeleting() ? t('books.deletingBook') : t('books.removeBook') }}
-            </button>
+              >
+                {{ isDeleting() ? t('books.deletingBook') : t('books.removeBook') }}
+              </button>
           </div>
 
           <div class="mt-4 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
@@ -224,6 +281,31 @@ onMounted(async () => {
                 {{ t('books.cancelEdit') }}
               </button>
             </div>
+          </div>
+
+          <div class="mt-4 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+            <p class="text-xs uppercase tracking-wide text-slate-400">{{ t('books.recentSessions') }}</p>
+            <p v-if="loadingSessions" class="mt-2 text-sm text-slate-400">{{ t('books.loadingSessions') }}</p>
+
+            <ul v-else-if="recentSessions.length > 0" class="mt-2 space-y-2">
+              <li
+                v-for="session in recentSessions"
+                :key="session.id"
+                class="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs text-slate-300"
+              >
+                <p>{{ formatSessionDate(session.startedAt) }}</p>
+                <p>
+                  {{ t('books.sessionPages') }}:
+                  {{ session.pagesRead ?? 0 }}
+                </p>
+                <p>
+                  {{ t('books.sessionDuration') }}:
+                  {{ Math.floor((session.durationSeconds ?? 0) / 60) }}m
+                </p>
+              </li>
+            </ul>
+
+            <p v-else class="mt-2 text-sm text-slate-400">{{ t('books.noSessions') }}</p>
           </div>
         </div>
       </div>
