@@ -10,6 +10,7 @@ const { t, locale } = useI18n()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const queryInput = ref('')
+const showAddModal = ref(false)
 
 const {
   searchResults,
@@ -20,7 +21,6 @@ const {
   selectedBook,
   favoriteUpdatingIds,
   deletingIds,
-  loadingLibrary,
   showOnlyFavorites,
   librarySortMode,
 } =
@@ -36,6 +36,14 @@ async function onSearchSubmit() {
 function onClearSearch() {
   queryInput.value = ''
   booksStore.clearSearch()
+}
+
+function openAddModal() {
+  showAddModal.value = true
+}
+
+function closeAddModal() {
+  showAddModal.value = false
 }
 
 function isSaving(bookId: string): boolean {
@@ -65,104 +73,24 @@ onMounted(async () => {
   <div class="space-y-4">
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
       <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">{{ t('modules.booksLabel') }}</p>
-      <h1 class="mt-2 text-2xl font-semibold text-white">{{ t('books.title') }}</h1>
-      <p class="mt-3 text-sm text-slate-300">{{ t('books.subtitle') }}</p>
-
-      <form class="mt-5 space-y-2" @submit.prevent="onSearchSubmit">
-        <label class="block text-xs uppercase tracking-wide text-slate-400">{{ t('books.searchLabel') }}</label>
-        <div class="flex flex-col gap-2 sm:flex-row">
-          <input
-            v-model="queryInput"
-            type="text"
-            :placeholder="t('books.searchPlaceholder')"
-            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-cyan-400 transition focus:ring-2"
-          />
-          <button
-            type="submit"
-            class="cursor-pointer rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
-            :disabled="searching"
-          >
-            {{ searching ? t('books.searchLoading') : t('books.searchAction') }}
-          </button>
-          <button
-            type="button"
-            class="cursor-pointer rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            :disabled="!queryInput.trim() && searchResults.length === 0"
-            @click="onClearSearch"
-          >
-            {{ t('books.clearSearch') }}
-          </button>
+      <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 class="text-2xl font-semibold text-white">{{ t('books.libraryTitle') }}</h1>
+          <p class="mt-2 text-sm text-slate-300">{{ t('books.librarySubtitle') }}</p>
         </div>
-      </form>
+
+        <button
+          type="button"
+          class="cursor-pointer rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+          @click="openAddModal"
+        >
+          + {{ t('books.openAddModal') }}
+        </button>
+      </div>
 
       <p v-if="mappedError" class="mt-3 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200">
         {{ mappedError }}
       </p>
-
-      <div class="mt-5 space-y-3">
-        <article
-          v-for="book in searchResults"
-          :key="book.id"
-          class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"
-        >
-          <div class="flex gap-3">
-            <img
-              v-if="book.coverUrl"
-              :src="book.coverUrl"
-              :alt="book.title"
-              class="h-24 w-16 rounded-md border border-slate-700 object-cover shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
-            />
-            <div
-              v-else
-              class="flex h-24 w-16 items-center justify-center rounded-md border border-slate-700 bg-slate-800 text-[10px] text-slate-400"
-            >
-              {{ t('books.noCover') }}
-            </div>
-
-            <div class="min-w-0 flex-1">
-              <p class="line-clamp-2 font-serif text-base font-semibold tracking-wide text-slate-100">
-                {{ book.title }}
-              </p>
-              <p class="text-xs text-slate-400">
-                {{ t('books.by') }} {{ book.authors.join(', ') || t('books.unknownAuthor') }}
-              </p>
-              <div class="mt-1 flex flex-wrap gap-2 text-[11px] text-slate-400">
-                <span class="rounded bg-slate-800 px-2 py-0.5">
-                  {{ t('books.source') }}: {{ book.source }}
-                </span>
-                <span class="rounded bg-slate-800 px-2 py-0.5">
-                  {{ t('books.pages') }}:
-                  {{ book.totalPages ?? t('books.unknownPages') }}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              class="h-fit cursor-pointer rounded-lg border border-emerald-500/50 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="!isAuthenticated || booksStore.isBookInLibrary(book) || isSaving(book.id)"
-              @click="booksStore.addSearchResultToLibrary(book)"
-            >
-              {{
-                booksStore.isBookInLibrary(book)
-                  ? t('books.addedBook')
-                  : isSaving(book.id)
-                    ? t('books.addingBook')
-                    : t('books.addBook')
-              }}
-            </button>
-          </div>
-        </article>
-
-        <p v-if="!searching && queryInput.trim() && searchResults.length === 0" class="text-sm text-slate-400">
-          {{ t('books.noResults') }}
-        </p>
-      </div>
-    </section>
-
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
-      <h2 class="text-lg font-semibold text-white">{{ t('books.yourLibrary') }}</h2>
-      <p v-if="loadingLibrary" class="mt-3 text-sm text-slate-400">{{ t('books.loadingLibrary') }}</p>
 
       <div v-else class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <div class="lg:col-span-2 flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -264,6 +192,16 @@ onMounted(async () => {
                 <p class="mt-1 text-xs text-slate-500">
                   {{ t('books.pages') }}: {{ selectedBook.totalPages ?? t('books.unknownPages') }}
                 </p>
+                <p class="mt-1 text-xs text-slate-500">
+                  {{ t('books.source') }}: {{ selectedBook.source }}
+                </p>
+                <p class="mt-1 text-xs text-slate-500">
+                  {{ t('books.progress') }}: {{ selectedBook.currentPage }}
+                  <template v-if="selectedBook.totalPages">/ {{ selectedBook.totalPages }}</template>
+                </p>
+                <p class="mt-1 text-xs text-slate-500">
+                  {{ t('books.status') }}: {{ t(`books.status_${selectedBook.status}`) }}
+                </p>
                 <p class="mt-1 text-xs" :class="selectedBook.favorite ? 'text-amber-300' : 'text-slate-500'">
                   {{ selectedBook.favorite ? t('books.favorite') : t('books.notFavorite') }}
                 </p>
@@ -307,5 +245,114 @@ onMounted(async () => {
         </p>
       </div>
     </section>
+
+    <div
+      v-if="showAddModal"
+      class="fixed inset-0 z-40 flex items-end bg-slate-950/80 p-3 sm:items-center sm:justify-center"
+      @click.self="closeAddModal"
+    >
+      <section class="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-2xl sm:p-6">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-semibold text-white">{{ t('books.title') }}</h2>
+            <p class="mt-1 text-sm text-slate-300">{{ t('books.subtitle') }}</p>
+          </div>
+          <button
+            type="button"
+            class="cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-sm text-slate-200 transition hover:bg-slate-800"
+            @click="closeAddModal"
+          >
+            ✕
+          </button>
+        </div>
+
+        <form class="mt-4 space-y-2" @submit.prevent="onSearchSubmit">
+          <label class="block text-xs uppercase tracking-wide text-slate-400">{{ t('books.searchLabel') }}</label>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <input
+              v-model="queryInput"
+              type="text"
+              :placeholder="t('books.searchPlaceholder')"
+              class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-cyan-400 transition focus:ring-2"
+            />
+            <button
+              type="submit"
+              class="cursor-pointer rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="searching"
+            >
+              {{ searching ? t('books.searchLoading') : t('books.searchAction') }}
+            </button>
+            <button
+              type="button"
+              class="cursor-pointer rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="!queryInput.trim() && searchResults.length === 0"
+              @click="onClearSearch"
+            >
+              {{ t('books.clearSearch') }}
+            </button>
+          </div>
+        </form>
+
+        <div class="mt-4 max-h-[48vh] space-y-3 overflow-y-auto pr-1">
+          <article
+            v-for="book in searchResults"
+            :key="book.id"
+            class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+          >
+            <div class="flex gap-3">
+              <img
+                v-if="book.coverUrl"
+                :src="book.coverUrl"
+                :alt="book.title"
+                class="h-24 w-16 rounded-md border border-slate-700 object-cover shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
+              />
+              <div
+                v-else
+                class="flex h-24 w-16 items-center justify-center rounded-md border border-slate-700 bg-slate-800 text-[10px] text-slate-400"
+              >
+                {{ t('books.noCover') }}
+              </div>
+
+              <div class="min-w-0 flex-1">
+                <p class="line-clamp-2 font-serif text-base font-semibold tracking-wide text-slate-100">
+                  {{ book.title }}
+                </p>
+                <p class="text-xs text-slate-400">
+                  {{ t('books.by') }} {{ book.authors.join(', ') || t('books.unknownAuthor') }}
+                </p>
+                <div class="mt-1 flex flex-wrap gap-2 text-[11px] text-slate-400">
+                  <span class="rounded bg-slate-800 px-2 py-0.5">
+                    {{ t('books.source') }}: {{ book.source }}
+                  </span>
+                  <span class="rounded bg-slate-800 px-2 py-0.5">
+                    {{ t('books.pages') }}:
+                    {{ book.totalPages ?? t('books.unknownPages') }}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="h-fit cursor-pointer rounded-lg border border-emerald-500/50 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="!isAuthenticated || booksStore.isBookInLibrary(book) || isSaving(book.id)"
+                @click="booksStore.addSearchResultToLibrary(book)"
+              >
+                {{
+                  booksStore.isBookInLibrary(book)
+                    ? t('books.addedBook')
+                    : isSaving(book.id)
+                      ? t('books.addingBook')
+                      : t('books.addBook')
+                }}
+              </button>
+            </div>
+          </article>
+
+          <p v-if="!searching && queryInput.trim() && searchResults.length === 0" class="text-sm text-slate-400">
+            {{ t('books.noResults') }}
+          </p>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
