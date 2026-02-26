@@ -5,6 +5,7 @@ import {
   addBookToLibrary,
   deleteLibraryBook,
   fetchLibraryBooks,
+  updateLibraryBookMetadata,
   updateLibraryBookFavorite,
 } from '../services/libraryService'
 import type { BookSearchResult, LibraryBook } from '../types/books'
@@ -21,6 +22,7 @@ export const useBooksStore = defineStore('books', () => {
   const loadingLibrary = ref(false)
   const savingIds = ref<string[]>([])
   const favoriteUpdatingIds = ref<string[]>([])
+  const metadataUpdatingIds = ref<string[]>([])
   const deletingIds = ref<string[]>([])
   const selectedLibraryBookId = ref<string | null>(null)
   const showOnlyFavorites = ref(false)
@@ -195,6 +197,47 @@ export const useBooksStore = defineStore('books', () => {
     }
   }
 
+  async function updateBookMetadata(
+    bookId: string,
+    payload: Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'>,
+  ) {
+    clearError()
+    const authStore = useAuthStore()
+    const uid = authStore.user?.uid
+    if (!uid) {
+      errorKey.value = 'books.authRequired'
+      return
+    }
+
+    const previousBook = library.value.find((book) => book.id === bookId)
+    if (!previousBook) return
+
+    metadataUpdatingIds.value = [...metadataUpdatingIds.value, bookId]
+
+    library.value = library.value.map((book) =>
+      book.id === bookId ? { ...book, ...payload } : book,
+    )
+
+    try {
+      await updateLibraryBookMetadata(uid, bookId, payload)
+    } catch (error) {
+      library.value = library.value.map((book) =>
+        book.id === bookId
+          ? {
+              ...book,
+              totalPages: previousBook.totalPages,
+              currentPage: previousBook.currentPage,
+              status: previousBook.status,
+            }
+          : book,
+      )
+      errorKey.value = 'books.updateBookError'
+      errorDetails.value = error instanceof Error ? error.message : null
+    } finally {
+      metadataUpdatingIds.value = metadataUpdatingIds.value.filter((id) => id !== bookId)
+    }
+  }
+
   return {
     query,
     searchResults,
@@ -203,6 +246,7 @@ export const useBooksStore = defineStore('books', () => {
     loadingLibrary,
     savingIds,
     favoriteUpdatingIds,
+    metadataUpdatingIds,
     deletingIds,
     selectedLibraryBookId,
     showOnlyFavorites,
@@ -219,6 +263,7 @@ export const useBooksStore = defineStore('books', () => {
     selectLibraryBook,
     getLibraryBookById,
     toggleFavorite,
+    updateBookMetadata,
     removeFromLibrary,
     clearSearch,
     clearError,

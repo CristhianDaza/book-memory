@@ -79,3 +79,16 @@ export async function deleteLibraryBook(uid: string, bookId: string) {
   const ref = doc(db, 'users', uid, 'library', bookId)
   await deleteDoc(ref)
 }
+
+export async function updateLibraryBookMetadata(
+  uid: string,
+  bookId: string,
+  payload: Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'>,
+) {
+  const db = ensureFirestore()
+  const ref = doc(db, 'users', uid, 'library', bookId)
+  await updateDoc(ref, {
+    ...payload,
+    updatedAt: serverTimestamp(),
+  })
+}
