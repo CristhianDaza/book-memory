@@ -2,11 +2,14 @@ import {
   Timestamp,
   addDoc,
   collection,
+  deleteDoc,
+  doc,
   getDocs,
   limit,
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
   where,
 } from 'firebase/firestore'
 import { firebaseDb } from '../lib/firebase'
@@ -38,6 +41,21 @@ export async function fetchRecentSessionsForBook(
   })
 }
 
+export async function fetchSessionsForBook(uid: string, bookId: string): Promise<ReadingSessionRecord[]> {
+  const db = ensureFirestore()
+  const ref = collection(db, 'users', uid, 'sessions')
+  const q = query(ref, where('bookId', '==', bookId), orderBy('startedAt', 'desc'))
+  const snapshot = await getDocs(q)
+
+  return snapshot.docs.map((entry) => {
+    const data = entry.data() as Omit<ReadingSessionRecord, 'id'>
+    return {
+      id: entry.id,
+      ...data,
+    }
+  })
+}
+
 export async function createReadingSession(uid: string, payload: CreateReadingSessionInput): Promise<void> {
   const db = ensureFirestore()
   const ref = collection(db, 'users', uid, 'sessions')
@@ -52,4 +70,23 @@ export async function createReadingSession(uid: string, payload: CreateReadingSe
     pagesRead: payload.pagesRead,
     createdAt: serverTimestamp(),
   })
+}
+
+export async function updateReadingSession(
+  uid: string,
+  sessionId: string,
+  payload: Pick<ReadingSessionRecord, 'startPage' | 'endPage' | 'pagesRead' | 'durationSeconds'>,
+): Promise<void> {
+  const db = ensureFirestore()
+  const ref = doc(db, 'users', uid, 'sessions', sessionId)
+  await updateDoc(ref, {
+    ...payload,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export async function deleteReadingSession(uid: string, sessionId: string): Promise<void> {
+  const db = ensureFirestore()
+  const ref = doc(db, 'users', uid, 'sessions', sessionId)
+  await deleteDoc(ref)
 }

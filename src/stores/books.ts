@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { searchBooks } from '../services/bookSearchService'
+import { fetchSessionsForBook } from '../services/readingSessionService'
 import {
   addBookToLibrary,
   deleteLibraryBook,
@@ -238,6 +239,34 @@ export const useBooksStore = defineStore('books', () => {
     }
   }
 
+  async function recalculateBookProgressFromSessions(bookId: string) {
+    clearError()
+    const authStore = useAuthStore()
+    const uid = authStore.user?.uid
+    const currentBook = library.value.find((book) => book.id === bookId)
+    if (!uid || !currentBook) {
+      errorKey.value = 'books.authRequired'
+      return
+    }
+
+    try {
+      const sessions = await fetchSessionsForBook(uid, bookId)
+      const firstSession = sessions[0]
+      const latestEndPage = firstSession ? Math.max(0, firstSession.endPage ?? 0) : 0
+      const nextStatus =
+        currentBook.totalPages !== null && latestEndPage >= currentBook.totalPages ? 'finished' : 'reading'
+
+      await updateBookMetadata(bookId, {
+        totalPages: currentBook.totalPages,
+        currentPage: latestEndPage,
+        status: nextStatus,
+      })
+    } catch (error) {
+      errorKey.value = 'books.updateBookError'
+      errorDetails.value = error instanceof Error ? error.message : null
+    }
+  }
+
   return {
     query,
     searchResults,
@@ -264,6 +293,7 @@ export const useBooksStore = defineStore('books', () => {
     getLibraryBookById,
     toggleFavorite,
     updateBookMetadata,
+    recalculateBookProgressFromSessions,
     removeFromLibrary,
     clearSearch,
     clearError,

@@ -3,7 +3,11 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { fetchRecentSessionsForBook } from '../../../services/readingSessionService'
+import {
+  deleteReadingSession,
+  fetchSessionsForBook,
+  updateReadingSession,
+} from '../../../services/readingSessionService'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import type { ReadingSessionRecord } from '../../../types/reading'
@@ -23,8 +27,15 @@ const editMode = ref(false)
 const formTotalPages = ref<string>('')
 const formCurrentPage = ref<string>('0')
 const formStatus = ref<'reading' | 'finished' | 'wishlist'>('reading')
-const recentSessions = ref<ReadingSessionRecord[]>([])
+const sessions = ref<ReadingSessionRecord[]>([])
 const loadingSessions = ref(false)
+const visibleSessionsCount = ref(5)
+const editingSessionId = ref<string | null>(null)
+const editingSessionStartPage = ref<string>('0')
+const editingSessionEndPage = ref<string>('0')
+const editingSessionDurationMinutes = ref<string>('0')
+const savingSessionEdit = ref(false)
+const deletingSessionId = ref<string | null>(null)
 
 function isFavoriteUpdating() {
   return favoriteUpdatingIds.value.includes(bookId.value)
@@ -42,6 +53,8 @@ const remainingPages = computed(() => {
   if (!book.value?.totalPages) return null
   return Math.max(0, book.value.totalPages - book.value.currentPage)
 })
+const visibleSessions = computed(() => sessions.value.slice(0, visibleSessionsCount.value))
+const canLoadMoreSessions = computed(() => sessions.value.length > visibleSessionsCount.value)
 
 async function onToggleFavorite() {
   if (!book.value) return
@@ -57,17 +70,18 @@ async function onRemoveBook() {
   await router.push({ name: 'books' })
 }
 
-async function loadRecentSessions() {
+async function loadSessions() {
   if (!book.value || !user.value?.uid) {
-    recentSessions.value = []
+    sessions.value = []
     return
   }
 
   loadingSessions.value = true
   try {
-    recentSessions.value = await fetchRecentSessionsForBook(user.value.uid, book.value.id)
+    sessions.value = await fetchSessionsForBook(user.value.uid, book.value.id)
+    visibleSessionsCount.value = 5
   } catch {
-    recentSessions.value = []
+    sessions.value = []
   } finally {
     loadingSessions.value = false
   }
@@ -127,19 +141,74 @@ function formatSessionDate(value: unknown): string {
   return '—'
 }
 
+function onLoadMoreSessions() {
+  visibleSessionsCount.value += 5
+}
+
+function onStartEditSession(session: ReadingSessionRecord) {
+  editingSessionId.value = session.id
+  editingSessionStartPage.value = String(session.startPage ?? 0)
+  editingSessionEndPage.value = String(session.endPage ?? 0)
+  editingSessionDurationMinutes.value = String(Math.floor((session.durationSeconds ?? 0) / 60))
+}
+
+function onCancelEditSession() {
+  editingSessionId.value = null
+}
+
+async function onSaveEditSession(sessionId: string) {
+  if (!book.value || !user.value?.uid) return
+
+  const start = Math.max(0, Math.floor(Number(editingSessionStartPage.value)))
+  const end = Math.max(0, Math.floor(Number(editingSessionEndPage.value)))
+  const minutes = Math.max(0, Math.floor(Number(editingSessionDurationMinutes.value)))
+
+  if (end < start) return
+
+  savingSessionEdit.value = true
+  try {
+    await updateReadingSession(user.value.uid, sessionId, {
+      startPage: start,
+      endPage: end,
+      pagesRead: Math.max(0, end - start),
+      durationSeconds: minutes * 60,
+    })
+    editingSessionId.value = null
+    await loadSessions()
+    await booksStore.recalculateBookProgressFromSessions(book.value.id)
+  } finally {
+    savingSessionEdit.value = false
+  }
+}
+
+async function onDeleteSession(sessionId: string) {
+  if (!book.value || !user.value?.uid) return
+  const accepted = window.confirm(t('books.removeSessionConfirm'))
+  if (!accepted) return
+
+  deletingSessionId.value = sessionId
+  try {
+    await deleteReadingSession(user.value.uid, sessionId)
+    await loadSessions()
+    await booksStore.recalculateBookProgressFromSessions(book.value.id)
+  } finally {
+    deletingSessionId.value = null
+  }
+}
+
 watch(
   () => book.value?.id,
   async () => {
     syncFormFromBook()
     editMode.value = false
-    await loadRecentSessions()
+    await loadSessions()
   },
 )
 
 onMounted(async () => {
   await booksStore.ensureLibraryLoaded()
   if (bookId.value) booksStore.selectLibraryBook(bookId.value)
-  await loadRecentSessions()
+  await loadSessions()
 })
 </script>
 
@@ -287,25 +356,101 @@ onMounted(async () => {
             <p class="text-xs uppercase tracking-wide text-slate-400">{{ t('books.recentSessions') }}</p>
             <p v-if="loadingSessions" class="mt-2 text-sm text-slate-400">{{ t('books.loadingSessions') }}</p>
 
-            <ul v-else-if="recentSessions.length > 0" class="mt-2 space-y-2">
+            <ul v-else-if="visibleSessions.length > 0" class="mt-2 space-y-2">
               <li
-                v-for="session in recentSessions"
+                v-for="session in visibleSessions"
                 :key="session.id"
                 class="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs text-slate-300"
               >
-                <p>{{ formatSessionDate(session.startedAt) }}</p>
-                <p>
-                  {{ t('books.sessionPages') }}:
-                  {{ session.pagesRead ?? 0 }}
-                </p>
-                <p>
-                  {{ t('books.sessionDuration') }}:
-                  {{ Math.floor((session.durationSeconds ?? 0) / 60) }}m
-                </p>
+                <template v-if="editingSessionId === session.id">
+                  <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <label>
+                      <span class="text-[11px] text-slate-400">{{ t('reading.startPage') }}</span>
+                      <input
+                        v-model="editingSessionStartPage"
+                        type="number"
+                        min="0"
+                        class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100"
+                      />
+                    </label>
+                    <label>
+                      <span class="text-[11px] text-slate-400">{{ t('reading.endPage') }}</span>
+                      <input
+                        v-model="editingSessionEndPage"
+                        type="number"
+                        min="0"
+                        class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100"
+                      />
+                    </label>
+                    <label>
+                      <span class="text-[11px] text-slate-400">{{ t('books.sessionDuration') }} (min)</span>
+                      <input
+                        v-model="editingSessionDurationMinutes"
+                        type="number"
+                        min="0"
+                        class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100"
+                      />
+                    </label>
+                  </div>
+                  <div class="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      class="cursor-pointer rounded-md bg-cyan-500 px-2 py-1 text-xs font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+                      :disabled="savingSessionEdit"
+                      @click="onSaveEditSession(session.id)"
+                    >
+                      {{ savingSessionEdit ? t('books.savingMetadata') : t('books.saveSessionEdit') }}
+                    </button>
+                    <button
+                      type="button"
+                      class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-200"
+                      :disabled="savingSessionEdit"
+                      @click="onCancelEditSession"
+                    >
+                      {{ t('books.cancelEdit') }}
+                    </button>
+                  </div>
+                </template>
+                <template v-else>
+                  <p>{{ formatSessionDate(session.startedAt) }}</p>
+                  <p>
+                    {{ t('books.sessionPages') }}:
+                    {{ session.pagesRead ?? 0 }}
+                  </p>
+                  <p>
+                    {{ t('books.sessionDuration') }}:
+                    {{ Math.floor((session.durationSeconds ?? 0) / 60) }}m
+                  </p>
+                  <div class="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-[11px] text-slate-200 transition hover:bg-slate-800"
+                      @click="onStartEditSession(session)"
+                    >
+                      {{ t('books.editSession') }}
+                    </button>
+                    <button
+                      type="button"
+                      class="cursor-pointer rounded-md border border-rose-500/60 px-2 py-1 text-[11px] text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                      :disabled="deletingSessionId === session.id"
+                      @click="onDeleteSession(session.id)"
+                    >
+                      {{ deletingSessionId === session.id ? t('books.deletingBook') : t('books.removeSession') }}
+                    </button>
+                  </div>
+                </template>
               </li>
             </ul>
 
             <p v-else class="mt-2 text-sm text-slate-400">{{ t('books.noSessions') }}</p>
+            <button
+              v-if="canLoadMoreSessions"
+              type="button"
+              class="mt-2 cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-slate-800"
+              @click="onLoadMoreSessions"
+            >
+              {{ t('books.loadMoreSessions') }}
+            </button>
           </div>
         </div>
       </div>
