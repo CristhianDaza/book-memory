@@ -1,11 +1,13 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
 } from 'firebase/firestore'
 import { firebaseDb } from '../lib/firebase'
 import type { BookSearchResult, LibraryBook } from '../types/books'
@@ -31,6 +33,7 @@ export async function fetchLibraryBooks(uid: string): Promise<LibraryBook[]> {
     return {
       id: entry.id,
       ...data,
+      favorite: data.favorite ?? false,
     }
   })
 }
@@ -47,6 +50,7 @@ export async function addBookToLibrary(uid: string, book: BookSearchResult): Pro
     authors: book.authors,
     coverUrl: book.coverUrl,
     totalPages: book.totalPages,
+    favorite: false,
     currentPage: 0,
     status: 'reading',
     createdAt: serverTimestamp(),
@@ -59,4 +63,19 @@ export async function addBookToLibrary(uid: string, book: BookSearchResult): Pro
     id,
     ...payload,
   }
+}
+
+export async function updateLibraryBookFavorite(uid: string, bookId: string, favorite: boolean) {
+  const db = ensureFirestore()
+  const ref = doc(db, 'users', uid, 'library', bookId)
+  await updateDoc(ref, {
+    favorite,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export async function deleteLibraryBook(uid: string, bookId: string) {
+  const db = ensureFirestore()
+  const ref = doc(db, 'users', uid, 'library', bookId)
+  await deleteDoc(ref)
 }

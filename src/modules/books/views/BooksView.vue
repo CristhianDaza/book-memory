@@ -11,7 +11,19 @@ const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const queryInput = ref('')
 
-const { searchResults, library, searching, loadingLibrary, savingIds, errorKey } =
+const {
+  searchResults,
+  searching,
+  savingIds,
+  errorKey,
+  filteredSortedLibrary,
+  selectedBook,
+  favoriteUpdatingIds,
+  deletingIds,
+  loadingLibrary,
+  showOnlyFavorites,
+  librarySortMode,
+} =
   storeToRefs(booksStore)
 const { isAuthenticated } = storeToRefs(authStore)
 
@@ -28,6 +40,20 @@ function onClearSearch() {
 
 function isSaving(bookId: string): boolean {
   return savingIds.value.includes(bookId)
+}
+
+function isFavoriteUpdating(bookId: string): boolean {
+  return favoriteUpdatingIds.value.includes(bookId)
+}
+
+function isDeleting(bookId: string): boolean {
+  return deletingIds.value.includes(bookId)
+}
+
+async function onRemoveBook(bookId: string) {
+  const accepted = window.confirm(t('books.removeConfirm'))
+  if (!accepted) return
+  await booksStore.removeFromLibrary(bookId)
 }
 
 onMounted(async () => {
@@ -138,40 +164,145 @@ onMounted(async () => {
       <h2 class="text-lg font-semibold text-white">{{ t('books.yourLibrary') }}</h2>
       <p v-if="loadingLibrary" class="mt-3 text-sm text-slate-400">{{ t('books.loadingLibrary') }}</p>
 
-      <div v-else class="mt-3 space-y-2">
-        <article
-          v-for="item in library"
-          :key="item.id"
-          class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"
-        >
-          <div class="flex gap-3">
-            <img
-              v-if="item.coverUrl"
-              :src="item.coverUrl"
-              :alt="item.title"
-              class="h-20 w-14 rounded-md border border-slate-700 object-cover shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
+      <div v-else class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
+        <div class="lg:col-span-2 flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+            <input
+              v-model="showOnlyFavorites"
+              type="checkbox"
+              class="h-4 w-4 cursor-pointer rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
             />
-            <div
-              v-else
-              class="flex h-20 w-14 items-center justify-center rounded-md border border-slate-700 bg-slate-800 text-[10px] text-slate-400"
-            >
-              {{ t('books.noCover') }}
-            </div>
-            <div class="min-w-0">
-              <p class="line-clamp-2 font-serif text-base font-semibold tracking-wide text-slate-100">
-                {{ item.title }}
-              </p>
-              <p class="text-xs text-slate-400">
-                {{ t('books.by') }} {{ item.authors.join(', ') || t('books.unknownAuthor') }}
-              </p>
-              <p class="mt-1 text-xs text-slate-500">
-                {{ t('books.pages') }}: {{ item.totalPages ?? t('books.unknownPages') }}
-              </p>
-            </div>
-          </div>
-        </article>
+            {{ t('books.onlyFavorites') }}
+          </label>
 
-        <p v-if="library.length === 0" class="text-sm text-slate-400">
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <span>{{ t('books.sortBy') }}</span>
+            <select
+              v-model="librarySortMode"
+              class="cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-cyan-400"
+            >
+              <option value="favorite_first">{{ t('books.sortFavoriteFirst') }}</option>
+              <option value="recent">{{ t('books.sortRecent') }}</option>
+              <option value="title_asc">{{ t('books.sortTitleAsc') }}</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+          <article
+            v-for="item in filteredSortedLibrary"
+            :key="item.id"
+            class="group overflow-hidden rounded-xl border bg-slate-950/70 transition"
+            :class="
+              selectedBook?.id === item.id
+                ? 'border-cyan-400 shadow-[0_10px_30px_rgba(34,211,238,0.12)]'
+                : 'border-slate-800 hover:border-slate-600'
+            "
+          >
+            <button
+              type="button"
+              class="cursor-pointer w-full text-left"
+              @click="booksStore.selectLibraryBook(item.id)"
+            >
+              <div class="relative aspect-[2/3] w-full bg-slate-900">
+                <img
+                  v-if="item.coverUrl"
+                  :src="item.coverUrl"
+                  :alt="item.title"
+                  class="h-full w-full object-cover"
+                />
+                <div
+                  v-else
+                  class="flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-slate-400"
+                >
+                  {{ t('books.noCover') }}
+                </div>
+
+                <span
+                  v-if="item.favorite"
+                  class="absolute right-2 top-2 rounded-full bg-amber-300/90 px-2 py-0.5 text-[10px] font-semibold text-slate-900"
+                >
+                  ★
+                </span>
+              </div>
+
+              <div class="space-y-1 p-3">
+                <p class="line-clamp-2 min-h-[2.5rem] font-serif text-sm font-semibold tracking-wide text-slate-100">
+                  {{ item.title }}
+                </p>
+                <p class="line-clamp-1 text-[11px] text-slate-400">
+                  {{ t('books.by') }} {{ item.authors.join(', ') || t('books.unknownAuthor') }}
+                </p>
+              </div>
+            </button>
+          </article>
+        </div>
+
+        <aside class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+          <p class="text-xs uppercase tracking-wide text-slate-400">{{ t('books.detailTitle') }}</p>
+          <template v-if="selectedBook">
+            <div class="mt-3 flex gap-3">
+              <img
+                v-if="selectedBook.coverUrl"
+                :src="selectedBook.coverUrl"
+                :alt="selectedBook.title"
+                class="h-28 w-20 rounded-md border border-slate-700 object-cover"
+              />
+              <div
+                v-else
+                class="flex h-28 w-20 items-center justify-center rounded-md border border-slate-700 bg-slate-800 text-[10px] text-slate-400"
+              >
+                {{ t('books.noCover') }}
+              </div>
+              <div class="min-w-0">
+                <p class="line-clamp-3 font-serif text-base font-semibold text-slate-100">
+                  {{ selectedBook.title }}
+                </p>
+                <p class="mt-1 text-xs text-slate-400">
+                  {{ t('books.by') }} {{ selectedBook.authors.join(', ') || t('books.unknownAuthor') }}
+                </p>
+                <p class="mt-1 text-xs text-slate-500">
+                  {{ t('books.pages') }}: {{ selectedBook.totalPages ?? t('books.unknownPages') }}
+                </p>
+                <p class="mt-1 text-xs" :class="selectedBook.favorite ? 'text-amber-300' : 'text-slate-500'">
+                  {{ selectedBook.favorite ? t('books.favorite') : t('books.notFavorite') }}
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-4 grid grid-cols-1 gap-2">
+              <button
+                type="button"
+                class="cursor-pointer rounded-xl border border-amber-500/60 px-3 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isFavoriteUpdating(selectedBook.id) || isDeleting(selectedBook.id)"
+                @click="booksStore.toggleFavorite(selectedBook.id)"
+              >
+                {{
+                  isFavoriteUpdating(selectedBook.id)
+                    ? t('books.updatingFavorite')
+                    : selectedBook.favorite
+                      ? t('books.unmarkFavorite')
+                      : t('books.markFavorite')
+                }}
+              </button>
+
+              <button
+                type="button"
+                class="cursor-pointer rounded-xl border border-rose-500/60 px-3 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isDeleting(selectedBook.id) || isFavoriteUpdating(selectedBook.id)"
+                @click="onRemoveBook(selectedBook.id)"
+              >
+                {{ isDeleting(selectedBook.id) ? t('books.deletingBook') : t('books.removeBook') }}
+              </button>
+            </div>
+          </template>
+
+          <p v-else class="mt-3 text-sm text-slate-400">
+            {{ t('books.noSelectedBook') }}
+          </p>
+        </aside>
+
+        <p v-if="filteredSortedLibrary.length === 0" class="text-sm text-slate-400 lg:col-span-2">
           {{ t('books.emptyLibrary') }}
         </p>
       </div>

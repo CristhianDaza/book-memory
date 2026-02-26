@@ -1,22 +1,54 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { searchBooks } from '../services/bookSearchService'
-import { addBookToLibrary, fetchLibraryBooks } from '../services/libraryService'
+import {
+  addBookToLibrary,
+  deleteLibraryBook,
+  fetchLibraryBooks,
+  updateLibraryBookFavorite,
+} from '../services/libraryService'
 import type { BookSearchResult, LibraryBook } from '../types/books'
 import type { AppLocale } from '../i18n'
 import { useAuthStore } from './auth'
 
 export const useBooksStore = defineStore('books', () => {
+  type LibrarySortMode = 'recent' | 'title_asc' | 'favorite_first'
+
   const query = ref('')
   const searchResults = ref<BookSearchResult[]>([])
   const library = ref<LibraryBook[]>([])
   const searching = ref(false)
   const loadingLibrary = ref(false)
   const savingIds = ref<string[]>([])
+  const favoriteUpdatingIds = ref<string[]>([])
+  const deletingIds = ref<string[]>([])
+  const selectedLibraryBookId = ref<string | null>(null)
+  const showOnlyFavorites = ref(false)
+  const librarySortMode = ref<LibrarySortMode>('favorite_first')
   const errorKey = ref<string | null>(null)
   const errorDetails = ref<string | null>(null)
 
   const libraryIds = computed(() => new Set(library.value.map((book) => book.id)))
+  const selectedBook = computed(() =>
+    selectedLibraryBookId.value
+      ? library.value.find((book) => book.id === selectedLibraryBookId.value) ?? null
+      : null,
+  )
+  const filteredSortedLibrary = computed(() => {
+    const base = showOnlyFavorites.value
+      ? library.value.filter((book) => book.favorite)
+      : [...library.value]
+
+    if (librarySortMode.value === 'title_asc') {
+      return base.sort((a, b) => a.title.localeCompare(b.title))
+    }
+
+    if (librarySortMode.value === 'recent') {
+      return base
+    }
+
+    return base.sort((a, b) => Number(b.favorite) - Number(a.favorite))
+  })
 
   function clearError() {
     errorKey.value = null
@@ -55,6 +87,10 @@ export const useBooksStore = defineStore('books', () => {
     loadingLibrary.value = true
     try {
       library.value = await fetchLibraryBooks(authStore.user.uid)
+      if (!selectedLibraryBookId.value) {
+        const firstBook = library.value[0]
+        selectedLibraryBookId.value = firstBook ? firstBook.id : null
+      }
     } catch (error) {
       errorKey.value = 'books.loadLibraryError'
       errorDetails.value = error instanceof Error ? error.message : null
@@ -78,6 +114,7 @@ export const useBooksStore = defineStore('books', () => {
     try {
       const savedBook = await addBookToLibrary(authStore.user.uid, book)
       library.value = [savedBook, ...library.value.filter((item) => item.id !== savedBook.id)]
+      selectedLibraryBookId.value = savedBook.id
     } catch (error) {
       errorKey.value = 'books.addBookError'
       errorDetails.value = error instanceof Error ? error.message : null
@@ -90,6 +127,65 @@ export const useBooksStore = defineStore('books', () => {
     return libraryIds.value.has(book.id.replace(':', '_'))
   }
 
+  function selectLibraryBook(bookId: string) {
+    selectedLibraryBookId.value = bookId
+  }
+
+  async function toggleFavorite(bookId: string) {
+    clearError()
+    const authStore = useAuthStore()
+    const uid = authStore.user?.uid
+    const currentBook = library.value.find((book) => book.id === bookId)
+    if (!uid || !currentBook) {
+      errorKey.value = 'books.authRequired'
+      return
+    }
+
+    favoriteUpdatingIds.value = [...favoriteUpdatingIds.value, bookId]
+    const nextFavorite = !currentBook.favorite
+
+    library.value = library.value.map((book) =>
+      book.id === bookId ? { ...book, favorite: nextFavorite } : book,
+    )
+
+    try {
+      await updateLibraryBookFavorite(uid, bookId, nextFavorite)
+    } catch (error) {
+      library.value = library.value.map((book) =>
+        book.id === bookId ? { ...book, favorite: !nextFavorite } : book,
+      )
+      errorKey.value = 'books.favoriteError'
+      errorDetails.value = error instanceof Error ? error.message : null
+    } finally {
+      favoriteUpdatingIds.value = favoriteUpdatingIds.value.filter((id) => id !== bookId)
+    }
+  }
+
+  async function removeFromLibrary(bookId: string) {
+    clearError()
+    const authStore = useAuthStore()
+    const uid = authStore.user?.uid
+    if (!uid) {
+      errorKey.value = 'books.authRequired'
+      return
+    }
+
+    deletingIds.value = [...deletingIds.value, bookId]
+    try {
+      await deleteLibraryBook(uid, bookId)
+      library.value = library.value.filter((book) => book.id !== bookId)
+
+      if (selectedLibraryBookId.value === bookId) {
+        selectedLibraryBookId.value = library.value[0]?.id ?? null
+      }
+    } catch (error) {
+      errorKey.value = 'books.removeBookError'
+      errorDetails.value = error instanceof Error ? error.message : null
+    } finally {
+      deletingIds.value = deletingIds.value.filter((id) => id !== bookId)
+    }
+  }
+
   return {
     query,
     searchResults,
@@ -97,12 +193,22 @@ export const useBooksStore = defineStore('books', () => {
     searching,
     loadingLibrary,
     savingIds,
+    favoriteUpdatingIds,
+    deletingIds,
+    selectedLibraryBookId,
+    showOnlyFavorites,
+    librarySortMode,
+    selectedBook,
+    filteredSortedLibrary,
     errorKey,
     errorDetails,
     search,
     loadLibrary,
     addSearchResultToLibrary,
     isBookInLibrary,
+    selectLibraryBook,
+    toggleFavorite,
+    removeFromLibrary,
     clearSearch,
     clearError,
   }

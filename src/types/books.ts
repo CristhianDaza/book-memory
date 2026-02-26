@@ -18,6 +18,7 @@ export interface LibraryBook {
   authors: string[]
   coverUrl: string | null
   totalPages: number | null
+  favorite: boolean
   currentPage: number
   status: 'reading' | 'finished' | 'wishlist'
   createdAt?: unknown
