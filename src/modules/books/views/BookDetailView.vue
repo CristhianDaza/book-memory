@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import ConfirmModal from '../../../components/ConfirmModal.vue'
 import {
   deleteReadingSession,
   fetchSessionsForBook,
@@ -10,6 +11,7 @@ import {
 } from '../../../services/readingSessionService'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
+import { useNotificationsStore } from '../../../stores/notifications'
 import type { ReadingSessionRecord } from '../../../types/reading'
 
 const { t } = useI18n()
@@ -17,6 +19,7 @@ const route = useRoute()
 const router = useRouter()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
+const notificationsStore = useNotificationsStore()
 
 const { favoriteUpdatingIds, metadataUpdatingIds, deletingIds } = storeToRefs(booksStore)
 const { user } = storeToRefs(authStore)
@@ -36,6 +39,8 @@ const editingSessionEndPage = ref<string>('0')
 const editingSessionDurationMinutes = ref<string>('0')
 const savingSessionEdit = ref(false)
 const deletingSessionId = ref<string | null>(null)
+const removingBookModalOpen = ref(false)
+const removingSessionId = ref<string | null>(null)
 
 function isFavoriteUpdating() {
   return favoriteUpdatingIds.value.includes(bookId.value)
@@ -59,14 +64,34 @@ const canLoadMoreSessions = computed(() => sessions.value.length > visibleSessio
 async function onToggleFavorite() {
   if (!book.value) return
   await booksStore.toggleFavorite(book.value.id)
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
+  notificationsStore.success(
+    book.value.favorite ? t('notifications.bookMarkedFavorite') : t('notifications.bookUnmarkedFavorite'),
+  )
 }
 
-async function onRemoveBook() {
+function onRequestRemoveBook() {
   if (!book.value) return
-  const accepted = window.confirm(t('books.removeConfirm'))
-  if (!accepted) return
+  removingBookModalOpen.value = true
+}
+
+function onCancelRemoveBook() {
+  removingBookModalOpen.value = false
+}
+
+async function onConfirmRemoveBook() {
+  if (!book.value) return
 
   await booksStore.removeFromLibrary(book.value.id)
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
+  notificationsStore.success(t('notifications.bookRemoved'))
+  removingBookModalOpen.value = false
   await router.push({ name: 'books' })
 }
 
@@ -122,8 +147,13 @@ async function onSaveMetadata() {
     currentPage: currentPageCapped,
     status: formStatus.value,
   })
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
 
   editMode.value = false
+  notificationsStore.success(t('notifications.metadataSaved'))
 }
 
 async function onStartReadingSession() {
@@ -176,21 +206,43 @@ async function onSaveEditSession(sessionId: string) {
     editingSessionId.value = null
     await loadSessions()
     await booksStore.recalculateBookProgressFromSessions(book.value.id)
+    if (booksStore.errorKey) {
+      notificationsStore.error(t(booksStore.errorKey))
+      return
+    }
+    notificationsStore.success(t('notifications.sessionUpdated'))
+  } catch {
+    notificationsStore.error(t('notifications.sessionUpdateError'))
   } finally {
     savingSessionEdit.value = false
   }
 }
 
-async function onDeleteSession(sessionId: string) {
-  if (!book.value || !user.value?.uid) return
-  const accepted = window.confirm(t('books.removeSessionConfirm'))
-  if (!accepted) return
+function onRequestDeleteSession(sessionId: string) {
+  removingSessionId.value = sessionId
+}
 
-  deletingSessionId.value = sessionId
+function onCancelDeleteSession() {
+  removingSessionId.value = null
+}
+
+async function onConfirmDeleteSession() {
+  if (!book.value || !user.value?.uid) return
+  if (!removingSessionId.value) return
+
+  deletingSessionId.value = removingSessionId.value
   try {
-    await deleteReadingSession(user.value.uid, sessionId)
+    await deleteReadingSession(user.value.uid, removingSessionId.value)
     await loadSessions()
     await booksStore.recalculateBookProgressFromSessions(book.value.id)
+    if (booksStore.errorKey) {
+      notificationsStore.error(t(booksStore.errorKey))
+      return
+    }
+    notificationsStore.success(t('notifications.sessionRemoved'))
+    removingSessionId.value = null
+  } catch {
+    notificationsStore.error(t('notifications.sessionRemoveError'))
   } finally {
     deletingSessionId.value = null
   }
@@ -276,7 +328,7 @@ onMounted(async () => {
               type="button"
               class="cursor-pointer rounded-xl border border-rose-500/60 px-3 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="isDeleting() || isFavoriteUpdating()"
-              @click="onRemoveBook"
+              @click="onRequestRemoveBook"
               >
                 {{ isDeleting() ? t('books.deletingBook') : t('books.removeBook') }}
               </button>
@@ -433,7 +485,7 @@ onMounted(async () => {
                       type="button"
                       class="cursor-pointer rounded-md border border-rose-500/60 px-2 py-1 text-[11px] text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                       :disabled="deletingSessionId === session.id"
-                      @click="onDeleteSession(session.id)"
+                      @click="onRequestDeleteSession(session.id)"
                     >
                       {{ deletingSessionId === session.id ? t('books.deletingBook') : t('books.removeSession') }}
                     </button>
@@ -466,4 +518,28 @@ onMounted(async () => {
       </RouterLink>
     </template>
   </section>
+
+  <ConfirmModal
+    :open="removingBookModalOpen"
+    :title="t('books.removeConfirmTitle')"
+    :message="t('books.removeConfirmMessage')"
+    :confirm-label="t('books.removeBook')"
+    :cancel-label="t('common.cancel')"
+    :loading="isDeleting()"
+    danger
+    @cancel="onCancelRemoveBook"
+    @confirm="onConfirmRemoveBook"
+  />
+
+  <ConfirmModal
+    :open="Boolean(removingSessionId)"
+    :title="t('books.removeSessionConfirmTitle')"
+    :message="t('books.removeSessionConfirmMessage')"
+    :confirm-label="t('books.removeSession')"
+    :cancel-label="t('common.cancel')"
+    :loading="Boolean(deletingSessionId)"
+    danger
+    @cancel="onCancelDeleteSession"
+    @confirm="onConfirmDeleteSession"
+  />
 </template>

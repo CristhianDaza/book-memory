@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import AppNotifications from './components/AppNotifications.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -21,6 +22,7 @@ function onGoBack() {
 
 <template>
   <div class="min-h-screen bg-slate-950 text-slate-100">
+    <AppNotifications />
     <main class="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
       <div v-if="showBackButton" class="mb-4">
         <button

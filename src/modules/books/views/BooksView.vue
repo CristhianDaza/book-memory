@@ -5,10 +5,12 @@ import { useI18n } from 'vue-i18n'
 import type { AppLocale } from '../../../types/i18n'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
+import { useNotificationsStore } from '../../../stores/notifications'
 
 const { t, locale } = useI18n()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
+const notificationsStore = useNotificationsStore()
 const queryInput = ref('')
 const showAddModal = ref(false)
 
@@ -28,6 +30,13 @@ const mappedError = computed(() => (errorKey.value ? t(errorKey.value) : null))
 
 async function onSearchSubmit() {
   await booksStore.search(queryInput.value, locale.value as AppLocale)
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
+  if (queryInput.value.trim() && searchResults.value.length === 0) {
+    notificationsStore.info(t('books.noResults'))
+  }
 }
 
 function onClearSearch() {
@@ -49,6 +58,33 @@ function isSaving(bookId: string): boolean {
 
 function isFavoriteUpdating(bookId: string): boolean {
   return favoriteUpdatingIds.value.includes(bookId)
+}
+
+async function onAddBook(bookId: string) {
+  const target = searchResults.value.find((item) => item.id === bookId)
+  if (!target) return
+  await booksStore.addSearchResultToLibrary(target)
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
+  if (booksStore.isBookInLibrary(target)) {
+    notificationsStore.success(t('notifications.bookAdded'))
+  }
+}
+
+async function onToggleFavorite(bookId: string) {
+  const target = booksStore.getLibraryBookById(bookId)
+  if (!target) return
+  const nextFavorite = !target.favorite
+  await booksStore.toggleFavorite(bookId)
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
+  notificationsStore.success(
+    nextFavorite ? t('notifications.bookMarkedFavorite') : t('notifications.bookUnmarkedFavorite'),
+  )
 }
 
 onMounted(async () => {
@@ -128,7 +164,7 @@ onMounted(async () => {
                     : 'border-slate-600 text-slate-200 hover:border-rose-400 hover:text-rose-300'
                 "
                 :disabled="isFavoriteUpdating(item.id)"
-                @click.prevent.stop="booksStore.toggleFavorite(item.id)"
+                @click.prevent.stop="onToggleFavorite(item.id)"
               >
                 <span class="text-sm leading-none">{{ item.favorite ? '♥' : '♡' }}</span>
               </button>
@@ -240,7 +276,7 @@ onMounted(async () => {
                 type="button"
                 class="h-fit cursor-pointer rounded-lg border border-emerald-500/50 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="!isAuthenticated || booksStore.isBookInLibrary(book) || isSaving(book.id)"
-                @click="booksStore.addSearchResultToLibrary(book)"
+                @click="onAddBook(book.id)"
               >
                 {{
                   booksStore.isBookInLibrary(book)

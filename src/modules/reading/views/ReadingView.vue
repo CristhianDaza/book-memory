@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { createReadingSession } from '../../../services/readingSessionService'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
+import { useNotificationsStore } from '../../../stores/notifications'
 import { useReadingStore } from '../../../stores/reading'
 
 const { t } = useI18n()
@@ -14,6 +15,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const booksStore = useBooksStore()
 const readingStore = useReadingStore()
+const notificationsStore = useNotificationsStore()
 
 const { user } = storeToRefs(authStore)
 const { library } = storeToRefs(booksStore)
@@ -80,13 +82,16 @@ function onStart() {
   localError.value = null
   if (!selectedBook.value) {
     localError.value = t('reading.errorNoBook')
+    notificationsStore.error(localError.value)
     return
   }
   readingStore.startTimer()
+  notificationsStore.info(t('notifications.readingStarted'))
 }
 
 function onPause() {
   readingStore.pauseTimer()
+  notificationsStore.info(t('notifications.readingPaused'))
 }
 
 function onReset() {
@@ -95,16 +100,19 @@ function onReset() {
     readingStore.setStartPage(selectedBook.value.currentPage)
     readingStore.setEndPage(selectedBook.value.currentPage)
   }
+  notificationsStore.info(t('notifications.readingReset'))
 }
 
 function onOpenFinish() {
   localError.value = null
   if (!selectedBook.value || !user.value?.uid) {
     localError.value = t('reading.errorNoBook')
+    notificationsStore.error(localError.value)
     return
   }
   if (!sessionStartedAt.value) {
     localError.value = t('reading.errorNoActive')
+    notificationsStore.error(localError.value)
     return
   }
   finishEndPage.value = String(Math.max(startPage.value, selectedBook.value.currentPage))
@@ -119,6 +127,7 @@ async function onConfirmFinish() {
   localError.value = null
   if (!selectedBook.value || !user.value?.uid) {
     localError.value = t('reading.errorNoBook')
+    notificationsStore.error(localError.value)
     return
   }
 
@@ -126,10 +135,12 @@ async function onConfirmFinish() {
   const end = finishEndPageNumber.value
   if (end < start) {
     localError.value = t('reading.errorEndBeforeStart')
+    notificationsStore.error(localError.value)
     return
   }
   if (!sessionStartedAt.value) {
     localError.value = t('reading.errorNoActive')
+    notificationsStore.error(localError.value)
     return
   }
 
@@ -161,9 +172,11 @@ async function onConfirmFinish() {
 
     readingStore.resetSession()
     showFinishModal.value = false
+    notificationsStore.success(t('notifications.readingSessionSaved'))
     await router.push({ name: 'book-detail', params: { id: selectedBook.value.id } })
   } catch (error) {
     localError.value = error instanceof Error ? error.message : t('reading.errorSaveSession')
+    notificationsStore.error(localError.value)
   } finally {
     saving.value = false
   }
