@@ -9,6 +9,7 @@ import {
   type User,
 } from 'firebase/auth'
 import { computed, ref } from 'vue'
+import { i18n } from '../i18n'
 import { firebaseAuth, isFirebaseConfigured } from '../lib/firebase'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -24,13 +25,21 @@ export const useAuthStore = defineStore('auth', () => {
     errorMessage.value = null
   }
 
+  function tAuthError(key: string): string {
+    return i18n.global.t(key)
+  }
+
+  function resolveErrorMessage(error: unknown, fallbackKey: string): string {
+    return error instanceof Error && error.message ? error.message : tAuthError(fallbackKey)
+  }
+
   function initAuth() {
     if (initialized.value) return Promise.resolve()
     if (initPromise) return initPromise
 
     initPromise = new Promise((resolve) => {
       if (!firebaseAuth || !isFirebaseConfigured()) {
-        errorMessage.value = 'Firebase is not configured. Fill the VITE_FIREBASE_* variables.'
+        errorMessage.value = tAuthError('authErrors.firebaseConfigMissing')
         initialized.value = true
         resolve()
         return
@@ -51,42 +60,42 @@ export const useAuthStore = defineStore('auth', () => {
   async function loginWithGoogle() {
     clearError()
     if (!firebaseAuth) {
-      errorMessage.value = 'Firebase auth is not configured.'
+      errorMessage.value = tAuthError('authErrors.firebaseAuthNotConfigured')
       return
     }
 
     try {
       await signInWithPopup(firebaseAuth, new GoogleAuthProvider())
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : 'Google sign-in failed.'
+      errorMessage.value = resolveErrorMessage(error, 'authErrors.googleSignInFailed')
     }
   }
 
   async function loginWithEmail(email: string, password: string) {
     clearError()
     if (!firebaseAuth) {
-      errorMessage.value = 'Firebase auth is not configured.'
+      errorMessage.value = tAuthError('authErrors.firebaseAuthNotConfigured')
       return
     }
 
     try {
       await signInWithEmailAndPassword(firebaseAuth, email, password)
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : 'Email sign-in failed.'
+      errorMessage.value = resolveErrorMessage(error, 'authErrors.emailSignInFailed')
     }
   }
 
   async function registerWithEmail(email: string, password: string) {
     clearError()
     if (!firebaseAuth) {
-      errorMessage.value = 'Firebase auth is not configured.'
+      errorMessage.value = tAuthError('authErrors.firebaseAuthNotConfigured')
       return
     }
 
     try {
       await createUserWithEmailAndPassword(firebaseAuth, email, password)
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : 'Email sign-up failed.'
+      errorMessage.value = resolveErrorMessage(error, 'authErrors.emailSignUpFailed')
     }
   }
 
@@ -97,7 +106,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await signOut(firebaseAuth)
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : 'Sign-out failed.'
+      errorMessage.value = resolveErrorMessage(error, 'authErrors.signOutFailed')
     }
   }
 

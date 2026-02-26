@@ -1,0 +1,57 @@
+export const es = {
+  common: {
+    bookMemory: 'Book Memory',
+    language: 'Idioma',
+    spanish: 'ES',
+    english: 'EN',
+  },
+  home: {
+    title: 'Base lista',
+    subtitle: 'El guard de autenticacion esta activo y los modulos ya tienen rutas base.',
+    signOut: 'Cerrar sesion',
+    app: 'Aplicacion',
+    uiStrategy: 'Estrategia UI',
+    mobileFirstEnabled: 'Mobile-first activo',
+    notConfigured: 'Sin configurar',
+    signedUser: 'Usuario autenticado',
+    fallbackUser: 'Usuario autenticado sin proveedor de email',
+    books: 'Libros',
+    reading: 'Lectura',
+    stats: 'Estadisticas',
+    home: 'Inicio',
+  },
+  auth: {
+    section: 'Autenticacion',
+    title: 'Bienvenido a Book Memory',
+    subtitle: 'Inicia sesion para registrar libros, sesiones y rachas.',
+    email: 'Correo',
+    password: 'Contrasena',
+    signInWithEmail: 'Entrar con correo',
+    createAccount: 'Crear cuenta',
+    register: 'Registro',
+    login: 'Login',
+    continueWithGoogle: 'Continuar con Google',
+  },
+  authErrors: {
+    firebaseConfigMissing: 'Firebase no esta configurado. Completa las variables VITE_FIREBASE_*.',
+    firebaseAuthNotConfigured: 'Firebase Auth no esta configurado.',
+    googleSignInFailed: 'Fallo el inicio de sesion con Google.',
+    emailSignInFailed: 'Fallo el inicio de sesion con correo.',
+    emailSignUpFailed: 'Fallo el registro con correo.',
+    signOutFailed: 'Fallo el cierre de sesion.',
+  },
+  modules: {
+    booksLabel: 'Libros',
+    booksTitle: 'Base del modulo de libros',
+    booksBody:
+      'Siguiente paso: conectar Open Library + fallback Google Books y guardar libros en Firestore.',
+    readingLabel: 'Lectura',
+    readingTitle: 'Base del modulo de sesiones',
+    readingBody:
+      'Siguiente paso: implementar ciclo de temporizador, paginas inicio/fin y calculo de paginas restantes.',
+    statsLabel: 'Estadisticas',
+    statsTitle: 'Base del modulo de racha y metricas',
+    statsBody:
+      'Siguiente paso: agregar sesiones para mostrar racha actual, mejor racha y totales de paginas/minutos.',
+  },
+} as const

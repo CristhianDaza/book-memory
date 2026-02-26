@@ -1,17 +1,29 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import { setAppLocale, type AppLocale } from '../../../i18n'
 import { useAuthStore } from '../../../stores/auth'
 
 const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+const { t, locale } = useI18n()
 
 const { errorMessage, isAuthenticated, initializing } = storeToRefs(authStore)
 const email = ref('')
 const password = ref('')
 const mode = ref<'login' | 'register'>('login')
+const currentLocale = computed(() => locale.value as AppLocale)
+const nextLocale = computed<AppLocale>(() => (currentLocale.value === 'es' ? 'en' : 'es'))
+const nextLocaleLabel = computed(() =>
+  nextLocale.value === 'es' ? t('common.spanish') : t('common.english'),
+)
+
+function onChangeLocale(nextLocale: AppLocale) {
+  setAppLocale(nextLocale)
+}
 
 async function onEmailSubmit() {
   if (mode.value === 'login') {
@@ -38,13 +50,25 @@ async function onGoogleSubmit() {
 
 <template>
   <section class="mx-auto max-w-md rounded-2xl border border-slate-800 bg-slate-900/70 p-5 sm:p-7">
-    <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">Authentication</p>
-    <h1 class="mt-2 text-2xl font-semibold text-white">Welcome to Book Memory</h1>
-    <p class="mt-2 text-sm text-slate-300">Sign in to track your books, sessions, and streaks.</p>
+    <div class="flex items-center justify-between gap-2">
+      <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">{{ t('auth.section') }}</p>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 transition hover:bg-slate-800"
+          @click="onChangeLocale(nextLocale)"
+        >
+          {{ nextLocaleLabel }}
+        </button>
+      </div>
+    </div>
+
+    <h1 class="mt-2 text-2xl font-semibold text-white">{{ t('auth.title') }}</h1>
+    <p class="mt-2 text-sm text-slate-300">{{ t('auth.subtitle') }}</p>
 
     <form class="mt-6 space-y-3" @submit.prevent="onEmailSubmit">
       <label class="block">
-        <span class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">Email</span>
+        <span class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">{{ t('auth.email') }}</span>
         <input
           v-model="email"
           type="email"
@@ -55,7 +79,7 @@ async function onGoogleSubmit() {
       </label>
 
       <label class="block">
-        <span class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">Password</span>
+        <span class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">{{ t('auth.password') }}</span>
         <input
           v-model="password"
           type="password"
@@ -71,14 +95,14 @@ async function onGoogleSubmit() {
           type="submit"
           class="flex-1 cursor-pointer rounded-xl bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
         >
-          {{ mode === 'login' ? 'Sign in with email' : 'Create account' }}
+          {{ mode === 'login' ? t('auth.signInWithEmail') : t('auth.createAccount') }}
         </button>
         <button
           type="button"
           class="cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
           @click="mode = mode === 'login' ? 'register' : 'login'"
         >
-          {{ mode === 'login' ? 'Register' : 'Login' }}
+          {{ mode === 'login' ? t('auth.register') : t('auth.login') }}
         </button>
       </div>
     </form>
@@ -89,7 +113,7 @@ async function onGoogleSubmit() {
       :disabled="initializing"
       @click="onGoogleSubmit"
     >
-      Continue with Google
+      {{ t('auth.continueWithGoogle') }}
     </button>
 
     <p v-if="errorMessage" class="mt-3 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200">

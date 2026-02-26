@@ -1,0 +1,57 @@
+export const en = {
+  common: {
+    bookMemory: 'Book Memory',
+    language: 'Language',
+    spanish: 'ES',
+    english: 'EN',
+  },
+  home: {
+    title: 'Base setup ready',
+    subtitle: 'Auth guard is active and module routes are scaffolded.',
+    signOut: 'Sign out',
+    app: 'App',
+    uiStrategy: 'UI strategy',
+    mobileFirstEnabled: 'Mobile-first enabled',
+    notConfigured: 'Not configured',
+    signedUser: 'Signed user',
+    fallbackUser: 'Authenticated user without email provider',
+    books: 'Books',
+    reading: 'Reading',
+    stats: 'Stats',
+    home: 'Home',
+  },
+  auth: {
+    section: 'Authentication',
+    title: 'Welcome to Book Memory',
+    subtitle: 'Sign in to track your books, sessions, and streaks.',
+    email: 'Email',
+    password: 'Password',
+    signInWithEmail: 'Sign in with email',
+    createAccount: 'Create account',
+    register: 'Register',
+    login: 'Login',
+    continueWithGoogle: 'Continue with Google',
+  },
+  authErrors: {
+    firebaseConfigMissing: 'Firebase is not configured. Fill the VITE_FIREBASE_* variables.',
+    firebaseAuthNotConfigured: 'Firebase auth is not configured.',
+    googleSignInFailed: 'Google sign-in failed.',
+    emailSignInFailed: 'Email sign-in failed.',
+    emailSignUpFailed: 'Email sign-up failed.',
+    signOutFailed: 'Sign-out failed.',
+  },
+  modules: {
+    booksLabel: 'Books',
+    booksTitle: 'Books module scaffold',
+    booksBody:
+      'Next step: connect Open Library + Google Books fallback and save selected titles to Firestore.',
+    readingLabel: 'Reading',
+    readingTitle: 'Reading sessions scaffold',
+    readingBody:
+      'Next step: implement timer lifecycle, start/end page capture, and pages remaining calculation.',
+    statsLabel: 'Stats',
+    statsTitle: 'Streak and stats scaffold',
+    statsBody:
+      'Next step: aggregate sessions to show current streak, longest streak, and pages/minutes totals.',
+  },
+} as const
