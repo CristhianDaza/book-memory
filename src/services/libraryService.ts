@@ -1,0 +1,62 @@
+import {
+  collection,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+} from 'firebase/firestore'
+import { firebaseDb } from '../lib/firebase'
+import type { BookSearchResult, LibraryBook } from '../types/books'
+
+function ensureFirestore() {
+  if (!firebaseDb) {
+    throw new Error('Firebase Firestore is not configured.')
+  }
+  return firebaseDb
+}
+
+function toLibraryDocId(searchResult: BookSearchResult): string {
+  return searchResult.id.replace(':', '_')
+}
+
+export async function fetchLibraryBooks(uid: string): Promise<LibraryBook[]> {
+  const db = ensureFirestore()
+  const ref = collection(db, 'users', uid, 'library')
+  const snapshot = await getDocs(query(ref, orderBy('updatedAt', 'desc')))
+
+  return snapshot.docs.map((entry) => {
+    const data = entry.data() as Omit<LibraryBook, 'id'>
+    return {
+      id: entry.id,
+      ...data,
+    }
+  })
+}
+
+export async function addBookToLibrary(uid: string, book: BookSearchResult): Promise<LibraryBook> {
+  const db = ensureFirestore()
+  const id = toLibraryDocId(book)
+  const ref = doc(db, 'users', uid, 'library', id)
+
+  const payload: Omit<LibraryBook, 'id'> = {
+    source: book.source,
+    externalId: book.id.split(':')[1] ?? book.id,
+    title: book.title,
+    authors: book.authors,
+    coverUrl: book.coverUrl,
+    totalPages: book.totalPages,
+    currentPage: 0,
+    status: 'reading',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }
+
+  await setDoc(ref, payload, { merge: true })
+
+  return {
+    id,
+    ...payload,
+  }
+}
