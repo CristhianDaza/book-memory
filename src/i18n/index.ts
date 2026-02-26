@@ -1,9 +1,9 @@
 import { createI18n } from 'vue-i18n'
+import type { AppLocale } from '../types/i18n'
 import { en } from './messages/en'
 import { es } from './messages/es'
 
 export const SUPPORTED_LOCALES = ['es', 'en'] as const
-export type AppLocale = (typeof SUPPORTED_LOCALES)[number]
 
 const STORAGE_KEY = 'book-memory-locale'
 

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { searchBooks } from '../services/bookSearchService'
+import type { LibrarySortMode } from '../types/books-store'
 import { fetchSessionsForBook } from '../services/readingSessionService'
 import {
   addBookToLibrary,
@@ -10,12 +11,10 @@ import {
   updateLibraryBookFavorite,
 } from '../services/libraryService'
 import type { BookSearchResult, LibraryBook } from '../types/books'
-import type { AppLocale } from '../i18n'
+import type { AppLocale } from '../types/i18n'
 import { useAuthStore } from './auth'
 
 export const useBooksStore = defineStore('books', () => {
-  type LibrarySortMode = 'recent' | 'title_asc' | 'favorite_first'
-
   const query = ref('')
   const searchResults = ref<BookSearchResult[]>([])
   const library = ref<LibraryBook[]>([])

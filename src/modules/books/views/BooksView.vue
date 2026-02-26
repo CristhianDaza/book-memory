@@ -2,7 +2,7 @@
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { AppLocale } from '../../../i18n'
+import type { AppLocale } from '../../../types/i18n'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 

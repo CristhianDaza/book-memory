@@ -1,32 +1,6 @@
 import type { BookSearchResult } from '../types/books'
-import type { AppLocale } from '../i18n'
-
-interface OpenLibraryResponse {
-  docs: Array<{
-    key?: string
-    title?: string
-    author_name?: string[]
-    first_publish_year?: number
-    number_of_pages_median?: number
-    cover_i?: number
-  }>
-}
-
-interface GoogleBooksResponse {
-  items?: Array<{
-    id: string
-    volumeInfo?: {
-      title?: string
-      authors?: string[]
-      publishedDate?: string
-      pageCount?: number
-      imageLinks?: {
-        thumbnail?: string
-        smallThumbnail?: string
-      }
-    }
-  }>
-}
+import type { GoogleBooksResponse, OpenLibraryResponse } from '../types/book-search'
+import type { AppLocale } from '../types/i18n'
 
 const MAX_RESULTS = 12
 const MIN_FILTERED_RESULTS = 4
@@ -117,7 +91,6 @@ export async function searchBooks(query: string, locale: AppLocale): Promise<Boo
 
   let openResults = await searchOpenLibrary(trimmedQuery, locale)
   if (openResults.length < MIN_FILTERED_RESULTS) {
-    // Fallback sin filtro estricto para no perder resultados.
     openResults = await searchOpenLibrary(trimmedQuery)
   }
 

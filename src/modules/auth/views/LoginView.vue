@@ -3,7 +3,8 @@ import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { setAppLocale, type AppLocale } from '../../../i18n'
+import { setAppLocale } from '../../../i18n'
+import type { AppLocale } from '../../../types/i18n'
 import { useAuthStore } from '../../../stores/auth'
 
 const authStore = useAuthStore()
