@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { searchBooks } from '../services/bookSearchService'
-import type { LibrarySortMode } from '../types/books-store'
+import type { LibrarySortMode, SearchLanguageMode } from '../types/books-store'
 import { deleteSessionsForBook, fetchSessionsForBook } from '../services/readingSessionService'
 import {
   addBookToLibrary,
@@ -19,6 +19,9 @@ export const useBooksStore = defineStore('books', () => {
   const searchResults = ref<BookSearchResult[]>([])
   const library = ref<LibraryBook[]>([])
   const searching = ref(false)
+  const loadingMoreSearch = ref(false)
+  const hasMoreSearchResults = ref(false)
+  const searchPage = ref(0)
   const loadingLibrary = ref(false)
   const savingIds = ref<string[]>([])
   const favoriteUpdatingIds = ref<string[]>([])
@@ -27,6 +30,7 @@ export const useBooksStore = defineStore('books', () => {
   const selectedLibraryBookId = ref<string | null>(null)
   const showOnlyFavorites = ref(false)
   const librarySortMode = ref<LibrarySortMode>('favorite_first')
+  const searchLanguageMode = ref<SearchLanguageMode>('active')
   const errorKey = ref<string | null>(null)
   const errorDetails = ref<string | null>(null)
 
@@ -62,11 +66,15 @@ export const useBooksStore = defineStore('books', () => {
     query.value = queryText
     searching.value = true
     try {
-      searchResults.value = await searchBooks(queryText, locale)
+      const result = await searchBooks(queryText, locale, searchLanguageMode.value, 0, 20)
+      searchResults.value = result.items
+      searchPage.value = 0
+      hasMoreSearchResults.value = result.totalItems > result.items.length
     } catch (error) {
       errorKey.value = 'books.searchError'
       errorDetails.value = error instanceof Error ? error.message : null
       searchResults.value = []
+      hasMoreSearchResults.value = false
     } finally {
       searching.value = false
     }
@@ -75,7 +83,35 @@ export const useBooksStore = defineStore('books', () => {
   function clearSearch() {
     query.value = ''
     searchResults.value = []
+    searchPage.value = 0
+    hasMoreSearchResults.value = false
     clearError()
+  }
+
+  async function loadMoreSearch(locale: AppLocale) {
+    if (searching.value || loadingMoreSearch.value || !hasMoreSearchResults.value || !query.value.trim()) return
+    loadingMoreSearch.value = true
+    try {
+      const nextPage = searchPage.value + 1
+      const result = await searchBooks(query.value, locale, searchLanguageMode.value, nextPage, 20)
+      const merged = new Map<string, BookSearchResult>()
+      for (const item of searchResults.value) merged.set(item.id, item)
+      for (const item of result.items) {
+        if (!merged.has(item.id)) merged.set(item.id, item)
+      }
+      searchResults.value = Array.from(merged.values())
+      searchPage.value = nextPage
+      hasMoreSearchResults.value = result.totalItems > searchResults.value.length
+    } catch (error) {
+      errorKey.value = 'books.searchError'
+      errorDetails.value = error instanceof Error ? error.message : null
+    } finally {
+      loadingMoreSearch.value = false
+    }
+  }
+
+  function setSearchLanguageMode(mode: SearchLanguageMode) {
+    searchLanguageMode.value = mode
   }
 
   async function loadLibrary() {
@@ -272,6 +308,8 @@ export const useBooksStore = defineStore('books', () => {
     searchResults,
     library,
     searching,
+    loadingMoreSearch,
+    hasMoreSearchResults,
     loadingLibrary,
     savingIds,
     favoriteUpdatingIds,
@@ -280,11 +318,14 @@ export const useBooksStore = defineStore('books', () => {
     selectedLibraryBookId,
     showOnlyFavorites,
     librarySortMode,
+    searchLanguageMode,
     selectedBook,
     filteredSortedLibrary,
     errorKey,
     errorDetails,
     search,
+    loadMoreSearch,
+    setSearchLanguageMode,
     loadLibrary,
     ensureLibraryLoaded,
     addSearchResultToLibrary,

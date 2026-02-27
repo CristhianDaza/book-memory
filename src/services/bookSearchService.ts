@@ -1,17 +1,15 @@
 import type { BookSearchResult } from '../types/books'
-import type { GoogleBooksResponse, OpenLibraryResponse } from '../types/book-search'
+import type { GoogleBooksResponse } from '../types/book-search'
 import type { AppLocale } from '../types/i18n'
+import type { SearchBooksPageResult, SearchLanguageMode } from '../types/books-store'
 
-const MAX_RESULTS = 12
-const MIN_FILTERED_RESULTS = 4
-const OPEN_LIBRARY_LANG_BY_LOCALE: Record<AppLocale, string> = {
-  es: 'spa',
-  en: 'eng',
-}
+const MAX_RESULTS = 40
+const PAGE_SIZE = 20
 const GOOGLE_LANG_BY_LOCALE: Record<AppLocale, string> = {
   es: 'es',
   en: 'en',
 }
+let googleBooksUnavailable = false
 
 function normalizeKey(title: string, authors: string[]): string {
   const author = authors[0] ?? ''
@@ -31,42 +29,27 @@ function normalizeTotalPages(value: unknown): number | null {
   return rounded > 0 ? rounded : null
 }
 
-async function searchOpenLibrary(query: string, locale?: AppLocale): Promise<BookSearchResult[]> {
-  const languageFilter = locale ? ` language:${OPEN_LIBRARY_LANG_BY_LOCALE[locale]}` : ''
-  const q = `${query}${languageFilter}`
-  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=${MAX_RESULTS}`
-  const response = await fetch(url)
-  if (!response.ok) throw new Error(`Open Library request failed with status ${response.status}`)
-
-  const data = (await response.json()) as OpenLibraryResponse
-  const normalized: BookSearchResult[] = []
-
-  for (const doc of data.docs) {
-    const externalId = doc.key?.replace('/works/', '') ?? doc.key ?? ''
-    const title = doc.title?.trim() ?? ''
-    if (!externalId || !title) continue
-
-    normalized.push({
-      id: `openlibrary:${externalId}`,
-      source: 'openlibrary',
-      title,
-      authors: doc.author_name ?? [],
-      coverUrl: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : null,
-      totalPages: normalizeTotalPages(doc.number_of_pages_median),
-      publishedYear: doc.first_publish_year ?? null,
-    })
-  }
-
-  return normalized
-}
-
-async function searchGoogleBooks(query: string, locale?: AppLocale): Promise<BookSearchResult[]> {
+async function searchGoogleBooks(
+  query: string,
+  locale?: AppLocale,
+  startIndex = 0,
+  maxResults = PAGE_SIZE,
+): Promise<SearchBooksPageResult> {
+  if (googleBooksUnavailable) return { items: [], totalItems: 0 }
   const apiKey = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY as string | undefined
   const keyParam = apiKey ? `&key=${encodeURIComponent(apiKey)}` : ''
   const langParam = locale ? `&langRestrict=${GOOGLE_LANG_BY_LOCALE[locale]}` : ''
-  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=${MAX_RESULTS}${langParam}${keyParam}`
+  const safeMaxResults = Math.max(1, Math.min(MAX_RESULTS, Math.floor(maxResults)))
+  const safeStartIndex = Math.max(0, Math.floor(startIndex))
+  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=${safeMaxResults}&startIndex=${safeStartIndex}${langParam}${keyParam}`
   const response = await fetch(url)
-  if (!response.ok) throw new Error(`Google Books request failed with status ${response.status}`)
+  if (!response.ok) {
+    if (response.status === 403) {
+      googleBooksUnavailable = true
+      return { items: [], totalItems: 0 }
+    }
+    throw new Error(`Google Books request failed with status ${response.status}`)
+  }
 
   const data = (await response.json()) as GoogleBooksResponse
   const items = data.items ?? []
@@ -77,6 +60,7 @@ async function searchGoogleBooks(query: string, locale?: AppLocale): Promise<Boo
     const info = item.volumeInfo
     const title = info?.title?.trim() ?? ''
     if (!item.id || !title) continue
+    if (locale && info?.language && info.language.toLowerCase() !== GOOGLE_LANG_BY_LOCALE[locale]) continue
 
     normalized.push({
       id: `google:${item.id}`,
@@ -89,68 +73,36 @@ async function searchGoogleBooks(query: string, locale?: AppLocale): Promise<Boo
     })
   }
 
-  return normalized
+  return {
+    items: normalized,
+    totalItems: Math.max(0, data.totalItems ?? normalized.length),
+  }
 }
 
-export async function searchBooks(query: string, locale: AppLocale): Promise<BookSearchResult[]> {
+export async function searchBooks(
+  query: string,
+  locale: AppLocale,
+  languageMode: SearchLanguageMode,
+  page = 0,
+  pageSize = PAGE_SIZE,
+): Promise<SearchBooksPageResult> {
   const trimmedQuery = query.trim()
-  if (!trimmedQuery) return []
+  if (!trimmedQuery) return { items: [], totalItems: 0 }
 
-  const localizedOpenResults = await searchOpenLibrary(trimmedQuery, locale).catch(() => [])
-  const localizedGoogleResults = await searchGoogleBooks(trimmedQuery, locale).catch(() => [])
-
+  const localeFilter = languageMode === 'active' ? locale : undefined
+  const startIndex = Math.max(0, Math.floor(page)) * Math.max(1, Math.floor(pageSize))
+  const localizedGoogleResults = await searchGoogleBooks(trimmedQuery, localeFilter, startIndex, pageSize).catch(
+    () => ({ items: [], totalItems: 0 }),
+  )
   const unique = new Map<string, BookSearchResult>()
 
-  for (const book of localizedOpenResults) {
-    unique.set(normalizeKey(book.title, book.authors), book)
-  }
-
-  for (const book of localizedGoogleResults) {
+  for (const book of localizedGoogleResults.items) {
     const key = normalizeKey(book.title, book.authors)
-    const existing = unique.get(key)
-    if (!existing) {
-      unique.set(key, book)
-      continue
-    }
-
-    unique.set(key, {
-      ...existing,
-      coverUrl: existing.coverUrl ?? book.coverUrl,
-      totalPages: existing.totalPages ?? book.totalPages,
-      publishedYear: existing.publishedYear ?? book.publishedYear,
-    })
+    if (!unique.has(key)) unique.set(key, book)
   }
 
-  if (unique.size < MIN_FILTERED_RESULTS) {
-    const genericOpenResults = await searchOpenLibrary(trimmedQuery).catch(() => [])
-    for (const book of genericOpenResults) {
-      const key = normalizeKey(book.title, book.authors)
-      if (unique.has(key)) continue
-      unique.set(key, book)
-      if (unique.size >= MAX_RESULTS) break
-    }
+  return {
+    items: Array.from(unique.values()).slice(0, Math.max(1, Math.floor(pageSize))),
+    totalItems: localizedGoogleResults.totalItems,
   }
-
-  if (unique.size < MAX_RESULTS) {
-    const genericGoogleResults = await searchGoogleBooks(trimmedQuery).catch(() => [])
-    for (const book of genericGoogleResults) {
-      const key = normalizeKey(book.title, book.authors)
-      const existing = unique.get(key)
-      if (!existing) {
-        unique.set(key, book)
-        if (unique.size >= MAX_RESULTS) break
-        continue
-      }
-
-      unique.set(key, {
-        ...existing,
-        coverUrl: existing.coverUrl ?? book.coverUrl,
-        totalPages: existing.totalPages ?? book.totalPages,
-        publishedYear: existing.publishedYear ?? book.publishedYear,
-      })
-      if (unique.size >= MAX_RESULTS) break
-    }
-  }
-
-  return Array.from(unique.values()).slice(0, MAX_RESULTS)
 }
