@@ -64,6 +64,7 @@ export const es = {
     openAddModal: 'Agregar libro',
     title: 'Buscar y guardar libros',
     subtitle: 'Busca en Open Library con fallback Google Books y agrega a tu biblioteca.',
+    modalCloseHint: 'Este modal solo se cierra con el boton cerrar o la tecla Esc.',
     searchLabel: 'Buscar libro',
     searchPlaceholder: 'Ej: Cien años de soledad',
     searchAction: 'Buscar',

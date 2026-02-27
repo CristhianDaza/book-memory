@@ -64,6 +64,7 @@ export const en = {
     openAddModal: 'Add book',
     title: 'Search and save books',
     subtitle: 'Search in Open Library with Google Books fallback and add results to your library.',
+    modalCloseHint: 'This modal only closes with the close button or Esc key.',
     searchLabel: 'Search book',
     searchPlaceholder: 'Ex: One Hundred Years of Solitude',
     searchAction: 'Search',

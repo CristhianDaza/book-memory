@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BookSearchResult } from '../../../types/books'
 import type { AppLocale } from '../../../types/i18n'
@@ -16,6 +16,7 @@ const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
 const queryInput = ref('')
 const showAddModal = ref(false)
+const searchInputRef = ref<HTMLInputElement | null>(null)
 const pendingBookToAdd = ref<BookSearchResult | null>(null)
 const showAddBookPagesModal = ref(false)
 const pendingManualPages = ref<string>('')
@@ -159,6 +160,12 @@ async function onToggleFavorite(bookId: string) {
 onMounted(async () => {
   await booksStore.loadLibrary()
 })
+
+watch(showAddModal, async (isOpen) => {
+  if (!isOpen) return
+  await nextTick()
+  searchInputRef.value?.focus()
+})
 </script>
 
 <template>
@@ -273,13 +280,16 @@ onMounted(async () => {
     <div
       v-if="showAddModal"
       class="fixed inset-0 z-40 flex items-end bg-slate-950/80 p-3 sm:items-center sm:justify-center"
-      @click.self="closeAddModal"
     >
-      <section class="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-2xl sm:p-6">
+      <section
+        class="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-2xl sm:p-6"
+        @keydown.esc="closeAddModal"
+      >
         <div class="flex items-center justify-between gap-3">
           <div>
             <h2 class="text-xl font-semibold text-white">{{ t('books.title') }}</h2>
             <p class="mt-1 text-sm text-slate-300">{{ t('books.subtitle') }}</p>
+            <p class="mt-1 text-xs text-slate-500">{{ t('books.modalCloseHint') }}</p>
           </div>
           <button
             type="button"
@@ -320,6 +330,7 @@ onMounted(async () => {
           </div>
           <div class="flex flex-col gap-2 sm:flex-row">
             <input
+              ref="searchInputRef"
               v-model="queryInput"
               type="text"
               :placeholder="t('books.searchPlaceholder')"
