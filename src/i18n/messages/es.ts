@@ -91,6 +91,7 @@ export const es = {
     addWithPagesTitle: 'Agregar libro',
     addWithPagesMessage: 'Puedes definir las paginas ahora o continuar sin este dato.',
     addedBook: 'Agregado',
+    addedBookReason: 'Este libro ya esta en tu biblioteca.',
     addingBook: 'Guardando...',
     yourLibrary: 'Tu biblioteca',
     onlyFavorites: 'Solo favoritos',
@@ -148,6 +149,7 @@ export const es = {
     loadLibraryError: 'No se pudo cargar la biblioteca.',
     addBookError: 'No se pudo agregar el libro.',
     authRequired: 'Debes iniciar sesion para guardar libros.',
+    authRequiredShort: 'Inicia sesion',
   },
   reading: {
     title: 'Sesion de lectura',

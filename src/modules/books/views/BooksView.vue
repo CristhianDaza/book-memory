@@ -77,6 +77,32 @@ function isSaving(bookId: string): boolean {
   return savingIds.value.includes(bookId)
 }
 
+const isAddDisabled = (book: BookSearchResult): boolean =>
+  !isAuthenticated.value || booksStore.isBookInLibrary(book) || isSaving(book.id)
+
+const addButtonLabel = (book: BookSearchResult): string => {
+  if (!isAuthenticated.value) {
+    return t('books.authRequiredShort')
+  }
+  if (booksStore.isBookInLibrary(book)) {
+    return t('books.addedBook')
+  }
+  if (isSaving(book.id)) {
+    return t('books.addingBook')
+  }
+  return t('books.addBook')
+}
+
+const addDisabledReason = (book: BookSearchResult): string | null => {
+  if (!isAuthenticated.value) {
+    return t('books.authRequired')
+  }
+  if (booksStore.isBookInLibrary(book)) {
+    return t('books.addedBookReason')
+  }
+  return null
+}
+
 function isFavoriteUpdating(bookId: string): boolean {
   return favoriteUpdatingIds.value.includes(bookId)
 }
@@ -400,20 +426,19 @@ onMounted(async () => {
                 </div>
               </div>
 
-              <button
-                type="button"
-                class="h-fit cursor-pointer rounded-lg border border-emerald-500/50 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="!isAuthenticated || booksStore.isBookInLibrary(book) || isSaving(book.id)"
-                @click="onAddBook(book.id)"
-              >
-                {{
-                  booksStore.isBookInLibrary(book)
-                    ? t('books.addedBook')
-                    : isSaving(book.id)
-                      ? t('books.addingBook')
-                      : t('books.addBook')
-                }}
-              </button>
+              <div class="h-fit w-28 text-right">
+                <button
+                  type="button"
+                  class="w-full cursor-pointer rounded-lg border border-emerald-500/50 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="isAddDisabled(book)"
+                  @click="onAddBook(book.id)"
+                >
+                  {{ addButtonLabel(book) }}
+                </button>
+                <p v-if="addDisabledReason(book)" class="mt-1 text-[10px] leading-tight text-slate-400">
+                  {{ addDisabledReason(book) }}
+                </p>
+              </div>
             </div>
           </article>
 

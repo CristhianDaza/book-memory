@@ -91,6 +91,7 @@ export const en = {
     addWithPagesTitle: 'Add book',
     addWithPagesMessage: 'You can set pages now or continue without this data.',
     addedBook: 'Added',
+    addedBookReason: 'This book is already in your library.',
     addingBook: 'Saving...',
     yourLibrary: 'Your library',
     onlyFavorites: 'Only favorites',
@@ -148,6 +149,7 @@ export const en = {
     loadLibraryError: 'Could not load library.',
     addBookError: 'Could not add book.',
     authRequired: 'You must sign in to save books.',
+    authRequiredShort: 'Sign in',
   },
   reading: {
     title: 'Reading session',
