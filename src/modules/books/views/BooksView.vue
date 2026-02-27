@@ -20,6 +20,7 @@ const showAddBookPagesModal = ref(false)
 const pendingManualPages = ref<string>('')
 
 const {
+  query,
   searchResults,
   searching,
   savingIds,
@@ -316,7 +317,7 @@ onMounted(async () => {
             </div>
           </article>
 
-          <p v-if="!searching && queryInput.trim() && searchResults.length === 0" class="text-sm text-slate-400">
+          <p v-if="!searching && query.trim() && searchResults.length === 0" class="text-sm text-slate-400">
             {{ t('books.noResults') }}
           </p>
         </div>
