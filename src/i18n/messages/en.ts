@@ -108,7 +108,7 @@ export const en = {
     removeBook: 'Remove',
     removeConfirm: 'Remove from library',
     removeConfirmTitle: 'Delete book',
-    removeConfirmMessage: 'This action will remove the book from your library.',
+    removeConfirmMessage: 'This action will remove the book and all related sessions.',
     removeBookError: 'Could not remove book.',
     deletingBook: 'Removing...',
     progress: 'Progress',

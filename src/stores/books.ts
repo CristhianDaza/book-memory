@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { searchBooks } from '../services/bookSearchService'
 import type { LibrarySortMode } from '../types/books-store'
-import { fetchSessionsForBook } from '../services/readingSessionService'
+import { deleteSessionsForBook, fetchSessionsForBook } from '../services/readingSessionService'
 import {
   addBookToLibrary,
   deleteLibraryBook,
@@ -183,6 +183,7 @@ export const useBooksStore = defineStore('books', () => {
 
     deletingIds.value = [...deletingIds.value, bookId]
     try {
+      await deleteSessionsForBook(uid, bookId)
       await deleteLibraryBook(uid, bookId)
       library.value = library.value.filter((book) => book.id !== bookId)
 

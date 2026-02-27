@@ -10,6 +10,7 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  writeBatch,
   where,
 } from 'firebase/firestore'
 import { firebaseDb } from '../lib/firebase'
@@ -104,4 +105,22 @@ export async function deleteReadingSession(uid: string, sessionId: string): Prom
   const db = ensureFirestore()
   const ref = doc(db, 'users', uid, 'sessions', sessionId)
   await deleteDoc(ref)
+}
+
+export async function deleteSessionsForBook(uid: string, bookId: string): Promise<void> {
+  const db = ensureFirestore()
+  const ref = collection(db, 'users', uid, 'sessions')
+  const snapshot = await getDocs(query(ref, where('bookId', '==', bookId)))
+  if (snapshot.empty) return
+
+  const docs = snapshot.docs
+  const chunkSize = 450
+  for (let index = 0; index < docs.length; index += chunkSize) {
+    const batch = writeBatch(db)
+    const chunk = docs.slice(index, index + chunkSize)
+    chunk.forEach((entry) => {
+      batch.delete(entry.ref)
+    })
+    await batch.commit()
+  }
 }
