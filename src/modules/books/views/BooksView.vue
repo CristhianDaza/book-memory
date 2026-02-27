@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BookSearchResult } from '../../../types/books'
 import type { AppLocale } from '../../../types/i18n'
+import PromptModal from '../../../components/PromptModal.vue'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
@@ -322,41 +323,20 @@ onMounted(async () => {
       </section>
     </div>
 
-    <div
-      v-if="showAddBookPagesModal"
-      class="fixed inset-0 z-[55] flex items-end bg-slate-950/80 p-3 sm:items-center sm:justify-center"
-      @click.self="onCancelAddBookWithPages"
-    >
-      <section class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-2xl sm:p-6">
-        <h3 class="text-lg font-semibold text-white">{{ t('books.addWithPagesTitle') }}</h3>
-        <p class="mt-1 text-sm text-slate-300">{{ t('books.addWithPagesMessage') }}</p>
-        <label class="mt-3 block text-xs text-slate-300">
-          {{ t('books.manualPages') }}
-          <input
-            v-model="pendingManualPages"
-            type="number"
-            min="1"
-            :placeholder="t('books.manualPagesPlaceholder')"
-            class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
-          />
-        </label>
-        <div class="mt-4 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            class="cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
-            @click="onCancelAddBookWithPages"
-          >
-            {{ t('common.cancel') }}
-          </button>
-          <button
-            type="button"
-            class="cursor-pointer rounded-xl bg-emerald-500 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
-            @click="onConfirmAddBookWithPages"
-          >
-            {{ t('books.addBook') }}
-          </button>
-        </div>
-      </section>
-    </div>
+    <PromptModal
+      :open="showAddBookPagesModal"
+      :title="t('books.addWithPagesTitle')"
+      :message="t('books.addWithPagesMessage')"
+      :confirm-label="t('books.addBook')"
+      :cancel-label="t('common.cancel')"
+      :value="pendingManualPages"
+      :input-label="t('books.manualPages')"
+      :input-placeholder="t('books.manualPagesPlaceholder')"
+      input-type="number"
+      input-min="1"
+      @cancel="onCancelAddBookWithPages"
+      @confirm="onConfirmAddBookWithPages"
+      @update:value="pendingManualPages = $event"
+    />
   </div>
 </template>
