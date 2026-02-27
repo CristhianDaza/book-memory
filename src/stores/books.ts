@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { resolveTotalPagesForBook, searchBooks } from '../services/bookSearchService'
-import type { CompleteMissingPagesResult, LibrarySortMode } from '../types/books-store'
+import { searchBooks } from '../services/bookSearchService'
+import type { LibrarySortMode } from '../types/books-store'
 import { fetchSessionsForBook } from '../services/readingSessionService'
 import {
   addBookToLibrary,
@@ -23,7 +23,6 @@ export const useBooksStore = defineStore('books', () => {
   const savingIds = ref<string[]>([])
   const favoriteUpdatingIds = ref<string[]>([])
   const metadataUpdatingIds = ref<string[]>([])
-  const completingMetadata = ref(false)
   const deletingIds = ref<string[]>([])
   const selectedLibraryBookId = ref<string | null>(null)
   const showOnlyFavorites = ref(false)
@@ -267,60 +266,6 @@ export const useBooksStore = defineStore('books', () => {
     }
   }
 
-  async function completeMissingPages(locale: AppLocale): Promise<CompleteMissingPagesResult> {
-    clearError()
-    const authStore = useAuthStore()
-    const uid = authStore.user?.uid
-    if (!uid) {
-      errorKey.value = 'books.authRequired'
-      return { scanned: 0, updated: 0, unresolved: 0, failed: 0 }
-    }
-
-    const pendingBooks = library.value.filter((book) => book.totalPages === null)
-    if (pendingBooks.length === 0) {
-      return { scanned: 0, updated: 0, unresolved: 0, failed: 0 }
-    }
-
-    completingMetadata.value = true
-    let updated = 0
-    let unresolved = 0
-    let failed = 0
-
-    try {
-      for (const book of pendingBooks) {
-        try {
-          const totalPages = await resolveTotalPagesForBook(book.title, book.authors, locale)
-          if (!totalPages) {
-            unresolved += 1
-            continue
-          }
-
-          await updateLibraryBookMetadata(uid, book.id, {
-            totalPages,
-            currentPage: book.currentPage,
-            status: book.status,
-          })
-
-          library.value = library.value.map((item) =>
-            item.id === book.id ? { ...item, totalPages } : item,
-          )
-          updated += 1
-        } catch {
-          failed += 1
-        }
-      }
-    } finally {
-      completingMetadata.value = false
-    }
-
-    return {
-      scanned: pendingBooks.length,
-      updated,
-      unresolved,
-      failed,
-    }
-  }
-
   return {
     query,
     searchResults,
@@ -330,7 +275,6 @@ export const useBooksStore = defineStore('books', () => {
     savingIds,
     favoriteUpdatingIds,
     metadataUpdatingIds,
-    completingMetadata,
     deletingIds,
     selectedLibraryBookId,
     showOnlyFavorites,
@@ -349,7 +293,6 @@ export const useBooksStore = defineStore('books', () => {
     toggleFavorite,
     updateBookMetadata,
     recalculateBookProgressFromSessions,
-    completeMissingPages,
     removeFromLibrary,
     clearSearch,
     clearError,
