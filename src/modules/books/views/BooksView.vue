@@ -23,6 +23,7 @@ const {
   query,
   searchResults,
   searching,
+  loadingLibrary,
   savingIds,
   errorKey,
   filteredSortedLibrary,
@@ -35,6 +36,7 @@ const { isAuthenticated } = storeToRefs(authStore)
 const mappedError = computed(() => (errorKey.value ? t(errorKey.value) : null))
 const hasSearchExecuted = computed(() => query.value.trim().length > 0)
 const skeletonKeys = [1, 2, 3, 4, 5]
+const librarySkeletonKeys = [1, 2, 3, 4, 5, 6]
 
 async function onSearchSubmit() {
   await booksStore.search(queryInput.value, locale.value as AppLocale)
@@ -165,7 +167,21 @@ onMounted(async () => {
         </label>
       </div>
 
-      <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+      <div v-if="loadingLibrary" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        <article
+          v-for="item in librarySkeletonKeys"
+          :key="item"
+          class="animate-pulse overflow-hidden rounded-xl border border-slate-800 bg-slate-950/70"
+        >
+          <div class="aspect-[2/3] w-full bg-slate-800" />
+          <div class="space-y-2 p-3">
+            <div class="h-4 w-5/6 rounded bg-slate-800" />
+            <div class="h-3 w-2/3 rounded bg-slate-800" />
+          </div>
+        </article>
+      </div>
+
+      <div v-else class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         <article
           v-for="item in filteredSortedLibrary"
           :key="item.id"
@@ -208,7 +224,7 @@ onMounted(async () => {
         </article>
       </div>
 
-      <p v-if="filteredSortedLibrary.length === 0" class="mt-3 text-sm text-slate-400">
+      <p v-if="!loadingLibrary && filteredSortedLibrary.length === 0" class="mt-3 text-sm text-slate-400">
         {{ t('books.emptyLibrary') }}
       </p>
     </section>
