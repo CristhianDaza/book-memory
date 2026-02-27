@@ -2,6 +2,7 @@
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import type { BookSearchResult } from '../../../types/books'
 import type { AppLocale } from '../../../types/i18n'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
@@ -13,6 +14,9 @@ const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
 const queryInput = ref('')
 const showAddModal = ref(false)
+const pendingBookToAdd = ref<BookSearchResult | null>(null)
+const showAddBookPagesModal = ref(false)
+const pendingManualPages = ref<string>('')
 
 const {
   searchResults,
@@ -63,14 +67,36 @@ function isFavoriteUpdating(bookId: string): boolean {
 async function onAddBook(bookId: string) {
   const target = searchResults.value.find((item) => item.id === bookId)
   if (!target) return
-  await booksStore.addSearchResultToLibrary(target)
+  pendingBookToAdd.value = target
+  pendingManualPages.value = target.totalPages ? String(target.totalPages) : ''
+  showAddBookPagesModal.value = true
+}
+
+function onCancelAddBookWithPages() {
+  showAddBookPagesModal.value = false
+  pendingBookToAdd.value = null
+  pendingManualPages.value = ''
+}
+
+async function onConfirmAddBookWithPages() {
+  if (!pendingBookToAdd.value) return
+
+  const parsed = Number(pendingManualPages.value)
+  const safePages = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null
+  const payload: BookSearchResult = {
+    ...pendingBookToAdd.value,
+    totalPages: safePages,
+  }
+
+  await booksStore.addSearchResultToLibrary(payload)
   if (booksStore.errorKey) {
     notificationsStore.error(t(booksStore.errorKey))
     return
   }
-  if (booksStore.isBookInLibrary(target)) {
+  if (booksStore.isBookInLibrary(payload)) {
     notificationsStore.success(t('notifications.bookAdded'))
   }
+  onCancelAddBookWithPages()
 }
 
 async function onToggleFavorite(bookId: string) {
@@ -292,6 +318,43 @@ onMounted(async () => {
           <p v-if="!searching && queryInput.trim() && searchResults.length === 0" class="text-sm text-slate-400">
             {{ t('books.noResults') }}
           </p>
+        </div>
+      </section>
+    </div>
+
+    <div
+      v-if="showAddBookPagesModal"
+      class="fixed inset-0 z-[55] flex items-end bg-slate-950/80 p-3 sm:items-center sm:justify-center"
+      @click.self="onCancelAddBookWithPages"
+    >
+      <section class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-2xl sm:p-6">
+        <h3 class="text-lg font-semibold text-white">{{ t('books.addWithPagesTitle') }}</h3>
+        <p class="mt-1 text-sm text-slate-300">{{ t('books.addWithPagesMessage') }}</p>
+        <label class="mt-3 block text-xs text-slate-300">
+          {{ t('books.manualPages') }}
+          <input
+            v-model="pendingManualPages"
+            type="number"
+            min="1"
+            :placeholder="t('books.manualPagesPlaceholder')"
+            class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
+          />
+        </label>
+        <div class="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            class="cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+            @click="onCancelAddBookWithPages"
+          >
+            {{ t('common.cancel') }}
+          </button>
+          <button
+            type="button"
+            class="cursor-pointer rounded-xl bg-emerald-500 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+            @click="onConfirmAddBookWithPages"
+          >
+            {{ t('books.addBook') }}
+          </button>
         </div>
       </section>
     </div>
