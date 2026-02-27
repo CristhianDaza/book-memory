@@ -9,6 +9,10 @@ export interface ReadingSessionRecord {
   endPage?: number
 }
 
+export interface FirestoreTimestampLike {
+  toDate: () => Date
+}
+
 export interface CreateReadingSessionInput {
   bookId: string
   startedAt: Date

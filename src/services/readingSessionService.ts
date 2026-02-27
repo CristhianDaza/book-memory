@@ -5,8 +5,6 @@ import {
   deleteDoc,
   doc,
   getDocs,
-  limit,
-  orderBy,
   query,
   serverTimestamp,
   updateDoc,
@@ -14,13 +12,22 @@ import {
   where,
 } from 'firebase/firestore'
 import { firebaseDb } from '../lib/firebase'
-import type { CreateReadingSessionInput, ReadingSessionRecord } from '../types/reading'
+import type { CreateReadingSessionInput, FirestoreTimestampLike, ReadingSessionRecord } from '../types/reading'
 
 function ensureFirestore() {
   if (!firebaseDb) {
     throw new Error('Firebase Firestore is not configured.')
   }
   return firebaseDb
+}
+
+function toMillis(value: unknown): number {
+  if (!value) return 0
+  if (value instanceof Date) return value.getTime()
+  if (typeof value === 'object' && value !== null && 'toDate' in value) {
+    return (value as FirestoreTimestampLike).toDate().getTime()
+  }
+  return 0
 }
 
 export async function fetchRecentSessionsForBook(
@@ -30,31 +37,37 @@ export async function fetchRecentSessionsForBook(
 ): Promise<ReadingSessionRecord[]> {
   const db = ensureFirestore()
   const ref = collection(db, 'users', uid, 'sessions')
-  const q = query(ref, where('bookId', '==', bookId), orderBy('startedAt', 'desc'), limit(maxResults))
+  const q = query(ref, where('bookId', '==', bookId))
   const snapshot = await getDocs(q)
 
-  return snapshot.docs.map((entry) => {
+  const sessions = snapshot.docs.map((entry) => {
     const data = entry.data() as Omit<ReadingSessionRecord, 'id'>
     return {
       id: entry.id,
       ...data,
     }
   })
+
+  return sessions
+    .sort((a, b) => toMillis(b.startedAt) - toMillis(a.startedAt))
+    .slice(0, Math.max(0, maxResults))
 }
 
 export async function fetchSessionsForBook(uid: string, bookId: string): Promise<ReadingSessionRecord[]> {
   const db = ensureFirestore()
   const ref = collection(db, 'users', uid, 'sessions')
-  const q = query(ref, where('bookId', '==', bookId), orderBy('startedAt', 'desc'))
+  const q = query(ref, where('bookId', '==', bookId))
   const snapshot = await getDocs(q)
 
-  return snapshot.docs.map((entry) => {
+  const sessions = snapshot.docs.map((entry) => {
     const data = entry.data() as Omit<ReadingSessionRecord, 'id'>
     return {
       id: entry.id,
       ...data,
     }
   })
+
+  return sessions.sort((a, b) => toMillis(b.startedAt) - toMillis(a.startedAt))
 }
 
 export async function fetchUserSessions(uid: string): Promise<ReadingSessionRecord[]> {
