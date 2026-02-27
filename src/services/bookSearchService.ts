@@ -24,6 +24,13 @@ function parseYear(value?: string): number | null {
   return Number.isFinite(year) ? year : null
 }
 
+function normalizeTotalPages(value: unknown): number | null {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) return null
+  const rounded = Math.floor(parsed)
+  return rounded > 0 ? rounded : null
+}
+
 async function searchOpenLibrary(query: string, locale?: AppLocale): Promise<BookSearchResult[]> {
   const languageFilter = locale ? ` language:${OPEN_LIBRARY_LANG_BY_LOCALE[locale]}` : ''
   const q = `${query}${languageFilter}`
@@ -45,7 +52,7 @@ async function searchOpenLibrary(query: string, locale?: AppLocale): Promise<Boo
       title,
       authors: doc.author_name ?? [],
       coverUrl: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : null,
-      totalPages: doc.number_of_pages_median ?? null,
+      totalPages: normalizeTotalPages(doc.number_of_pages_median),
       publishedYear: doc.first_publish_year ?? null,
     })
   }
@@ -77,7 +84,7 @@ async function searchGoogleBooks(query: string, locale?: AppLocale): Promise<Boo
       title,
       authors: info?.authors ?? [],
       coverUrl: info?.imageLinks?.thumbnail ?? info?.imageLinks?.smallThumbnail ?? null,
-      totalPages: info?.pageCount ?? null,
+      totalPages: normalizeTotalPages(info?.pageCount),
       publishedYear: parseYear(info?.publishedDate),
     })
   }
@@ -109,7 +116,18 @@ export async function searchBooks(query: string, locale: AppLocale): Promise<Boo
 
     for (const book of googleResults) {
       const key = normalizeKey(book.title, book.authors)
-      if (!unique.has(key)) unique.set(key, book)
+      const existing = unique.get(key)
+      if (!existing) {
+        unique.set(key, book)
+        continue
+      }
+
+      unique.set(key, {
+        ...existing,
+        coverUrl: existing.coverUrl ?? book.coverUrl,
+        totalPages: existing.totalPages ?? book.totalPages,
+        publishedYear: existing.publishedYear ?? book.publishedYear,
+      })
     }
   }
 
