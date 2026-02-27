@@ -3,9 +3,11 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AppNotifications from './components/AppNotifications.vue'
+import ConfirmModal from './components/ConfirmModal.vue'
 import { setAppLocale } from './i18n'
 import type { AppLocale } from './types/i18n'
 import { useAuthStore } from './stores/auth'
+import { ref } from 'vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -19,13 +21,23 @@ const nextLocale = computed<AppLocale>(() => (currentLocale.value === 'es' ? 'en
 const nextLocaleLabel = computed(() =>
   nextLocale.value === 'es' ? t('common.spanish') : t('common.english'),
 )
+const showLogoutConfirm = ref(false)
 
 function onChangeLocale(next: AppLocale) {
   setAppLocale(next)
 }
 
-async function onLogout() {
+function onOpenLogoutConfirm() {
+  showLogoutConfirm.value = true
+}
+
+function onCancelLogoutConfirm() {
+  showLogoutConfirm.value = false
+}
+
+async function onConfirmLogout() {
   await authStore.logout()
+  showLogoutConfirm.value = false
   await router.push({ name: 'login' })
 }
 </script>
@@ -44,8 +56,8 @@ async function onLogout() {
           {{ nextLocaleLabel }}
         </button>
         <button
-          class="cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
-          @click="onLogout"
+          class="cursor-pointer rounded-xl border border-orange-500/60 px-3 py-2 text-sm text-orange-200 transition hover:bg-orange-500/10"
+          @click="onOpenLogoutConfirm"
         >
           {{ t('home.signOut') }}
         </button>
@@ -90,5 +102,16 @@ async function onLogout() {
       </nav>
       <RouterView />
     </main>
+
+    <ConfirmModal
+      :open="showLogoutConfirm"
+      :title="t('home.signOutConfirmTitle')"
+      :message="t('home.signOutConfirmMessage')"
+      :confirm-label="t('home.signOut')"
+      :cancel-label="t('common.cancel')"
+      danger
+      @cancel="onCancelLogoutConfirm"
+      @confirm="onConfirmLogout"
+    />
   </div>
 </template>

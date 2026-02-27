@@ -12,6 +12,8 @@ export const en = {
     libraryHubTitle: 'Your library in one place',
     libraryHubSubtitle: 'Review your books and jump quickly to reading or stats.',
     signOut: 'Sign out',
+    signOutConfirmTitle: 'Sign out',
+    signOutConfirmMessage: 'Your current session will be closed on this device.',
     fallbackUser: 'Authenticated user without email provider',
     books: 'Books',
     reading: 'Reading',
