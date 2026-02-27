@@ -96,29 +96,49 @@ export async function searchBooks(query: string, locale: AppLocale): Promise<Boo
   const trimmedQuery = query.trim()
   if (!trimmedQuery) return []
 
-  let openResults = await searchOpenLibrary(trimmedQuery, locale)
-  if (openResults.length < MIN_FILTERED_RESULTS) {
-    openResults = await searchOpenLibrary(trimmedQuery)
-  }
+  const localizedOpenResults = await searchOpenLibrary(trimmedQuery, locale).catch(() => [])
+  const localizedGoogleResults = await searchGoogleBooks(trimmedQuery, locale).catch(() => [])
 
   const unique = new Map<string, BookSearchResult>()
 
-  for (const book of openResults) {
+  for (const book of localizedOpenResults) {
     unique.set(normalizeKey(book.title, book.authors), book)
   }
 
-  const needsFallback = openResults.length < 5 || openResults.some((book) => !book.coverUrl || !book.totalPages)
-  if (needsFallback) {
-    let googleResults = await searchGoogleBooks(trimmedQuery, locale).catch(() => [])
-    if (googleResults.length < MIN_FILTERED_RESULTS) {
-      googleResults = await searchGoogleBooks(trimmedQuery).catch(() => [])
+  for (const book of localizedGoogleResults) {
+    const key = normalizeKey(book.title, book.authors)
+    const existing = unique.get(key)
+    if (!existing) {
+      unique.set(key, book)
+      continue
     }
 
-    for (const book of googleResults) {
+    unique.set(key, {
+      ...existing,
+      coverUrl: existing.coverUrl ?? book.coverUrl,
+      totalPages: existing.totalPages ?? book.totalPages,
+      publishedYear: existing.publishedYear ?? book.publishedYear,
+    })
+  }
+
+  if (unique.size < MIN_FILTERED_RESULTS) {
+    const genericOpenResults = await searchOpenLibrary(trimmedQuery).catch(() => [])
+    for (const book of genericOpenResults) {
+      const key = normalizeKey(book.title, book.authors)
+      if (unique.has(key)) continue
+      unique.set(key, book)
+      if (unique.size >= MAX_RESULTS) break
+    }
+  }
+
+  if (unique.size < MAX_RESULTS) {
+    const genericGoogleResults = await searchGoogleBooks(trimmedQuery).catch(() => [])
+    for (const book of genericGoogleResults) {
       const key = normalizeKey(book.title, book.authors)
       const existing = unique.get(key)
       if (!existing) {
         unique.set(key, book)
+        if (unique.size >= MAX_RESULTS) break
         continue
       }
 
@@ -128,6 +148,7 @@ export async function searchBooks(query: string, locale: AppLocale): Promise<Boo
         totalPages: existing.totalPages ?? book.totalPages,
         publishedYear: existing.publishedYear ?? book.publishedYear,
       })
+      if (unique.size >= MAX_RESULTS) break
     }
   }
 
