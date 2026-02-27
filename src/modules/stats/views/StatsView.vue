@@ -13,6 +13,18 @@ const mappedError = computed(() => (errorKey.value ? t(errorKey.value) : null))
 const maxActivitySessions = computed(() =>
   activitySeries.value.reduce((max, point) => Math.max(max, point.sessionCount), 0),
 )
+const totalActivitySessions = computed(() =>
+  activitySeries.value.reduce((total, point) => total + point.sessionCount, 0),
+)
+const activeDays = computed(() => activitySeries.value.filter((point) => point.sessionCount > 0).length)
+const averageDailySessions = computed(() => {
+  if (activitySeries.value.length === 0) return 0
+  return totalActivitySessions.value / activitySeries.value.length
+})
+const peakActivity = computed(() => {
+  if (activitySeries.value.length === 0) return null
+  return [...activitySeries.value].sort((a, b) => b.sessionCount - a.sessionCount)[0] ?? null
+})
 
 function onChangeRange(nextRange: StatsRange) {
   statsStore.setRange(nextRange)
@@ -30,6 +42,20 @@ function formatDayLabel(dayStart: number): string {
 
 function formatDayTitle(dayStart: number): string {
   return new Intl.DateTimeFormat(locale.value, { month: 'short', day: 'numeric' }).format(new Date(dayStart))
+}
+
+function formatDecimal(value: number): string {
+  return value.toFixed(1)
+}
+
+function isToday(dayStart: number): boolean {
+  const today = new Date()
+  const target = new Date(dayStart)
+  return (
+    target.getDate() === today.getDate() &&
+    target.getMonth() === today.getMonth() &&
+    target.getFullYear() === today.getFullYear()
+  )
 }
 
 onMounted(async () => {
@@ -128,23 +154,65 @@ onMounted(async () => {
         <p class="text-xs text-slate-400">{{ t('stats.activitySubtitle') }}</p>
       </div>
 
+      <div class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-2">
+          <p class="text-[10px] uppercase tracking-wide text-slate-400">{{ t('stats.avgDailySessions') }}</p>
+          <p class="mt-1 text-sm font-semibold text-cyan-300">{{ formatDecimal(averageDailySessions) }}</p>
+        </article>
+        <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-2">
+          <p class="text-[10px] uppercase tracking-wide text-slate-400">{{ t('stats.activeDays') }}</p>
+          <p class="mt-1 text-sm font-semibold text-white">{{ activeDays }}</p>
+        </article>
+        <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-2 col-span-2 sm:col-span-1">
+          <p class="text-[10px] uppercase tracking-wide text-slate-400">{{ t('stats.peakDay') }}</p>
+          <p class="mt-1 text-sm font-semibold text-white">
+            {{
+              peakActivity
+                ? `${formatDayTitle(peakActivity.dayStart)} · ${peakActivity.sessionCount} ${t('stats.sessionsShort')}`
+                : '—'
+            }}
+          </p>
+        </article>
+      </div>
+
       <div class="-mx-1 overflow-x-auto px-1">
-        <div class="flex h-44 min-w-max items-end gap-2 sm:gap-3">
+        <div class="flex h-48 min-w-max items-end gap-2 border-b border-slate-800/80 pb-2 sm:gap-3">
         <article
           v-for="point in activitySeries"
           :key="point.dayStart"
           class="flex w-8 flex-col items-center gap-1 sm:w-9"
           :title="`${formatDayTitle(point.dayStart)}: ${point.sessionCount} ${t('stats.sessionsShort')}`"
         >
-          <div class="flex h-32 w-full items-end rounded-md border border-slate-800 bg-slate-900/70 p-1">
+          <div class="relative flex h-36 w-full items-end rounded-md border border-slate-800 bg-slate-900/70 p-1">
             <div
-              class="w-full rounded-sm bg-cyan-400/90 transition"
+              class="w-full rounded-sm transition"
+              :class="
+                point.sessionCount === 0
+                  ? 'bg-slate-700/60'
+                  : isToday(point.dayStart)
+                    ? 'bg-amber-400'
+                    : 'bg-cyan-400/90'
+              "
               :style="{ height: barHeight(point.sessionCount) }"
             />
           </div>
-          <span class="text-[10px] text-slate-400">{{ formatDayLabel(point.dayStart) }}</span>
+          <span class="text-[10px]" :class="isToday(point.dayStart) ? 'text-amber-300' : 'text-slate-400'">
+            {{ formatDayLabel(point.dayStart) }}
+          </span>
+          <span class="text-[10px] font-semibold text-slate-300">{{ point.sessionCount }}</span>
         </article>
       </div>
+      </div>
+
+      <div class="mt-3 flex items-center gap-3 text-[11px] text-slate-400">
+        <span class="inline-flex items-center gap-1">
+          <span class="h-2 w-2 rounded-full bg-cyan-400" />
+          {{ t('stats.regularDay') }}
+        </span>
+        <span class="inline-flex items-center gap-1">
+          <span class="h-2 w-2 rounded-full bg-amber-400" />
+          {{ t('stats.today') }}
+        </span>
       </div>
     </section>
 

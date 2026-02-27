@@ -15,8 +15,7 @@ function parseDate(value: unknown): Date | null {
   if (!value) return null
   if (value instanceof Date) return value
   if (typeof value === 'object' && value !== null && 'toDate' in value) {
-    const toDate = (value as FirestoreDateLike).toDate
-    return toDate()
+    return (value as FirestoreDateLike).toDate()
   }
   return null
 }
