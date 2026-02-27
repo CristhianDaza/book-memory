@@ -56,6 +56,21 @@ export async function fetchSessionsForBook(uid: string, bookId: string): Promise
   })
 }
 
+export async function fetchUserSessions(uid: string): Promise<ReadingSessionRecord[]> {
+  const db = ensureFirestore()
+  const ref = collection(db, 'users', uid, 'sessions')
+  const q = query(ref, orderBy('startedAt', 'desc'))
+  const snapshot = await getDocs(q)
+
+  return snapshot.docs.map((entry) => {
+    const data = entry.data() as Omit<ReadingSessionRecord, 'id'>
+    return {
+      id: entry.id,
+      ...data,
+    }
+  })
+}
+
 export async function createReadingSession(uid: string, payload: CreateReadingSessionInput): Promise<void> {
   const db = ensureFirestore()
   const ref = collection(db, 'users', uid, 'sessions')

@@ -53,9 +53,8 @@ export const es = {
     readingBody:
       'Siguiente paso: implementar ciclo de temporizador, paginas inicio/fin y calculo de paginas restantes.',
     statsLabel: 'Estadisticas',
-    statsTitle: 'Base del modulo de racha y metricas',
-    statsBody:
-      'Siguiente paso: agregar sesiones para mostrar racha actual, mejor racha y totales de paginas/minutos.',
+    statsTitle: 'Metricas de lectura',
+    statsBody: 'Consulta tus sesiones, racha y progreso acumulado.',
   },
   books: {
     libraryTitle: 'Tu biblioteca',
@@ -161,6 +160,24 @@ export const es = {
     errorEndBeforeStart: 'La pagina final no puede ser menor a la inicial.',
     errorNoActive: 'No hay sesion activa para finalizar.',
     errorSaveSession: 'No se pudo guardar la sesion.',
+  },
+  stats: {
+    title: 'Metricas de lectura',
+    subtitle: 'Resumen de sesiones, paginas, minutos y racha.',
+    range7d: '7 dias',
+    range30d: '30 dias',
+    rangeAll: 'Todo',
+    totalSessions: 'Sesiones',
+    totalPages: 'Paginas',
+    totalMinutes: 'Minutos',
+    currentStreak: 'Racha actual (dias)',
+    bestStreak: 'Mejor racha (dias)',
+    sessionsThisWeek: 'Sesiones esta semana',
+    sessionsThisMonth: 'Sesiones este mes',
+    loading: 'Cargando metricas...',
+    loadError: 'No se pudieron cargar las metricas.',
+    authRequired: 'Debes iniciar sesion para ver metricas.',
+    empty: 'No hay sesiones registradas para este rango.',
   },
   notifications: {
     bookAdded: 'Libro agregado a tu biblioteca.',

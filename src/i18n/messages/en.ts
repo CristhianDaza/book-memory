@@ -53,9 +53,8 @@ export const en = {
     readingBody:
       'Next step: implement timer lifecycle, start/end page capture, and pages remaining calculation.',
     statsLabel: 'Stats',
-    statsTitle: 'Streak and stats scaffold',
-    statsBody:
-      'Next step: aggregate sessions to show current streak, longest streak, and pages/minutes totals.',
+    statsTitle: 'Reading metrics',
+    statsBody: 'Review your sessions, streak, and cumulative progress.',
   },
   books: {
     libraryTitle: 'Your library',
@@ -161,6 +160,24 @@ export const en = {
     errorEndBeforeStart: 'End page cannot be lower than start page.',
     errorNoActive: 'No active session to finish.',
     errorSaveSession: 'Could not save session.',
+  },
+  stats: {
+    title: 'Reading metrics',
+    subtitle: 'Summary of sessions, pages, minutes, and streak.',
+    range7d: '7 days',
+    range30d: '30 days',
+    rangeAll: 'All',
+    totalSessions: 'Sessions',
+    totalPages: 'Pages',
+    totalMinutes: 'Minutes',
+    currentStreak: 'Current streak (days)',
+    bestStreak: 'Best streak (days)',
+    sessionsThisWeek: 'Sessions this week',
+    sessionsThisMonth: 'Sessions this month',
+    loading: 'Loading metrics...',
+    loadError: 'Could not load metrics.',
+    authRequired: 'You must sign in to view metrics.',
+    empty: 'No sessions recorded for this range.',
   },
   notifications: {
     bookAdded: 'Book added to your library.',
