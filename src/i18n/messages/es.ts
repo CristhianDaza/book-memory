@@ -93,6 +93,8 @@ export const es = {
     sortFavoriteFirst: 'Favoritos primero',
     sortRecent: 'Mas recientes',
     sortTitleAsc: 'Titulo A-Z',
+    completeMissingPages: 'Completar paginas faltantes',
+    completingMetadata: 'Completando...',
     viewDetail: 'Ver detalle',
     detailTitle: 'Detalle del libro',
     selectedBook: 'Libro seleccionado',
@@ -217,5 +219,7 @@ export const es = {
     readingPaused: 'Temporizador pausado.',
     readingReset: 'Sesion reiniciada.',
     readingSessionSaved: 'Sesion guardada correctamente.',
+    metadataFillSummary:
+      'Analizados: {scanned} | Actualizados: {updated} | Sin coincidencia: {unresolved} | Error: {failed}',
   },
 } as const

@@ -24,6 +24,7 @@ const {
   searchResults,
   searching,
   loadingLibrary,
+  completingMetadata,
   savingIds,
   errorKey,
   filteredSortedLibrary,
@@ -115,6 +116,22 @@ async function onToggleFavorite(bookId: string) {
   )
 }
 
+async function onCompleteMissingPages() {
+  const result = await booksStore.completeMissingPages(locale.value as AppLocale)
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
+  notificationsStore.info(
+    t('notifications.metadataFillSummary', {
+      scanned: result.scanned,
+      updated: result.updated,
+      unresolved: result.unresolved,
+      failed: result.failed,
+    }),
+  )
+}
+
 onMounted(async () => {
   await booksStore.loadLibrary()
 })
@@ -145,26 +162,37 @@ onMounted(async () => {
       </p>
 
       <div class="mt-4 flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
-          <input
-            v-model="showOnlyFavorites"
-            type="checkbox"
-            class="h-4 w-4 cursor-pointer rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
-          />
-          {{ t('books.onlyFavorites') }}
-        </label>
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+            <input
+              v-model="showOnlyFavorites"
+              type="checkbox"
+              class="h-4 w-4 cursor-pointer rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
+            />
+            {{ t('books.onlyFavorites') }}
+          </label>
 
-        <label class="flex items-center gap-2 text-sm text-slate-300">
-          <span>{{ t('books.sortBy') }}</span>
-          <select
-            v-model="librarySortMode"
-            class="cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-cyan-400"
-          >
-            <option value="favorite_first">{{ t('books.sortFavoriteFirst') }}</option>
-            <option value="recent">{{ t('books.sortRecent') }}</option>
-            <option value="title_asc">{{ t('books.sortTitleAsc') }}</option>
-          </select>
-        </label>
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <span>{{ t('books.sortBy') }}</span>
+            <select
+              v-model="librarySortMode"
+              class="cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-cyan-400"
+            >
+              <option value="favorite_first">{{ t('books.sortFavoriteFirst') }}</option>
+              <option value="recent">{{ t('books.sortRecent') }}</option>
+              <option value="title_asc">{{ t('books.sortTitleAsc') }}</option>
+            </select>
+          </label>
+        </div>
+
+        <button
+          type="button"
+          class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          :disabled="completingMetadata"
+          @click="onCompleteMissingPages"
+        >
+          {{ completingMetadata ? t('books.completingMetadata') : t('books.completeMissingPages') }}
+        </button>
       </div>
 
       <div v-if="loadingLibrary" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">

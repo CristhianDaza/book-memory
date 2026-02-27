@@ -93,6 +93,8 @@ export const en = {
     sortFavoriteFirst: 'Favorites first',
     sortRecent: 'Most recent',
     sortTitleAsc: 'Title A-Z',
+    completeMissingPages: 'Complete missing pages',
+    completingMetadata: 'Completing...',
     viewDetail: 'View detail',
     detailTitle: 'Book detail',
     selectedBook: 'Selected book',
@@ -217,5 +219,7 @@ export const en = {
     readingPaused: 'Timer paused.',
     readingReset: 'Session reset.',
     readingSessionSaved: 'Reading session saved.',
+    metadataFillSummary:
+      'Scanned: {scanned} | Updated: {updated} | Unresolved: {unresolved} | Failed: {failed}',
   },
 } as const

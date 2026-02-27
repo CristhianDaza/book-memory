@@ -154,3 +154,23 @@ export async function searchBooks(query: string, locale: AppLocale): Promise<Boo
 
   return Array.from(unique.values()).slice(0, MAX_RESULTS)
 }
+
+export async function resolveTotalPagesForBook(
+  title: string,
+  authors: string[],
+  locale: AppLocale,
+): Promise<number | null> {
+  const author = authors[0] ?? ''
+  const exactKey = normalizeKey(title, author ? [author] : [])
+  const query = `${title} ${author}`.trim()
+  const results = await searchBooks(query || title, locale)
+
+  const exactMatch = results.find((item) => normalizeKey(item.title, item.authors) === exactKey)
+  if (exactMatch?.totalPages) return exactMatch.totalPages
+
+  const titleMatch = results.find((item) => item.title.trim().toLowerCase() === title.trim().toLowerCase())
+  if (titleMatch?.totalPages) return titleMatch.totalPages
+
+  const withPages = results.find((item) => item.totalPages !== null)
+  return withPages?.totalPages ?? null
+}
