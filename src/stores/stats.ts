@@ -2,7 +2,13 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { fetchUserSessions } from '../services/readingSessionService'
 import type { ReadingSessionRecord } from '../types/reading'
-import type { FirestoreDateLike, ReadingSessionWithDate, StatsRange, StatsSummary } from '../types/stats'
+import type {
+  FirestoreDateLike,
+  ReadingSessionWithDate,
+  StatsActivityPoint,
+  StatsRange,
+  StatsSummary,
+} from '../types/stats'
 import { useAuthStore } from './auth'
 
 function parseDate(value: unknown): Date | null {
@@ -89,6 +95,34 @@ export const useStatsStore = defineStore('stats', () => {
     return sessionsWithDates.value.filter((session) => session.startedAtDate.getTime() >= threshold)
   })
 
+  const activitySeries = computed<StatsActivityPoint[]>(() => {
+    const dayWindow = range.value === '7d' ? 7 : 30
+    const todayStart = startOfDay(new Date())
+    const threshold = todayStart - (dayWindow - 1) * 86400000
+
+    const buckets = new Map<number, StatsActivityPoint>()
+    for (let offset = 0; offset < dayWindow; offset += 1) {
+      const dayStart = threshold + offset * 86400000
+      buckets.set(dayStart, {
+        dayStart,
+        sessionCount: 0,
+        pagesRead: 0,
+        minutesRead: 0,
+      })
+    }
+
+    sessionsWithDates.value.forEach((session) => {
+      const dayStart = startOfDay(session.startedAtDate)
+      const bucket = buckets.get(dayStart)
+      if (!bucket) return
+      bucket.sessionCount += 1
+      bucket.pagesRead += Math.max(0, session.pagesRead ?? 0)
+      bucket.minutesRead += Math.floor(Math.max(0, session.durationSeconds ?? 0) / 60)
+    })
+
+    return Array.from(buckets.values())
+  })
+
   const summary = computed<StatsSummary>(() => {
     const now = new Date()
     const currentWeekStart = startOfWeek(now).getTime()
@@ -165,6 +199,7 @@ export const useStatsStore = defineStore('stats', () => {
     range,
     summary,
     filteredSessions,
+    activitySeries,
     setRange,
     loadStats,
   }

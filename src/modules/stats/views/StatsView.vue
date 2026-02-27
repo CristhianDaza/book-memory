@@ -5,14 +5,31 @@ import { useI18n } from 'vue-i18n'
 import { useStatsStore } from '../../../stores/stats'
 import type { StatsRange } from '../../../types/stats'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const statsStore = useStatsStore()
-const { loading, errorKey, range, summary, filteredSessions } = storeToRefs(statsStore)
+const { loading, errorKey, range, summary, filteredSessions, activitySeries } = storeToRefs(statsStore)
 
 const mappedError = computed(() => (errorKey.value ? t(errorKey.value) : null))
+const maxActivitySessions = computed(() =>
+  activitySeries.value.reduce((max, point) => Math.max(max, point.sessionCount), 0),
+)
 
 function onChangeRange(nextRange: StatsRange) {
   statsStore.setRange(nextRange)
+}
+
+function barHeight(value: number): string {
+  const max = maxActivitySessions.value
+  if (max <= 0) return '8%'
+  return `${Math.max(8, Math.round((value / max) * 100))}%`
+}
+
+function formatDayLabel(dayStart: number): string {
+  return new Intl.DateTimeFormat(locale.value, { weekday: 'short' }).format(new Date(dayStart))
+}
+
+function formatDayTitle(dayStart: number): string {
+  return new Intl.DateTimeFormat(locale.value, { month: 'short', day: 'numeric' }).format(new Date(dayStart))
 }
 
 onMounted(async () => {
@@ -104,6 +121,32 @@ onMounted(async () => {
         <p class="mt-1 text-lg font-semibold text-white">{{ summary.sessionsThisMonth }}</p>
       </article>
     </div>
+
+    <section v-if="!loading" class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+      <div class="mb-3 flex items-center justify-between gap-2">
+        <p class="text-sm font-semibold text-white">{{ t('stats.activityTitle') }}</p>
+        <p class="text-xs text-slate-400">{{ t('stats.activitySubtitle') }}</p>
+      </div>
+
+      <div class="-mx-1 overflow-x-auto px-1">
+        <div class="flex h-44 min-w-max items-end gap-2 sm:gap-3">
+        <article
+          v-for="point in activitySeries"
+          :key="point.dayStart"
+          class="flex w-8 flex-col items-center gap-1 sm:w-9"
+          :title="`${formatDayTitle(point.dayStart)}: ${point.sessionCount} ${t('stats.sessionsShort')}`"
+        >
+          <div class="flex h-32 w-full items-end rounded-md border border-slate-800 bg-slate-900/70 p-1">
+            <div
+              class="w-full rounded-sm bg-cyan-400/90 transition"
+              :style="{ height: barHeight(point.sessionCount) }"
+            />
+          </div>
+          <span class="text-[10px] text-slate-400">{{ formatDayLabel(point.dayStart) }}</span>
+        </article>
+      </div>
+      </div>
+    </section>
 
     <p v-if="!loading && filteredSessions.length === 0" class="mt-4 text-sm text-slate-400">
       {{ t('stats.empty') }}

@@ -14,6 +14,13 @@ export interface ReadingSessionWithDate {
   endPage?: number
 }
 
+export interface StatsActivityPoint {
+  dayStart: number
+  sessionCount: number
+  pagesRead: number
+  minutesRead: number
+}
+
 export interface StatsSummary {
   totalSessions: number
   totalPages: number
