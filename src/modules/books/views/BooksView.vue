@@ -33,15 +33,13 @@ const {
 const { isAuthenticated } = storeToRefs(authStore)
 
 const mappedError = computed(() => (errorKey.value ? t(errorKey.value) : null))
+const hasSearchExecuted = computed(() => query.value.trim().length > 0)
+const skeletonKeys = [1, 2, 3, 4, 5]
 
 async function onSearchSubmit() {
   await booksStore.search(queryInput.value, locale.value as AppLocale)
   if (booksStore.errorKey) {
     notificationsStore.error(t(booksStore.errorKey))
-    return
-  }
-  if (queryInput.value.trim() && searchResults.value.length === 0) {
-    notificationsStore.info(t('books.noResults'))
   }
 }
 
@@ -262,7 +260,42 @@ onMounted(async () => {
           </div>
         </form>
 
-        <div class="mt-4 max-h-[48vh] space-y-3 overflow-y-auto pr-1">
+        <div v-if="!hasSearchExecuted && !searching" class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+          <p class="text-sm font-medium text-slate-200">{{ t('books.searchIdleTitle') }}</p>
+          <p class="mt-1 text-xs text-slate-400">{{ t('books.searchIdleSubtitle') }}</p>
+        </div>
+
+        <div v-else-if="searching" class="mt-4 max-h-[48vh] space-y-3 overflow-y-auto pr-1">
+          <article
+            v-for="item in skeletonKeys"
+            :key="item"
+            class="animate-pulse rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+          >
+            <div class="flex gap-3">
+              <div class="h-24 w-16 rounded-md bg-slate-800" />
+              <div class="flex-1 space-y-2">
+                <div class="h-4 w-2/3 rounded bg-slate-800" />
+                <div class="h-3 w-1/2 rounded bg-slate-800" />
+                <div class="h-3 w-1/3 rounded bg-slate-800" />
+              </div>
+              <div class="h-8 w-20 rounded bg-slate-800" />
+            </div>
+          </article>
+        </div>
+
+        <div v-else-if="searchResults.length === 0" class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+          <p class="text-sm font-medium text-slate-200">{{ t('books.searchEmptyTitle') }}</p>
+          <p class="mt-1 text-xs text-slate-400">{{ t('books.searchEmptySubtitle') }}</p>
+          <button
+            type="button"
+            class="mt-3 cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-slate-800"
+            @click="onClearSearch"
+          >
+            {{ t('books.searchEmptyAction') }}
+          </button>
+        </div>
+
+        <div v-else class="mt-4 max-h-[48vh] space-y-3 overflow-y-auto pr-1">
           <article
             v-for="book in searchResults"
             :key="book.id"
@@ -316,10 +349,6 @@ onMounted(async () => {
               </button>
             </div>
           </article>
-
-          <p v-if="!searching && query.trim() && searchResults.length === 0" class="text-sm text-slate-400">
-            {{ t('books.noResults') }}
-          </p>
         </div>
       </section>
     </div>
