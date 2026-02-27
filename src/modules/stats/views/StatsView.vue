@@ -3,15 +3,16 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useStatsStore } from '../../../stores/stats'
-import type { StatsRange } from '../../../types/stats'
+import type { StatsActivityMetric, StatsRange } from '../../../types/stats'
 
 const { t, locale } = useI18n()
 const statsStore = useStatsStore()
-const { loading, errorKey, range, summary, filteredSessions, activitySeries } = storeToRefs(statsStore)
+const { loading, errorKey, range, activityMetric, summary, filteredSessions, activitySeries } =
+  storeToRefs(statsStore)
 
 const mappedError = computed(() => (errorKey.value ? t(errorKey.value) : null))
-const maxActivitySessions = computed(() =>
-  activitySeries.value.reduce((max, point) => Math.max(max, point.sessionCount), 0),
+const maxActivityValue = computed(() =>
+  activitySeries.value.reduce((max, point) => Math.max(max, getActivityValue(point)), 0),
 )
 const totalActivitySessions = computed(() =>
   activitySeries.value.reduce((total, point) => total + point.sessionCount, 0),
@@ -30,8 +31,24 @@ function onChangeRange(nextRange: StatsRange) {
   statsStore.setRange(nextRange)
 }
 
+function onChangeMetric(nextMetric: StatsActivityMetric) {
+  statsStore.setActivityMetric(nextMetric)
+}
+
+function getActivityValue(point: { sessionCount: number; pagesRead: number; minutesRead: number }): number {
+  if (activityMetric.value === 'pages') return point.pagesRead
+  if (activityMetric.value === 'minutes') return point.minutesRead
+  return point.sessionCount
+}
+
+function metricUnitLabel(): string {
+  if (activityMetric.value === 'pages') return t('stats.pagesShort')
+  if (activityMetric.value === 'minutes') return t('stats.minutesShort')
+  return t('stats.sessionsShort')
+}
+
 function barHeight(value: number): string {
-  const max = maxActivitySessions.value
+  const max = maxActivityValue.value
   if (max <= 0) return '8%'
   return `${Math.max(8, Math.round((value / max) * 100))}%`
 }
@@ -154,6 +171,45 @@ onMounted(async () => {
         <p class="text-xs text-slate-400">{{ t('stats.activitySubtitle') }}</p>
       </div>
 
+      <div class="mb-3 inline-flex rounded-lg border border-slate-800 bg-slate-900/70 p-1">
+        <button
+          type="button"
+          class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
+          :class="
+            activityMetric === 'sessions'
+              ? 'bg-cyan-500 text-slate-950'
+              : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+          "
+          @click="onChangeMetric('sessions')"
+        >
+          {{ t('stats.metricSessions') }}
+        </button>
+        <button
+          type="button"
+          class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
+          :class="
+            activityMetric === 'pages'
+              ? 'bg-cyan-500 text-slate-950'
+              : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+          "
+          @click="onChangeMetric('pages')"
+        >
+          {{ t('stats.metricPages') }}
+        </button>
+        <button
+          type="button"
+          class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
+          :class="
+            activityMetric === 'minutes'
+              ? 'bg-cyan-500 text-slate-950'
+              : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+          "
+          @click="onChangeMetric('minutes')"
+        >
+          {{ t('stats.metricMinutes') }}
+        </button>
+      </div>
+
       <div class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
         <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-2">
           <p class="text-[10px] uppercase tracking-wide text-slate-400">{{ t('stats.avgDailySessions') }}</p>
@@ -181,25 +237,25 @@ onMounted(async () => {
           v-for="point in activitySeries"
           :key="point.dayStart"
           class="flex w-8 flex-col items-center gap-1 sm:w-9"
-          :title="`${formatDayTitle(point.dayStart)}: ${point.sessionCount} ${t('stats.sessionsShort')}`"
+          :title="`${formatDayTitle(point.dayStart)}: ${getActivityValue(point)} ${metricUnitLabel()}`"
         >
           <div class="relative flex h-36 w-full items-end rounded-md border border-slate-800 bg-slate-900/70 p-1">
             <div
               class="w-full rounded-sm transition"
               :class="
-                point.sessionCount === 0
+                getActivityValue(point) === 0
                   ? 'bg-slate-700/60'
                   : isToday(point.dayStart)
                     ? 'bg-amber-400'
                     : 'bg-cyan-400/90'
               "
-              :style="{ height: barHeight(point.sessionCount) }"
+              :style="{ height: barHeight(getActivityValue(point)) }"
             />
           </div>
           <span class="text-[10px]" :class="isToday(point.dayStart) ? 'text-amber-300' : 'text-slate-400'">
             {{ formatDayLabel(point.dayStart) }}
           </span>
-          <span class="text-[10px] font-semibold text-slate-300">{{ point.sessionCount }}</span>
+          <span class="text-[10px] font-semibold text-slate-300">{{ getActivityValue(point) }}</span>
         </article>
       </div>
       </div>

@@ -4,6 +4,7 @@ import { fetchUserSessions } from '../services/readingSessionService'
 import type { ReadingSessionRecord } from '../types/reading'
 import type {
   FirestoreDateLike,
+  StatsActivityMetric,
   ReadingSessionWithDate,
   StatsActivityPoint,
   StatsRange,
@@ -76,6 +77,7 @@ export const useStatsStore = defineStore('stats', () => {
   const loading = ref(false)
   const errorKey = ref<string | null>(null)
   const range = ref<StatsRange>('7d')
+  const activityMetric = ref<StatsActivityMetric>('sessions')
 
   const sessionsWithDates = computed(() =>
     sessions.value
@@ -170,6 +172,10 @@ export const useStatsStore = defineStore('stats', () => {
     range.value = nextRange
   }
 
+  function setActivityMetric(nextMetric: StatsActivityMetric) {
+    activityMetric.value = nextMetric
+  }
+
   async function loadStats() {
     const authStore = useAuthStore()
     const uid = authStore.user?.uid
@@ -196,10 +202,12 @@ export const useStatsStore = defineStore('stats', () => {
     loading,
     errorKey,
     range,
+    activityMetric,
     summary,
     filteredSessions,
     activitySeries,
     setRange,
+    setActivityMetric,
     loadStats,
   }
 })
