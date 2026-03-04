@@ -11,6 +11,27 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['vite.svg'],
+      workbox: {
+        globIgnores: [
+          'assets/*View-*.js',
+          'assets/books-*.js',
+          'assets/readingSessionService-*.js',
+          'assets/index.esm-*.js',
+        ],
+        runtimeCaching: [
+          {
+            urlPattern: ({ request, url }) => request.destination === 'script' && url.pathname.startsWith('/assets/'),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'assets-js-runtime',
+              expiration: {
+                maxEntries: 80,
+                maxAgeSeconds: 60 * 60 * 24 * 14,
+              },
+            },
+          },
+        ],
+      },
       manifest: {
         name: 'Book Memory',
         short_name: 'BookMemory',
