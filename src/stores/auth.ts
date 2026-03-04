@@ -7,6 +7,7 @@ import { deleteUserData } from '../services/accountService'
 
 let authSdkPromise: Promise<typeof import('firebase/auth')> | null = null
 const AUTH_INIT_TIMEOUT_MS = 3000
+let authStateUnsubscribe: (() => void) | null = null
 
 function getAuthSdk() {
   if (!authSdkPromise) {
@@ -57,34 +58,36 @@ export const useAuthStore = defineStore('auth', () => {
       const { onAuthStateChanged } = await getAuthSdk()
       initializing.value = true
       await new Promise<void>((resolve) => {
-        let settled = false
+        let initializedResolved = false
         let timeout: ReturnType<typeof setTimeout> | null = null
-        let unsubscribe: (() => void) | null = null
 
-        function finalize(nextUser: User | null) {
-          if (settled) return
-          settled = true
-          user.value = nextUser
+        function completeInit() {
+          if (initializedResolved) return
+          initializedResolved = true
           initialized.value = true
           initializing.value = false
           if (timeout) {
             clearTimeout(timeout)
             timeout = null
           }
-          if (unsubscribe) {
-            unsubscribe()
-            unsubscribe = null
-          }
           resolve()
         }
 
         timeout = setTimeout(() => {
-          finalize(firebaseAuth.currentUser ?? null)
+          // Do not force sign-out on slow bootstrap; keep listener alive.
+          completeInit()
         }, AUTH_INIT_TIMEOUT_MS)
 
-        unsubscribe = onAuthStateChanged(firebaseAuth, (nextUser) => {
-          finalize(nextUser)
-        })
+        if (!authStateUnsubscribe) {
+          authStateUnsubscribe = onAuthStateChanged(firebaseAuth, (nextUser) => {
+            user.value = nextUser
+            completeInit()
+          })
+          return
+        }
+
+        user.value = firebaseAuth.currentUser
+        completeInit()
       })
     })()
 
