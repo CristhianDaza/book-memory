@@ -99,12 +99,13 @@ describe('SyncCenterView', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Centro de sincronizacion')
-    expect(wrapper.text()).toContain('Cola pendiente')
-    expect(wrapper.text()).toContain('Conflictos')
+    expect(wrapper.text()).toContain('Guardado y respaldo')
+    expect(wrapper.text()).toContain('Cambios por enviar')
+    expect(wrapper.text()).toContain('Cambios que necesitan revision')
 
-    const buttons = wrapper.findAll('button')
-    const discardQueueButton = buttons[3]
+    const discardQueueButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Quitar')
     if (!discardQueueButton) {
       throw new Error('missing discard queue button')
     }
@@ -112,7 +113,7 @@ describe('SyncCenterView', () => {
     expect(mockOfflineQueueService.removeOfflineQueueItem).toHaveBeenCalledWith('queue-1')
   })
 
-  it('forces conflict retry from action button', async () => {
+  it('keeps device version from conflict action button', async () => {
     const queueItems: OfflineQueueItem[] = []
     const conflicts: OfflineConflictItem[] = [
       {
@@ -153,8 +154,9 @@ describe('SyncCenterView', () => {
     })
     await flushPromises()
 
-    const buttons = wrapper.findAll('button')
-    const retryConflictButton = buttons[2]
+    const retryConflictButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Mantener este dispositivo')
     if (!retryConflictButton) {
       throw new Error('missing retry conflict button')
     }
