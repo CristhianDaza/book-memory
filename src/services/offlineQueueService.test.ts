@@ -313,10 +313,15 @@ describe('offlineQueueService', () => {
 
     const items = getOfflineQueueItems()
     expect(items).toHaveLength(2)
-    removeOfflineQueueItem(items[0].id)
+    const firstId = items[0]?.id
+    const secondId = items[1]?.id
+    if (!firstId || !secondId) {
+      throw new Error('missing queued items')
+    }
+    removeOfflineQueueItem(firstId)
 
     expect(getOfflineQueueCount()).toBe(1)
-    expect(getOfflineQueueItems()[0]?.id).toBe(items[1].id)
+    expect(getOfflineQueueItems()[0]?.id).toBe(secondId)
   })
 
   it('removes conflict by id', async () => {

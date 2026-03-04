@@ -64,7 +64,8 @@ onMounted(async () => {
       else if (startedAt && typeof startedAt === 'object' && 'toDate' in startedAt) {
         millis = (startedAt as { toDate: () => Date }).toDate().getTime()
       }
-      if (!nextMap[session.bookId] || millis > nextMap[session.bookId]) {
+      const previous = nextMap[session.bookId] ?? 0
+      if (previous === 0 || millis > previous) {
         nextMap[session.bookId] = millis
       }
     })

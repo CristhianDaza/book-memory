@@ -286,15 +286,16 @@ export async function replayOfflineQueue() {
     for (const item of items) {
       try {
         if (item.action === 'save_reading_state' && item.payload) {
+          const payload = item.payload as QueuedReadingStatePayload
           await saveReadingState(item.uid, {
-            selectedBookId: item.payload.selectedBookId,
-            sessionBookId: item.payload.sessionBookId,
-            startPage: item.payload.startPage,
-            endPage: item.payload.endPage,
-            elapsedSeconds: item.payload.elapsedSeconds,
-            sessionStartedAt: item.payload.sessionStartedAt ? new Date(item.payload.sessionStartedAt) : null,
-            running: item.payload.running,
-            persistedAt: new Date(item.payload.persistedAt),
+            selectedBookId: payload.selectedBookId,
+            sessionBookId: payload.sessionBookId,
+            startPage: payload.startPage,
+            endPage: payload.endPage,
+            elapsedSeconds: payload.elapsedSeconds,
+            sessionStartedAt: payload.sessionStartedAt ? new Date(payload.sessionStartedAt) : null,
+            running: payload.running,
+            persistedAt: new Date(payload.persistedAt),
           })
         }
         if (item.action === 'clear_reading_state') {
