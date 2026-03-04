@@ -1,5 +1,5 @@
 import type { BookSearchResult } from '../types/books'
-import type { GoogleBooksResponse } from '../types/book-search'
+import type { GoogleBooksResponse, OpenLibraryResponse } from '../types/book-search'
 import type { AppLocale } from '../types/i18n'
 import type { SearchBooksPageResult, SearchLanguageMode } from '../types/books-store'
 
@@ -24,6 +24,10 @@ const PAGE_SIZE = 20
 const GOOGLE_LANG_BY_LOCALE: Record<AppLocale, string> = {
   es: 'es',
   en: 'en',
+}
+const OPENLIBRARY_LANG_BY_LOCALE: Record<AppLocale, string> = {
+  es: 'spa',
+  en: 'eng',
 }
 let googleBooksUnavailable = false
 
@@ -111,6 +115,63 @@ async function searchGoogleBooks(
   }
 }
 
+async function searchOpenLibrary(
+  query: string,
+  locale?: AppLocale,
+  startIndex = 0,
+  maxResults = PAGE_SIZE,
+): Promise<SearchBooksPageResult> {
+  const safeMaxResults = Math.max(1, Math.min(MAX_RESULTS, Math.floor(maxResults)))
+  const safeStartIndex = Math.max(0, Math.floor(startIndex))
+  const langParam = locale ? `&language=${encodeURIComponent(OPENLIBRARY_LANG_BY_LOCALE[locale])}` : ''
+  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=${safeMaxResults}&offset=${safeStartIndex}${langParam}`
+  let response: Response
+  try {
+    response = await fetch(url)
+  } catch {
+    throw new SearchBooksError('network_error', 'Network error while contacting Open Library.')
+  }
+
+  if (!response.ok) {
+    if (response.status >= 500) {
+      throw new SearchBooksError('service_unavailable', `Open Library service error (${response.status}).`)
+    }
+    throw new SearchBooksError('http_error', `Open Library request failed with status ${response.status}.`)
+  }
+
+  const data = (await response.json()) as OpenLibraryResponse
+  const docs = data.docs ?? []
+  const normalized: BookSearchResult[] = []
+
+  for (const item of docs) {
+    const title = item.title?.trim() ?? ''
+    const key = item.key?.trim() ?? ''
+    if (!title || !key) continue
+    if (locale && item.language?.length) {
+      const hasLocaleLang = item.language.some((lang) => lang === OPENLIBRARY_LANG_BY_LOCALE[locale])
+      if (!hasLocaleLang) continue
+    }
+
+    const externalId = key.replace('/works/', '')
+    const coverUrl = item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg` : null
+
+    normalized.push({
+      id: `openlibrary:${externalId}`,
+      source: 'openlibrary',
+      title,
+      authors: item.author_name ?? [],
+      coverUrl,
+      totalPages: normalizeTotalPages(item.number_of_pages_median),
+      publishedYear: Number.isFinite(item.first_publish_year) ? item.first_publish_year ?? null : null,
+    })
+  }
+
+  return {
+    items: normalized,
+    totalItems: Math.max(0, data.numFound ?? normalized.length),
+  }
+}
+
 export async function searchBooks(
   query: string,
   locale: AppLocale,
@@ -123,16 +184,26 @@ export async function searchBooks(
 
   const localeFilter = languageMode === 'active' ? locale : undefined
   const startIndex = Math.max(0, Math.floor(page)) * Math.max(1, Math.floor(pageSize))
-  const localizedGoogleResults = await searchGoogleBooks(trimmedQuery, localeFilter, startIndex, pageSize)
+  const primaryResult = await (async () => {
+    try {
+      return await searchGoogleBooks(trimmedQuery, localeFilter, startIndex, pageSize)
+    } catch (googleError) {
+      try {
+        return await searchOpenLibrary(trimmedQuery, localeFilter, startIndex, pageSize)
+      } catch {
+        throw googleError
+      }
+    }
+  })()
   const unique = new Map<string, BookSearchResult>()
 
-  for (const book of localizedGoogleResults.items) {
+  for (const book of primaryResult.items) {
     const key = normalizeKey(book.title, book.authors)
     if (!unique.has(key)) unique.set(key, book)
   }
 
   return {
     items: Array.from(unique.values()).slice(0, Math.max(1, Math.floor(pageSize))),
-    totalItems: localizedGoogleResults.totalItems,
+    totalItems: primaryResult.totalItems,
   }
 }

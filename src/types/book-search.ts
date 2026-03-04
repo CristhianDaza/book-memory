@@ -1,4 +1,5 @@
 export interface OpenLibraryResponse {
+  numFound?: number
   docs: Array<{
     key?: string
     title?: string
