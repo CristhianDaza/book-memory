@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AppNotifications from './components/AppNotifications.vue'
 import ConfirmModal from './components/ConfirmModal.vue'
 import { setAppLocale } from './i18n'
+import { getOfflineQueueCount, onOfflineQueueChange, replayOfflineQueue } from './services/offlineQueueService'
 import type { AppLocale } from './types/i18n'
 import { useAuthStore } from './stores/auth'
-import { ref } from 'vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -22,6 +22,20 @@ const nextLocaleLabel = computed(() =>
   nextLocale.value === 'es' ? t('common.spanish') : t('common.english'),
 )
 const showLogoutConfirm = ref(false)
+const isOnline = ref(typeof navigator === 'undefined' ? true : navigator.onLine)
+const pendingSyncCount = ref(getOfflineQueueCount())
+let removeQueueListener: (() => void) | null = null
+
+const showSyncBanner = computed(() => !isOnline.value || pendingSyncCount.value > 0)
+const syncMessage = computed(() => {
+  if (!isOnline.value) {
+    return t('common.syncOffline', { count: pendingSyncCount.value })
+  }
+  if (pendingSyncCount.value > 0) {
+    return t('common.syncPending', { count: pendingSyncCount.value })
+  }
+  return t('common.syncOk')
+})
 
 function onChangeLocale(next: AppLocale) {
   setAppLocale(next)
@@ -40,6 +54,33 @@ async function onConfirmLogout() {
   showLogoutConfirm.value = false
   await router.push({ name: 'login' })
 }
+
+function refreshSyncStatus() {
+  isOnline.value = typeof navigator === 'undefined' ? true : navigator.onLine
+  pendingSyncCount.value = getOfflineQueueCount()
+}
+
+async function onRetrySync() {
+  await replayOfflineQueue()
+  refreshSyncStatus()
+}
+
+onMounted(() => {
+  refreshSyncStatus()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', refreshSyncStatus)
+    window.addEventListener('offline', refreshSyncStatus)
+    removeQueueListener = onOfflineQueueChange(refreshSyncStatus)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('online', refreshSyncStatus)
+    window.removeEventListener('offline', refreshSyncStatus)
+  }
+  if (removeQueueListener) removeQueueListener()
+})
 </script>
 
 <template>
@@ -103,6 +144,23 @@ async function onConfirmLogout() {
           {{ t('home.stats') }}
         </RouterLink>
       </nav>
+
+      <section
+        v-if="showSyncBanner"
+        class="mb-4 flex flex-col gap-2 rounded-xl border border-amber-500/40 bg-amber-950/30 p-3 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <p class="text-xs text-amber-200">
+          {{ syncMessage }}
+        </p>
+        <button
+          type="button"
+          class="cursor-pointer rounded-lg border border-amber-500/60 px-3 py-1.5 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+          :disabled="!isOnline || pendingSyncCount === 0"
+          @click="onRetrySync"
+        >
+          {{ t('common.syncRetry') }}
+        </button>
+      </section>
       <RouterView />
     </main>
 

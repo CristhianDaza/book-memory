@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   enqueueOfflineClearReadingState,
   enqueueOfflineSaveReadingState,
+  getOfflineQueueCount,
   replayOfflineQueue,
 } from './offlineQueueService'
 import { clearReadingState, saveReadingState } from './readingStateService'
@@ -52,6 +53,7 @@ describe('offlineQueueService', () => {
 
     expect(saveReadingState).toHaveBeenCalledTimes(1)
     expect(localStorage.getItem(STORAGE_KEY)).toBe('[]')
+    expect(getOfflineQueueCount()).toBe(0)
   })
 
   it('keeps failed items for later replay', async () => {
@@ -63,6 +65,6 @@ describe('offlineQueueService', () => {
     const raw = localStorage.getItem(STORAGE_KEY)
     expect(raw).not.toBeNull()
     expect(raw).toContain('clear_reading_state')
+    expect(getOfflineQueueCount()).toBe(1)
   })
 })
-

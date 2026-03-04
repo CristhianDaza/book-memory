@@ -6,6 +6,10 @@ export const es = {
     confirm: 'Confirmar',
     spanish: 'ES',
     english: 'EN',
+    syncOffline: 'Sin conexion. Operaciones pendientes: {count}. Se sincronizaran al volver online.',
+    syncPending: 'Sincronizacion pendiente: {count} operaciones por enviar.',
+    syncOk: 'Sincronizacion al dia.',
+    syncRetry: 'Reintentar sincronizacion',
   },
   home: {
     home: 'Inicio',

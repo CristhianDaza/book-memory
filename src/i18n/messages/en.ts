@@ -6,6 +6,10 @@ export const en = {
     confirm: 'Confirm',
     spanish: 'ES',
     english: 'EN',
+    syncOffline: 'You are offline. Pending operations: {count}. They will sync when you are back online.',
+    syncPending: 'Pending sync: {count} operations waiting to be sent.',
+    syncOk: 'Sync is up to date.',
+    syncRetry: 'Retry sync',
   },
   home: {
     home: 'Home',

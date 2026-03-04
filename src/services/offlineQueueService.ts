@@ -2,6 +2,7 @@ import { clearReadingState, saveReadingState } from './readingStateService'
 import type { OfflineQueueItem, QueuedReadingStatePayload } from '../types/offline-queue'
 
 const STORAGE_KEY = 'book-memory-offline-queue'
+const QUEUE_EVENT = 'book-memory-offline-queue-changed'
 let replaying = false
 
 function canUseStorage(): boolean {
@@ -24,6 +25,22 @@ function readQueue(): OfflineQueueItem[] {
 function writeQueue(items: OfflineQueueItem[]) {
   if (!canUseStorage()) return
   globalThis.localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(QUEUE_EVENT))
+  }
+}
+
+export function getOfflineQueueCount(): number {
+  return readQueue().length
+}
+
+export function onOfflineQueueChange(listener: () => void): () => void {
+  if (typeof window === 'undefined') return () => {}
+  const wrapped = () => listener()
+  window.addEventListener(QUEUE_EVENT, wrapped)
+  return () => {
+    window.removeEventListener(QUEUE_EVENT, wrapped)
+  }
 }
 
 export function enqueueOfflineSaveReadingState(uid: string, payload: QueuedReadingStatePayload) {
@@ -95,4 +112,3 @@ export function initOfflineQueueReplay() {
   })
   void replayOfflineQueue()
 }
-
