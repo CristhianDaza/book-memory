@@ -3,6 +3,7 @@ import type { User } from 'firebase/auth'
 import { computed, ref } from 'vue'
 import { i18n } from '../i18n'
 import { getFirebaseAuth, isFirebaseConfigured } from '../lib/firebase'
+import { deleteUserData } from '../services/accountService'
 
 let authSdkPromise: Promise<typeof import('firebase/auth')> | null = null
 
@@ -147,6 +148,31 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function deleteAccount() {
+    clearError()
+    const firebaseAuth = await getFirebaseAuth()
+    const currentUser = firebaseAuth?.currentUser
+    if (!firebaseAuth || !currentUser) {
+      errorMessage.value = tAuthError('authErrors.firebaseAuthNotConfigured')
+      return false
+    }
+
+    try {
+      await deleteUserData(currentUser.uid)
+      const { deleteUser } = await getAuthSdk()
+      await deleteUser(currentUser)
+      return true
+    } catch (error) {
+      const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : ''
+      if (code.includes('requires-recent-login')) {
+        errorMessage.value = tAuthError('authErrors.deleteAccountRequiresRecentLogin')
+      } else {
+        errorMessage.value = resolveErrorMessage(error, 'authErrors.deleteAccountFailed')
+      }
+      return false
+    }
+  }
+
   return {
     user,
     initializing,
@@ -158,6 +184,7 @@ export const useAuthStore = defineStore('auth', () => {
     loginWithEmail,
     registerWithEmail,
     sendPasswordReset,
+    deleteAccount,
     logout,
     clearError,
   }

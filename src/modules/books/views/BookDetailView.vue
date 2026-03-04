@@ -21,7 +21,7 @@ const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
 
-const { favoriteUpdatingIds, metadataUpdatingIds, deletingIds } = storeToRefs(booksStore)
+const { favoriteUpdatingIds, metadataUpdatingIds, deletingIds, syncQueuedMessageKey } = storeToRefs(booksStore)
 const { user } = storeToRefs(authStore)
 
 const bookId = computed(() => String(route.params.id ?? ''))
@@ -61,6 +61,12 @@ const remainingPages = computed(() => {
 const visibleSessions = computed(() => sessions.value.slice(0, visibleSessionsCount.value))
 const canLoadMoreSessions = computed(() => sessions.value.length > visibleSessionsCount.value)
 
+function showQueuedFeedbackIfAny() {
+  if (!syncQueuedMessageKey.value) return
+  notificationsStore.info(t(syncQueuedMessageKey.value))
+  booksStore.clearSyncQueuedMessage()
+}
+
 async function onToggleFavorite() {
   if (!book.value) return
   await booksStore.toggleFavorite(book.value.id)
@@ -68,6 +74,7 @@ async function onToggleFavorite() {
     notificationsStore.error(t(booksStore.errorKey))
     return
   }
+  showQueuedFeedbackIfAny()
   notificationsStore.success(
     book.value.favorite ? t('notifications.bookMarkedFavorite') : t('notifications.bookUnmarkedFavorite'),
   )
@@ -90,6 +97,7 @@ async function onConfirmRemoveBook() {
     notificationsStore.error(t(booksStore.errorKey))
     return
   }
+  showQueuedFeedbackIfAny()
   notificationsStore.success(t('notifications.bookRemoved'))
   removingBookModalOpen.value = false
   await router.push({ name: 'books' })
@@ -152,6 +160,7 @@ async function onSaveMetadata() {
     return
   }
 
+  showQueuedFeedbackIfAny()
   editMode.value = false
   notificationsStore.success(t('notifications.metadataSaved'))
 }

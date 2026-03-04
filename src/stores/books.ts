@@ -10,6 +10,12 @@ import {
   updateLibraryBookMetadata,
   updateLibraryBookFavorite,
 } from '../services/libraryService'
+import {
+  enqueueOfflineLibraryAddBook,
+  enqueueOfflineLibraryDeleteBook,
+  enqueueOfflineLibraryUpdateFavorite,
+  enqueueOfflineLibraryUpdateMetadata,
+} from '../services/offlineQueueService'
 import type { BookSearchResult, LibraryBook } from '../types/books'
 import type { AppLocale } from '../types/i18n'
 import { useAuthStore } from './auth'
@@ -35,6 +41,7 @@ export const useBooksStore = defineStore('books', () => {
   const searchLanguageMode = ref<SearchLanguageMode>('active')
   const errorKey = ref<string | null>(null)
   const errorDetails = ref<string | null>(null)
+  const syncQueuedMessageKey = ref<string | null>(null)
 
   const libraryIds = computed(() => new Set(library.value.map((book) => book.id)))
   const selectedBook = computed(() =>
@@ -67,6 +74,46 @@ export const useBooksStore = defineStore('books', () => {
   function clearError() {
     errorKey.value = null
     errorDetails.value = null
+  }
+
+  function clearSyncQueuedMessage() {
+    syncQueuedMessageKey.value = null
+  }
+
+  function isOfflineQueueCandidate(error: unknown): boolean {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return true
+    if (!error || typeof error !== 'object') return false
+    const candidate = error as { code?: string; message?: string }
+    const code = (candidate.code ?? '').toLowerCase()
+    const message = (candidate.message ?? '').toLowerCase()
+    return (
+      code.includes('unavailable') ||
+      code.includes('network') ||
+      code.includes('deadline-exceeded') ||
+      message.includes('network') ||
+      message.includes('offline')
+    )
+  }
+
+  function toLibraryDocId(sourceId: string): string {
+    return sourceId.replace(':', '_')
+  }
+
+  function toOptimisticLibraryBook(book: BookSearchResult): LibraryBook {
+    return {
+      id: toLibraryDocId(book.id),
+      source: book.source,
+      externalId: book.id.split(':')[1] ?? book.id,
+      title: book.title,
+      authors: book.authors,
+      coverUrl: book.coverUrl,
+      totalPages: book.totalPages,
+      favorite: false,
+      currentPage: 0,
+      status: 'reading',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
   }
 
   function mapSearchError(error: unknown): string {
@@ -160,6 +207,7 @@ export const useBooksStore = defineStore('books', () => {
 
   async function addSearchResultToLibrary(book: BookSearchResult) {
     clearError()
+    clearSyncQueuedMessage()
     const authStore = useAuthStore()
     if (!authStore.user?.uid) {
       errorKey.value = 'books.authRequired'
@@ -175,8 +223,23 @@ export const useBooksStore = defineStore('books', () => {
       library.value = [savedBook, ...library.value.filter((item) => item.id !== savedBook.id)]
       selectedLibraryBookId.value = savedBook.id
     } catch (error) {
-      errorKey.value = 'books.addBookError'
-      errorDetails.value = error instanceof Error ? error.message : null
+      if (isOfflineQueueCandidate(error)) {
+        const optimisticBook = toOptimisticLibraryBook(book)
+        library.value = [optimisticBook, ...library.value.filter((item) => item.id !== optimisticBook.id)]
+        selectedLibraryBookId.value = optimisticBook.id
+        enqueueOfflineLibraryAddBook(authStore.user.uid, {
+          source: book.source,
+          externalId: book.id.split(':')[1] ?? book.id,
+          title: book.title,
+          authors: book.authors,
+          coverUrl: book.coverUrl,
+          totalPages: book.totalPages,
+        })
+        syncQueuedMessageKey.value = 'notifications.bookAddedQueuedOffline'
+      } else {
+        errorKey.value = 'books.addBookError'
+        errorDetails.value = error instanceof Error ? error.message : null
+      }
     } finally {
       savingIds.value = savingIds.value.filter((id) => id !== book.id)
     }
@@ -196,6 +259,7 @@ export const useBooksStore = defineStore('books', () => {
 
   async function toggleFavorite(bookId: string) {
     clearError()
+    clearSyncQueuedMessage()
     const authStore = useAuthStore()
     const uid = authStore.user?.uid
     const currentBook = library.value.find((book) => book.id === bookId)
@@ -214,11 +278,19 @@ export const useBooksStore = defineStore('books', () => {
     try {
       await updateLibraryBookFavorite(uid, bookId, nextFavorite)
     } catch (error) {
-      library.value = library.value.map((book) =>
-        book.id === bookId ? { ...book, favorite: !nextFavorite } : book,
-      )
-      errorKey.value = 'books.favoriteError'
-      errorDetails.value = error instanceof Error ? error.message : null
+      if (isOfflineQueueCandidate(error)) {
+        enqueueOfflineLibraryUpdateFavorite(uid, {
+          bookId,
+          favorite: nextFavorite,
+        })
+        syncQueuedMessageKey.value = 'notifications.bookFavoriteQueuedOffline'
+      } else {
+        library.value = library.value.map((book) =>
+          book.id === bookId ? { ...book, favorite: !nextFavorite } : book,
+        )
+        errorKey.value = 'books.favoriteError'
+        errorDetails.value = error instanceof Error ? error.message : null
+      }
     } finally {
       favoriteUpdatingIds.value = favoriteUpdatingIds.value.filter((id) => id !== bookId)
     }
@@ -226,6 +298,7 @@ export const useBooksStore = defineStore('books', () => {
 
   async function removeFromLibrary(bookId: string) {
     clearError()
+    clearSyncQueuedMessage()
     const authStore = useAuthStore()
     const uid = authStore.user?.uid
     if (!uid) {
@@ -233,18 +306,27 @@ export const useBooksStore = defineStore('books', () => {
       return
     }
 
+    const previousLibrary = [...library.value]
     deletingIds.value = [...deletingIds.value, bookId]
+    library.value = library.value.filter((book) => book.id !== bookId)
+    if (selectedLibraryBookId.value === bookId) {
+      selectedLibraryBookId.value = library.value[0]?.id ?? null
+    }
     try {
       await deleteSessionsForBook(uid, bookId)
       await deleteLibraryBook(uid, bookId)
-      library.value = library.value.filter((book) => book.id !== bookId)
-
-      if (selectedLibraryBookId.value === bookId) {
-        selectedLibraryBookId.value = library.value[0]?.id ?? null
-      }
     } catch (error) {
-      errorKey.value = 'books.removeBookError'
-      errorDetails.value = error instanceof Error ? error.message : null
+      if (isOfflineQueueCandidate(error)) {
+        enqueueOfflineLibraryDeleteBook(uid, { bookId })
+        syncQueuedMessageKey.value = 'notifications.bookRemovedQueuedOffline'
+      } else {
+        library.value = previousLibrary
+        if (selectedLibraryBookId.value === null) {
+          selectedLibraryBookId.value = previousLibrary[0]?.id ?? null
+        }
+        errorKey.value = 'books.removeBookError'
+        errorDetails.value = error instanceof Error ? error.message : null
+      }
     } finally {
       deletingIds.value = deletingIds.value.filter((id) => id !== bookId)
     }
@@ -255,6 +337,7 @@ export const useBooksStore = defineStore('books', () => {
     payload: Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'>,
   ) {
     clearError()
+    clearSyncQueuedMessage()
     const authStore = useAuthStore()
     const uid = authStore.user?.uid
     if (!uid) {
@@ -274,18 +357,28 @@ export const useBooksStore = defineStore('books', () => {
     try {
       await updateLibraryBookMetadata(uid, bookId, payload)
     } catch (error) {
-      library.value = library.value.map((book) =>
-        book.id === bookId
-          ? {
-              ...book,
-              totalPages: previousBook.totalPages,
-              currentPage: previousBook.currentPage,
-              status: previousBook.status,
-            }
-          : book,
-      )
-      errorKey.value = 'books.updateBookError'
-      errorDetails.value = error instanceof Error ? error.message : null
+      if (isOfflineQueueCandidate(error)) {
+        enqueueOfflineLibraryUpdateMetadata(uid, {
+          bookId,
+          totalPages: payload.totalPages,
+          currentPage: payload.currentPage,
+          status: payload.status,
+        })
+        syncQueuedMessageKey.value = 'notifications.bookMetadataQueuedOffline'
+      } else {
+        library.value = library.value.map((book) =>
+          book.id === bookId
+            ? {
+                ...book,
+                totalPages: previousBook.totalPages,
+                currentPage: previousBook.currentPage,
+                status: previousBook.status,
+              }
+            : book,
+        )
+        errorKey.value = 'books.updateBookError'
+        errorDetails.value = error instanceof Error ? error.message : null
+      }
     } finally {
       metadataUpdatingIds.value = metadataUpdatingIds.value.filter((id) => id !== bookId)
     }
@@ -341,6 +434,7 @@ export const useBooksStore = defineStore('books', () => {
     filteredSortedLibrary,
     errorKey,
     errorDetails,
+    syncQueuedMessageKey,
     search,
     loadMoreSearch,
     setSearchLanguageMode,
@@ -355,6 +449,7 @@ export const useBooksStore = defineStore('books', () => {
     recalculateBookProgressFromSessions,
     removeFromLibrary,
     clearSearch,
+    clearSyncQueuedMessage,
     clearError,
   }
 })

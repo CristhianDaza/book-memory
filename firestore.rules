@@ -156,6 +156,34 @@ service cloud.firestore {
       && data.updatedAt is timestamp;
     }
 
+    function isValidStatsGoalsData(data) {
+      return data.keys().hasOnly([
+        'weeklyPagesGoal',
+        'monthlyMinutesGoal',
+        'updatedAt',
+      ])
+      && data.weeklyPagesGoal is int
+      && data.weeklyPagesGoal > 0
+      && data.monthlyMinutesGoal is int
+      && data.monthlyMinutesGoal > 0
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidAppLogData(data) {
+      return data.keys().hasOnly([
+        'kind',
+        'message',
+        'stack',
+        'path',
+        'createdAt',
+      ])
+      && data.kind is string
+      && data.message is string
+      && (data.stack == null || data.stack is string)
+      && (data.path == null || data.path is string)
+      && data.createdAt is timestamp;
+    }
+
     match /users/{uid} {
       allow read, write: if false;
 
@@ -182,6 +210,18 @@ service cloud.firestore {
         allow read: if isOwner(uid);
         allow create, update: if isOwner(uid) && isValidReadingStateData(request.resource.data);
         allow delete: if isOwner(uid);
+      }
+
+      match /stats/{docId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && isValidStatsGoalsData(request.resource.data);
+        allow delete: if isOwner(uid);
+      }
+
+      match /app_logs/{logId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isValidAppLogData(request.resource.data);
+        allow update, delete: if false;
       }
     }
   }

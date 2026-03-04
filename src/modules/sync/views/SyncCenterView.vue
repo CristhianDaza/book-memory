@@ -68,6 +68,10 @@ function describeQueueItem(item: OfflineQueueItem): string {
   }
   if (item.action === 'save_reading_state') return 'reading_state'
   if (item.action === 'clear_reading_state') return 'reading_state_clear'
+  if (item.action === 'library_add_book') return 'library_add_book'
+  if (item.action === 'library_update_favorite') return 'library_update_favorite'
+  if (item.action === 'library_update_metadata') return 'library_update_metadata'
+  if (item.action === 'library_delete_book') return 'library_delete_book'
   return item.action
 }
 
@@ -213,4 +217,3 @@ onBeforeUnmount(() => {
     </section>
   </section>
 </template>
-

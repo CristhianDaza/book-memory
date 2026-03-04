@@ -85,6 +85,34 @@ export async function fetchUserSessions(uid: string): Promise<ReadingSessionReco
   })
 }
 
+export async function fetchUserSessionsWithinDays(
+  uid: string,
+  days: number,
+  maxResults = 1500,
+): Promise<ReadingSessionRecord[]> {
+  const db = await ensureFirestore()
+  const { Timestamp, collection, getDocs, limit, orderBy, query, where } = await getFirestoreSdk()
+  const safeDays = Math.max(1, Math.floor(days))
+  const safeLimit = Math.max(1, Math.floor(maxResults))
+  const threshold = new Date(Date.now() - safeDays * 86400000)
+  const ref = collection(db, 'users', uid, 'sessions')
+  const q = query(
+    ref,
+    where('startedAt', '>=', Timestamp.fromDate(threshold)),
+    orderBy('startedAt', 'desc'),
+    limit(safeLimit),
+  )
+  const snapshot = await getDocs(q)
+
+  return snapshot.docs.map((entry) => {
+    const data = entry.data() as Omit<ReadingSessionRecord, 'id'>
+    return {
+      id: entry.id,
+      ...data,
+    }
+  })
+}
+
 export async function createReadingSession(uid: string, payload: CreateReadingSessionInput): Promise<void> {
   const db = await ensureFirestore()
   const { Timestamp, addDoc, collection, serverTimestamp } = await getFirestoreSdk()

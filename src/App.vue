@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppNotifications from './components/AppNotifications.vue'
 import ConfirmModal from './components/ConfirmModal.vue'
 import { setAppLocale } from './i18n'
+import { exportUserData } from './services/accountService'
 import {
   clearOfflineConflicts,
   getOfflineConflicts,
@@ -15,10 +16,13 @@ import {
   requeueOfflineConflicts,
   replayOfflineQueue,
 } from './services/offlineQueueService'
+import { logAppEvent } from './services/observabilityService'
 import type { AppLocale } from './types/i18n'
 import { useAuthStore } from './stores/auth'
+import { useNotificationsStore } from './stores/notifications'
 
 const authStore = useAuthStore()
+const notificationsStore = useNotificationsStore()
 const router = useRouter()
 const route = useRoute()
 const { t, locale } = useI18n()
@@ -31,6 +35,9 @@ const nextLocaleLabel = computed(() =>
   nextLocale.value === 'es' ? t('common.spanish') : t('common.english'),
 )
 const showLogoutConfirm = ref(false)
+const showDeleteAccountConfirm = ref(false)
+const exportingData = ref(false)
+const deletingAccount = ref(false)
 const isOnline = ref(typeof navigator === 'undefined' ? true : navigator.onLine)
 const pendingSyncCount = ref(getOfflineQueueCount())
 const conflictSyncCount = ref(getOfflineConflictCount())
@@ -39,6 +46,8 @@ const latestConflictLabel = ref<string | null>(null)
 const latestConflictReason = ref<string | null>(null)
 const latestConflictStatus = ref<'open' | 'retrying' | null>(null)
 let removeQueueListener: (() => void) | null = null
+let removeWindowErrorListener: (() => void) | null = null
+let removeWindowRejectionListener: (() => void) | null = null
 
 const showSyncBanner = computed(
   () => !isOnline.value || pendingSyncCount.value > 0 || conflictSyncCount.value > 0,
@@ -74,6 +83,50 @@ async function onConfirmLogout() {
   await router.push({ name: 'login' })
 }
 
+function onOpenDeleteAccountConfirm() {
+  showDeleteAccountConfirm.value = true
+}
+
+function onCancelDeleteAccountConfirm() {
+  showDeleteAccountConfirm.value = false
+}
+
+async function onExportMyData() {
+  const uid = authStore.user?.uid
+  if (!uid || exportingData.value) return
+  exportingData.value = true
+  try {
+    const payload = await exportUserData(uid)
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const date = new Date().toISOString().slice(0, 10)
+    link.href = url
+    link.download = `bookmemory-export-${date}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    notificationsStore.success(t('notifications.accountExportReady'))
+  } catch {
+    notificationsStore.error(t('notifications.accountExportError'))
+  } finally {
+    exportingData.value = false
+  }
+}
+
+async function onConfirmDeleteAccount() {
+  if (deletingAccount.value) return
+  deletingAccount.value = true
+  const deleted = await authStore.deleteAccount()
+  deletingAccount.value = false
+  if (!deleted) {
+    notificationsStore.error(authStore.errorMessage ?? t('authErrors.deleteAccountFailed'))
+    return
+  }
+  showDeleteAccountConfirm.value = false
+  notificationsStore.success(t('notifications.accountDeleted'))
+  await router.push({ name: 'login' })
+}
+
 function refreshSyncStatus() {
   isOnline.value = typeof navigator === 'undefined' ? true : navigator.onLine
   pendingSyncCount.value = getOfflineQueueCount()
@@ -102,8 +155,47 @@ async function onRetryConflicts() {
   refreshSyncStatus()
 }
 
+function installGlobalErrorHandlers() {
+  if (typeof window === 'undefined') return
+  const onWindowError = (event: ErrorEvent) => {
+    const uid = authStore.user?.uid
+    if (!uid) return
+    const message = event.message || 'unknown_window_error'
+    const stack = event.error instanceof Error ? event.error.stack ?? null : null
+    void logAppEvent(uid, {
+      kind: 'error',
+      message,
+      stack,
+      path: route.fullPath ?? null,
+    })
+  }
+  const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+    const uid = authStore.user?.uid
+    if (!uid) return
+    const reason = event.reason
+    const message =
+      typeof reason === 'string'
+        ? reason
+        : reason instanceof Error
+          ? reason.message
+          : 'unhandled_rejection'
+    const stack = reason instanceof Error ? reason.stack ?? null : null
+    void logAppEvent(uid, {
+      kind: 'unhandledrejection',
+      message,
+      stack,
+      path: route.fullPath ?? null,
+    })
+  }
+  window.addEventListener('error', onWindowError)
+  window.addEventListener('unhandledrejection', onUnhandledRejection)
+  removeWindowErrorListener = () => window.removeEventListener('error', onWindowError)
+  removeWindowRejectionListener = () => window.removeEventListener('unhandledrejection', onUnhandledRejection)
+}
+
 onMounted(() => {
   refreshSyncStatus()
+  installGlobalErrorHandlers()
   if (typeof window !== 'undefined') {
     window.addEventListener('online', refreshSyncStatus)
     window.addEventListener('offline', refreshSyncStatus)
@@ -117,6 +209,8 @@ onBeforeUnmount(() => {
     window.removeEventListener('offline', refreshSyncStatus)
   }
   if (removeQueueListener) removeQueueListener()
+  if (removeWindowErrorListener) removeWindowErrorListener()
+  if (removeWindowRejectionListener) removeWindowRejectionListener()
 })
 </script>
 
@@ -135,6 +229,21 @@ onBeforeUnmount(() => {
           @click="onChangeLocale(nextLocale)"
         >
           {{ nextLocaleLabel }}
+        </button>
+        <button
+          type="button"
+          class="cursor-pointer rounded-xl border border-cyan-500/60 px-3 py-2 text-sm text-cyan-200 transition hover:bg-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+          :disabled="exportingData"
+          @click="onExportMyData"
+        >
+          {{ exportingData ? t('home.exportingData') : t('home.exportData') }}
+        </button>
+        <button
+          type="button"
+          class="cursor-pointer rounded-xl border border-rose-500/60 px-3 py-2 text-sm text-rose-200 transition hover:bg-rose-500/10"
+          @click="onOpenDeleteAccountConfirm"
+        >
+          {{ t('home.deleteAccount') }}
         </button>
         <button
           class="cursor-pointer rounded-xl border border-orange-500/60 px-3 py-2 text-sm text-orange-200 transition hover:bg-orange-500/10"
@@ -262,6 +371,17 @@ onBeforeUnmount(() => {
       danger
       @cancel="onCancelLogoutConfirm"
       @confirm="onConfirmLogout"
+    />
+    <ConfirmModal
+      :open="showDeleteAccountConfirm"
+      :title="t('home.deleteAccountConfirmTitle')"
+      :message="t('home.deleteAccountConfirmMessage')"
+      :confirm-label="deletingAccount ? t('home.deletingAccount') : t('home.deleteAccount')"
+      :cancel-label="t('common.cancel')"
+      :loading="deletingAccount"
+      danger
+      @cancel="onCancelDeleteAccountConfirm"
+      @confirm="onConfirmDeleteAccount"
     />
   </div>
 </template>

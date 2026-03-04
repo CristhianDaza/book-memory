@@ -3,7 +3,8 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useAuthStore } from './auth'
 import { useStatsStore } from './stats'
 import { fetchLibraryBooks } from '../services/libraryService'
-import { fetchUserSessions } from '../services/readingSessionService'
+import { fetchUserSessions, fetchUserSessionsWithinDays } from '../services/readingSessionService'
+import { fetchStatsGoals, saveStatsGoals } from '../services/statsGoalsService'
 
 vi.mock('../i18n', () => ({
   i18n: {
@@ -19,6 +20,12 @@ vi.mock('../services/libraryService', () => ({
 
 vi.mock('../services/readingSessionService', () => ({
   fetchUserSessions: vi.fn(),
+  fetchUserSessionsWithinDays: vi.fn(),
+}))
+
+vi.mock('../services/statsGoalsService', () => ({
+  fetchStatsGoals: vi.fn(),
+  saveStatsGoals: vi.fn(),
 }))
 
 describe('stats store', () => {
@@ -59,11 +66,12 @@ describe('stats store', () => {
         status: 'reading',
       },
     ])
-    vi.mocked(fetchUserSessions).mockResolvedValue([
+    vi.mocked(fetchUserSessionsWithinDays).mockResolvedValue([
       { id: 's1', bookId: 'book-1', startedAt: now, pagesRead: 30, durationSeconds: 1800 },
       { id: 's2', bookId: 'book-1', startedAt: yesterday, pagesRead: 20, durationSeconds: 1200 },
       { id: 's3', bookId: 'book-2', startedAt: now, pagesRead: 10, durationSeconds: 600 },
     ] as never)
+    vi.mocked(fetchStatsGoals).mockResolvedValue(null)
 
     const store = useStatsStore()
     await store.loadStats()
@@ -81,10 +89,16 @@ describe('stats store', () => {
     const fortyDaysAgo = new Date(now.getTime() - 40 * 24 * 60 * 60 * 1000)
 
     vi.mocked(fetchLibraryBooks).mockResolvedValue([])
+    vi.mocked(fetchUserSessionsWithinDays).mockResolvedValue([
+      { id: 's1', bookId: 'x', startedAt: now, pagesRead: 40, durationSeconds: 3600 },
+      { id: 's2', bookId: 'x', startedAt: fortyDaysAgo, pagesRead: 5, durationSeconds: 300 },
+    ] as never)
     vi.mocked(fetchUserSessions).mockResolvedValue([
       { id: 's1', bookId: 'x', startedAt: now, pagesRead: 40, durationSeconds: 3600 },
       { id: 's2', bookId: 'x', startedAt: fortyDaysAgo, pagesRead: 5, durationSeconds: 300 },
     ] as never)
+    vi.mocked(fetchStatsGoals).mockResolvedValue(null)
+    vi.mocked(saveStatsGoals).mockResolvedValue()
 
     const store = useStatsStore()
     await store.loadStats()
@@ -95,6 +109,7 @@ describe('stats store', () => {
     expect(store.goalsProgress.monthlyMinutesProgress).toBe(100)
 
     store.setRange('all')
+    await store.loadStats()
     expect(store.activitySeries.length).toBeGreaterThan(30)
   })
 })

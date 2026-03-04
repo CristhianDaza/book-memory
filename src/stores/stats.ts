@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { fetchLibraryBooks } from '../services/libraryService'
-import { fetchUserSessions } from '../services/readingSessionService'
+import { fetchUserSessions, fetchUserSessionsWithinDays } from '../services/readingSessionService'
+import { fetchStatsGoals, saveStatsGoals } from '../services/statsGoalsService'
 import type { ReadingSessionRecord } from '../types/reading'
 import type {
   BookStatsEntry,
@@ -89,6 +90,7 @@ export const useStatsStore = defineStore('stats', () => {
   const activityMetric = ref<StatsActivityMetric>('sessions')
   const weeklyPagesGoal = ref(100)
   const monthlyMinutesGoal = ref(600)
+  let goalsSaveTimer: ReturnType<typeof setTimeout> | null = null
 
   const sessionsWithDates = computed(() =>
     sessions.value
@@ -237,8 +239,26 @@ export const useStatsStore = defineStore('stats', () => {
         : 0,
   }))
 
+  function queueSaveGoals() {
+    if (goalsSaveTimer) {
+      clearTimeout(goalsSaveTimer)
+      goalsSaveTimer = null
+    }
+    goalsSaveTimer = setTimeout(() => {
+      const authStore = useAuthStore()
+      const uid = authStore.user?.uid
+      if (!uid) return
+      void saveStatsGoals(uid, {
+        weeklyPagesGoal: weeklyPagesGoal.value,
+        monthlyMinutesGoal: monthlyMinutesGoal.value,
+      })
+    }, 400)
+  }
+
   function setRange(nextRange: StatsRange) {
+    if (range.value === nextRange) return
     range.value = nextRange
+    void loadStats()
   }
 
   function setActivityMetric(nextMetric: StatsActivityMetric) {
@@ -247,10 +267,12 @@ export const useStatsStore = defineStore('stats', () => {
 
   function setWeeklyPagesGoal(value: number) {
     weeklyPagesGoal.value = Math.max(1, Math.floor(value || 1))
+    queueSaveGoals()
   }
 
   function setMonthlyMinutesGoal(value: number) {
     monthlyMinutesGoal.value = Math.max(1, Math.floor(value || 1))
+    queueSaveGoals()
   }
 
   async function loadStats() {
@@ -265,15 +287,22 @@ export const useStatsStore = defineStore('stats', () => {
     loading.value = true
     errorKey.value = null
     try {
-      const [loadedSessions, loadedLibrary] = await Promise.all([
-        fetchUserSessions(uid),
+      const sessionsRequest =
+        range.value === 'all' ? fetchUserSessions(uid) : fetchUserSessionsWithinDays(uid, range.value === '7d' ? 45 : 120)
+      const [loadedSessions, loadedLibrary, loadedGoals] = await Promise.all([
+        sessionsRequest,
         fetchLibraryBooks(uid),
+        fetchStatsGoals(uid),
       ])
       sessions.value = loadedSessions
       libraryTitles.value = loadedLibrary.reduce<Record<string, string>>((acc, book) => {
         acc[book.id] = book.title
         return acc
       }, {})
+      if (loadedGoals) {
+        weeklyPagesGoal.value = loadedGoals.weeklyPagesGoal
+        monthlyMinutesGoal.value = loadedGoals.monthlyMinutesGoal
+      }
     } catch {
       sessions.value = []
       libraryTitles.value = {}

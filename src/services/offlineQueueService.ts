@@ -1,10 +1,19 @@
-import { updateLibraryBookMetadata } from './libraryService'
-import { createReadingSessionWithId } from './readingSessionService'
+import {
+  addBookToLibrary,
+  deleteLibraryBook,
+  updateLibraryBookFavorite,
+  updateLibraryBookMetadata,
+} from './libraryService'
+import { createReadingSessionWithId, deleteSessionsForBook } from './readingSessionService'
 import { clearReadingState, saveReadingState } from './readingStateService'
 import type {
   OfflineConflictItem,
   OfflineQueueItem,
   QueuedFinishSessionPayload,
+  QueuedLibraryAddPayload,
+  QueuedLibraryDeletePayload,
+  QueuedLibraryFavoritePayload,
+  QueuedLibraryMetadataPayload,
   QueuedReadingStatePayload,
 } from '../types/offline-queue'
 
@@ -273,6 +282,54 @@ export function enqueueOfflineFinishReadingSession(uid: string, payload: QueuedF
   writeQueue(items)
 }
 
+export function enqueueOfflineLibraryAddBook(uid: string, payload: QueuedLibraryAddPayload) {
+  const items = readQueue()
+  items.push({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    action: 'library_add_book',
+    uid,
+    payload,
+    createdAt: new Date().toISOString(),
+  })
+  writeQueue(items)
+}
+
+export function enqueueOfflineLibraryUpdateFavorite(uid: string, payload: QueuedLibraryFavoritePayload) {
+  const items = readQueue()
+  items.push({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    action: 'library_update_favorite',
+    uid,
+    payload,
+    createdAt: new Date().toISOString(),
+  })
+  writeQueue(items)
+}
+
+export function enqueueOfflineLibraryUpdateMetadata(uid: string, payload: QueuedLibraryMetadataPayload) {
+  const items = readQueue()
+  items.push({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    action: 'library_update_metadata',
+    uid,
+    payload,
+    createdAt: new Date().toISOString(),
+  })
+  writeQueue(items)
+}
+
+export function enqueueOfflineLibraryDeleteBook(uid: string, payload: QueuedLibraryDeletePayload) {
+  const items = readQueue()
+  items.push({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    action: 'library_delete_book',
+    uid,
+    payload,
+    createdAt: new Date().toISOString(),
+  })
+  writeQueue(items)
+}
+
 export async function replayOfflineQueue() {
   if (replaying) return
   replaying = true
@@ -318,6 +375,35 @@ export async function replayOfflineQueue() {
             status: payload.status,
           })
           resolveConflictForItem(item)
+        }
+        if (item.action === 'library_add_book' && item.payload) {
+          const payload = item.payload as QueuedLibraryAddPayload
+          await addBookToLibrary(item.uid, {
+            id: `${payload.source}:${payload.externalId}`,
+            source: payload.source,
+            title: payload.title,
+            authors: payload.authors,
+            coverUrl: payload.coverUrl,
+            totalPages: payload.totalPages,
+            publishedYear: null,
+          })
+        }
+        if (item.action === 'library_update_favorite' && item.payload) {
+          const payload = item.payload as QueuedLibraryFavoritePayload
+          await updateLibraryBookFavorite(item.uid, payload.bookId, payload.favorite)
+        }
+        if (item.action === 'library_update_metadata' && item.payload) {
+          const payload = item.payload as QueuedLibraryMetadataPayload
+          await updateLibraryBookMetadata(item.uid, payload.bookId, {
+            totalPages: payload.totalPages,
+            currentPage: payload.currentPage,
+            status: payload.status,
+          })
+        }
+        if (item.action === 'library_delete_book' && item.payload) {
+          const payload = item.payload as QueuedLibraryDeletePayload
+          await deleteSessionsForBook(item.uid, payload.bookId)
+          await deleteLibraryBook(item.uid, payload.bookId)
         }
       } catch (error) {
         if (item.action === 'finish_reading_session') {

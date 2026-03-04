@@ -41,6 +41,7 @@ const {
   librarySearchQuery,
   librarySortMode,
   searchLanguageMode,
+  syncQueuedMessageKey,
 } = storeToRefs(booksStore)
 const { isAuthenticated } = storeToRefs(authStore)
 
@@ -82,6 +83,12 @@ function onChangeSearchLanguageMode(mode: SearchLanguageMode) {
 
 function onChangeLibraryStatusFilter(filter: LibraryStatusFilter) {
   libraryStatusFilter.value = filter
+}
+
+function showQueuedFeedbackIfAny() {
+  if (!syncQueuedMessageKey.value) return
+  notificationsStore.info(t(syncQueuedMessageKey.value))
+  booksStore.clearSyncQueuedMessage()
 }
 
 function isSaving(bookId: string): boolean {
@@ -150,6 +157,7 @@ async function onConfirmAddBookWithPages() {
   if (booksStore.isBookInLibrary(payload)) {
     notificationsStore.success(t('notifications.bookAdded'))
   }
+  showQueuedFeedbackIfAny()
   onCancelAddBookWithPages()
 }
 
@@ -162,6 +170,7 @@ async function onToggleFavorite(bookId: string) {
     notificationsStore.error(t(booksStore.errorKey))
     return
   }
+  showQueuedFeedbackIfAny()
   notificationsStore.success(
     nextFavorite ? t('notifications.bookMarkedFavorite') : t('notifications.bookUnmarkedFavorite'),
   )
@@ -204,6 +213,7 @@ async function onAddManualBook() {
     notificationsStore.error(t(booksStore.errorKey))
     return
   }
+  showQueuedFeedbackIfAny()
   notificationsStore.success(t('notifications.bookAdded'))
   resetManualForm()
 }

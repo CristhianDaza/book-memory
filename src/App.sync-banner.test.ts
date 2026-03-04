@@ -16,6 +16,14 @@ const mockRouter = vi.hoisted(() => ({
 
 const mockAuthStore = vi.hoisted(() => ({
   logout: vi.fn(),
+  deleteAccount: vi.fn(),
+  errorMessage: null as string | null,
+  user: { uid: 'u1' },
+}))
+
+const mockNotificationsStore = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
 }))
 
 const mockOfflineQueueService = vi.hoisted(() => ({
@@ -36,6 +44,10 @@ vi.mock('vue-router', () => ({
 
 vi.mock('./stores/auth', () => ({
   useAuthStore: () => mockAuthStore,
+}))
+
+vi.mock('./stores/notifications', () => ({
+  useNotificationsStore: () => mockNotificationsStore,
 }))
 
 vi.mock('./services/offlineQueueService', () => mockOfflineQueueService)
