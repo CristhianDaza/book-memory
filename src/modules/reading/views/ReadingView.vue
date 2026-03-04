@@ -137,6 +137,89 @@ function createTransactionId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(message))
+    }, timeoutMs)
+
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
+
+function isNavigatorOffline(): boolean {
+  return typeof navigator !== 'undefined' && !navigator.onLine
+}
+
+function isOfflineQueueCandidate(error: unknown): boolean {
+  if (isNavigatorOffline()) return true
+  if (!error || typeof error !== 'object') return false
+  const candidate = error as { code?: string; message?: string }
+  const code = (candidate.code ?? '').toLowerCase()
+  const message = (candidate.message ?? '').toLowerCase()
+  return (
+    code.includes('unavailable') ||
+    code.includes('network') ||
+    code.includes('timeout') ||
+    code.includes('deadline-exceeded') ||
+    message.includes('network') ||
+    message.includes('offline') ||
+    message.includes('timeout')
+  )
+}
+
+function finishSessionQueuedOffline(
+  uid: string,
+  bookId: string,
+  startedAtIso: string,
+  endedAtIso: string,
+  durationSeconds: number,
+  start: number,
+  end: number,
+  totalPages: number | null,
+) {
+  const status = totalPages !== null && end >= totalPages ? ('finished' as const) : ('reading' as const)
+
+  enqueueOfflineFinishReadingSession(uid, {
+    transactionId: createTransactionId(),
+    bookId,
+    startedAt: startedAtIso,
+    endedAt: endedAtIso,
+    durationSeconds,
+    startPage: start,
+    endPage: end,
+    pagesRead: Math.max(0, end - start),
+    totalPages,
+    currentPage: end,
+    status,
+  })
+
+  // Close UI first so offline save feels immediate and deterministic.
+  readingStore.resetSession()
+  showFinishModal.value = false
+  notificationsStore.success(t('notifications.readingSessionQueuedOffline'))
+
+  // Best-effort optimistic metadata update; queue flow is already persisted above.
+  void booksStore
+    .updateBookMetadata(bookId, {
+      totalPages,
+      currentPage: end,
+      status,
+    })
+    .catch(() => {})
+
+  void router.push({ name: 'book-detail', params: { id: bookId } }).catch(() => {})
+}
+
 async function onConfirmFinish() {
   localError.value = null
   if (!effectiveSessionBook.value || !user.value?.uid) {
@@ -144,6 +227,7 @@ async function onConfirmFinish() {
     notificationsStore.error(localError.value)
     return
   }
+  const uid = user.value.uid
 
   const start = Math.max(0, Math.floor(startPage.value))
   const end = finishEndPageNumber.value
@@ -158,64 +242,55 @@ async function onConfirmFinish() {
     return
   }
   const now = new Date()
+  const startedAtIso = sessionStartedAt.value.toISOString()
+  const endedAtIso = now.toISOString()
+  const bookId = effectiveSessionBook.value.id
+  const totalPages = effectiveSessionBook.value.totalPages
+  const durationSeconds = elapsedSeconds.value
 
   saving.value = true
   try {
     readingStore.pauseTimer()
+    if (isNavigatorOffline()) {
+      finishSessionQueuedOffline(uid, bookId, startedAtIso, endedAtIso, durationSeconds, start, end, totalPages)
+      return
+    }
     const pagesRead = Math.max(0, end - start)
     readingStore.setEndPage(end)
-    await createReadingSession(user.value.uid, {
-      bookId: effectiveSessionBook.value.id,
-      startedAt: sessionStartedAt.value,
-      endedAt: now,
-      durationSeconds: elapsedSeconds.value,
-      startPage: start,
-      endPage: end,
-      pagesRead,
-    })
+    await withTimeout(
+      createReadingSession(uid, {
+        bookId,
+        startedAt: new Date(startedAtIso),
+        endedAt: now,
+        durationSeconds,
+        startPage: start,
+        endPage: end,
+        pagesRead,
+      }),
+      8000,
+      'network_timeout',
+    )
 
-    const totalPages = effectiveSessionBook.value.totalPages
     const status =
       totalPages !== null && end >= totalPages ? ('finished' as const) : ('reading' as const)
 
-    await booksStore.updateBookMetadata(effectiveSessionBook.value.id, {
-      totalPages,
-      currentPage: end,
-      status,
-    })
+    await withTimeout(
+      booksStore.updateBookMetadata(bookId, {
+        totalPages,
+        currentPage: end,
+        status,
+      }),
+      5000,
+      'network_timeout',
+    )
 
     readingStore.resetSession()
     showFinishModal.value = false
     notificationsStore.success(t('notifications.readingSessionSaved'))
-    await router.push({ name: 'book-detail', params: { id: effectiveSessionBook.value.id } })
+    void router.push({ name: 'book-detail', params: { id: bookId } }).catch(() => {})
   } catch (error) {
-    if (effectiveSessionBook.value && user.value?.uid && sessionStartedAt.value) {
-      const totalPages = effectiveSessionBook.value.totalPages
-      const status =
-        totalPages !== null && end >= totalPages ? ('finished' as const) : ('reading' as const)
-
-      enqueueOfflineFinishReadingSession(user.value.uid, {
-        transactionId: createTransactionId(),
-        bookId: effectiveSessionBook.value.id,
-        startedAt: sessionStartedAt.value.toISOString(),
-        endedAt: now.toISOString(),
-        durationSeconds: elapsedSeconds.value,
-        startPage: start,
-        endPage: end,
-        pagesRead: Math.max(0, end - start),
-        totalPages,
-        currentPage: end,
-        status,
-      })
-      await booksStore.updateBookMetadata(effectiveSessionBook.value.id, {
-        totalPages,
-        currentPage: end,
-        status,
-      })
-      readingStore.resetSession()
-      showFinishModal.value = false
-      notificationsStore.success(t('notifications.readingSessionQueuedOffline'))
-      await router.push({ name: 'book-detail', params: { id: effectiveSessionBook.value.id } })
+    if (isOfflineQueueCandidate(error)) {
+      finishSessionQueuedOffline(uid, bookId, startedAtIso, endedAtIso, durationSeconds, start, end, totalPages)
       return
     }
     localError.value = error instanceof Error ? error.message : t('reading.errorSaveSession')
