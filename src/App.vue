@@ -5,7 +5,13 @@ import { useRoute, useRouter } from 'vue-router'
 import AppNotifications from './components/AppNotifications.vue'
 import ConfirmModal from './components/ConfirmModal.vue'
 import { setAppLocale } from './i18n'
-import { getOfflineQueueCount, onOfflineQueueChange, replayOfflineQueue } from './services/offlineQueueService'
+import {
+  clearOfflineConflicts,
+  getOfflineConflictCount,
+  getOfflineQueueCount,
+  onOfflineQueueChange,
+  replayOfflineQueue,
+} from './services/offlineQueueService'
 import type { AppLocale } from './types/i18n'
 import { useAuthStore } from './stores/auth'
 
@@ -24,10 +30,16 @@ const nextLocaleLabel = computed(() =>
 const showLogoutConfirm = ref(false)
 const isOnline = ref(typeof navigator === 'undefined' ? true : navigator.onLine)
 const pendingSyncCount = ref(getOfflineQueueCount())
+const conflictSyncCount = ref(getOfflineConflictCount())
 let removeQueueListener: (() => void) | null = null
 
-const showSyncBanner = computed(() => !isOnline.value || pendingSyncCount.value > 0)
+const showSyncBanner = computed(
+  () => !isOnline.value || pendingSyncCount.value > 0 || conflictSyncCount.value > 0,
+)
 const syncMessage = computed(() => {
+  if (conflictSyncCount.value > 0) {
+    return t('common.syncConflict', { count: conflictSyncCount.value })
+  }
   if (!isOnline.value) {
     return t('common.syncOffline', { count: pendingSyncCount.value })
   }
@@ -58,10 +70,16 @@ async function onConfirmLogout() {
 function refreshSyncStatus() {
   isOnline.value = typeof navigator === 'undefined' ? true : navigator.onLine
   pendingSyncCount.value = getOfflineQueueCount()
+  conflictSyncCount.value = getOfflineConflictCount()
 }
 
 async function onRetrySync() {
   await replayOfflineQueue()
+  refreshSyncStatus()
+}
+
+function onClearConflicts() {
+  clearOfflineConflicts()
   refreshSyncStatus()
 }
 
@@ -147,19 +165,37 @@ onBeforeUnmount(() => {
 
       <section
         v-if="showSyncBanner"
-        class="mb-4 flex flex-col gap-2 rounded-xl border border-amber-500/40 bg-amber-950/30 p-3 sm:flex-row sm:items-center sm:justify-between"
+        class="mb-4 flex flex-col gap-2 rounded-xl p-3 sm:flex-row sm:items-center sm:justify-between"
+        :class="
+          conflictSyncCount > 0
+            ? 'border border-rose-500/40 bg-rose-950/30'
+            : 'border border-amber-500/40 bg-amber-950/30'
+        "
       >
-        <p class="text-xs text-amber-200">
+        <p
+          class="text-xs"
+          :class="conflictSyncCount > 0 ? 'text-rose-200' : 'text-amber-200'"
+        >
           {{ syncMessage }}
         </p>
-        <button
-          type="button"
-          class="cursor-pointer rounded-lg border border-amber-500/60 px-3 py-1.5 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-          :disabled="!isOnline || pendingSyncCount === 0"
-          @click="onRetrySync"
-        >
-          {{ t('common.syncRetry') }}
-        </button>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            class="cursor-pointer rounded-lg border border-amber-500/60 px-3 py-1.5 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="!isOnline || pendingSyncCount === 0"
+            @click="onRetrySync"
+          >
+            {{ t('common.syncRetry') }}
+          </button>
+          <button
+            v-if="conflictSyncCount > 0"
+            type="button"
+            class="cursor-pointer rounded-lg border border-rose-500/60 px-3 py-1.5 text-xs font-semibold text-rose-100 transition hover:bg-rose-500/20"
+            @click="onClearConflicts"
+          >
+            {{ t('common.syncClearConflicts') }}
+          </button>
+        </div>
       </section>
       <RouterView />
     </main>

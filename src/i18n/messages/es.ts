@@ -10,6 +10,8 @@ export const es = {
     syncPending: 'Sincronizacion pendiente: {count} operaciones por enviar.',
     syncOk: 'Sincronizacion al dia.',
     syncRetry: 'Reintentar sincronizacion',
+    syncConflict: 'Conflictos de sincronizacion: {count}. Revisa y resuelve manualmente.',
+    syncClearConflicts: 'Marcar conflictos revisados',
   },
   home: {
     home: 'Inicio',

@@ -2,14 +2,17 @@ import { updateLibraryBookMetadata } from './libraryService'
 import { createReadingSessionWithId } from './readingSessionService'
 import { clearReadingState, saveReadingState } from './readingStateService'
 import type {
+  OfflineConflictItem,
   OfflineQueueItem,
   QueuedFinishSessionPayload,
   QueuedReadingStatePayload,
 } from '../types/offline-queue'
 
 const STORAGE_KEY = 'book-memory-offline-queue'
+const CONFLICTS_KEY = 'book-memory-offline-conflicts'
 const QUEUE_EVENT = 'book-memory-offline-queue-changed'
 const MAX_QUEUE_ITEMS = 200
+const MAX_CONFLICT_ITEMS = 100
 let replaying = false
 
 function canUseStorage(): boolean {
@@ -40,6 +43,49 @@ function writeQueue(items: OfflineQueueItem[]) {
   }
 }
 
+function readConflicts(): OfflineConflictItem[] {
+  if (!canUseStorage()) return []
+  const raw = globalThis.localStorage.getItem(CONFLICTS_KEY)
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw) as OfflineConflictItem[]
+    if (!Array.isArray(parsed)) return []
+    return parsed
+  } catch {
+    return []
+  }
+}
+
+function writeConflicts(items: OfflineConflictItem[]) {
+  if (!canUseStorage()) return
+  const bounded = items.length > MAX_CONFLICT_ITEMS ? items.slice(items.length - MAX_CONFLICT_ITEMS) : items
+  globalThis.localStorage.setItem(CONFLICTS_KEY, JSON.stringify(bounded))
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(QUEUE_EVENT))
+  }
+}
+
+function appendConflict(item: OfflineQueueItem) {
+  const conflicts = readConflicts()
+  const conflictId =
+    item.action === 'finish_reading_session' &&
+    item.payload &&
+    typeof (item.payload as QueuedFinishSessionPayload).transactionId === 'string'
+      ? `finish:${(item.payload as QueuedFinishSessionPayload).transactionId}`
+      : `${item.action}:${item.id}`
+
+  const filtered = conflicts.filter((entry) => entry.id !== conflictId)
+  filtered.push({
+    id: conflictId,
+    action: item.action,
+    uid: item.uid,
+    payload: item.payload,
+    createdAt: item.createdAt,
+    failedAt: new Date().toISOString(),
+  })
+  writeConflicts(filtered)
+}
+
 function compactQueue(items: OfflineQueueItem[]): OfflineQueueItem[] {
   const lastIndexByUid = new Map<string, number>()
   const keepIndexes: number[] = []
@@ -61,6 +107,14 @@ function compactQueue(items: OfflineQueueItem[]): OfflineQueueItem[] {
 
 export function getOfflineQueueCount(): number {
   return readQueue().length
+}
+
+export function getOfflineConflictCount(): number {
+  return readConflicts().length
+}
+
+export function clearOfflineConflicts() {
+  writeConflicts([])
 }
 
 export function onOfflineQueueChange(listener: () => void): () => void {
@@ -153,6 +207,10 @@ export async function replayOfflineQueue() {
           })
         }
       } catch {
+        if (item.action === 'finish_reading_session') {
+          appendConflict(item)
+          continue
+        }
         pending.push(item)
       }
     }

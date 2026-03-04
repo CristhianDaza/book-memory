@@ -10,6 +10,8 @@ export const en = {
     syncPending: 'Pending sync: {count} operations waiting to be sent.',
     syncOk: 'Sync is up to date.',
     syncRetry: 'Retry sync',
+    syncConflict: 'Sync conflicts: {count}. Review and resolve them manually.',
+    syncClearConflicts: 'Mark conflicts as reviewed',
   },
   home: {
     home: 'Home',

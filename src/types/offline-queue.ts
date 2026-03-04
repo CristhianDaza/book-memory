@@ -32,3 +32,12 @@ export interface OfflineQueueItem {
   payload: QueuedReadingStatePayload | QueuedFinishSessionPayload | null
   createdAt: string
 }
+
+export interface OfflineConflictItem {
+  id: string
+  action: OfflineQueueAction
+  uid: string
+  payload: QueuedReadingStatePayload | QueuedFinishSessionPayload | null
+  createdAt: string
+  failedAt: string
+}

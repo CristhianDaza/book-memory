@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  clearOfflineConflicts,
   enqueueOfflineFinishReadingSession,
   enqueueOfflineClearReadingState,
   enqueueOfflineSaveReadingState,
+  getOfflineConflictCount,
   getOfflineQueueCount,
   replayOfflineQueue,
 } from './offlineQueueService'
@@ -48,6 +50,7 @@ describe('offlineQueueService', () => {
     vi.stubGlobal('navigator', { onLine: true })
     vi.mocked(createReadingSessionWithId).mockResolvedValue()
     vi.mocked(updateLibraryBookMetadata).mockResolvedValue()
+    clearOfflineConflicts()
   })
 
   it('queues save and replays it', async () => {
@@ -160,5 +163,27 @@ describe('offlineQueueService', () => {
       status: 'reading',
     })
     expect(getOfflineQueueCount()).toBe(0)
+  })
+
+  it('moves failed finish transaction to conflicts and removes from queue', async () => {
+    vi.mocked(createReadingSessionWithId).mockRejectedValueOnce(new Error('permission'))
+    enqueueOfflineFinishReadingSession('u1', {
+      transactionId: 'tx-conflict',
+      bookId: 'b1',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      endedAt: '2026-01-01T00:10:00.000Z',
+      durationSeconds: 600,
+      startPage: 10,
+      endPage: 20,
+      pagesRead: 10,
+      totalPages: 300,
+      currentPage: 20,
+      status: 'reading',
+    })
+
+    await replayOfflineQueue()
+
+    expect(getOfflineQueueCount()).toBe(0)
+    expect(getOfflineConflictCount()).toBe(1)
   })
 })
