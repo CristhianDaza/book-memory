@@ -6,6 +6,7 @@ import { getFirebaseAuth, isFirebaseConfigured } from '../lib/firebase'
 import { deleteUserData } from '../services/accountService'
 
 let authSdkPromise: Promise<typeof import('firebase/auth')> | null = null
+const AUTH_INIT_TIMEOUT_MS = 3000
 
 function getAuthSdk() {
   if (!authSdkPromise) {
@@ -56,12 +57,33 @@ export const useAuthStore = defineStore('auth', () => {
       const { onAuthStateChanged } = await getAuthSdk()
       initializing.value = true
       await new Promise<void>((resolve) => {
-        const unsubscribe = onAuthStateChanged(firebaseAuth, (nextUser) => {
+        let settled = false
+        let timeout: ReturnType<typeof setTimeout> | null = null
+        let unsubscribe: (() => void) | null = null
+
+        function finalize(nextUser: User | null) {
+          if (settled) return
+          settled = true
           user.value = nextUser
           initialized.value = true
           initializing.value = false
-          unsubscribe()
+          if (timeout) {
+            clearTimeout(timeout)
+            timeout = null
+          }
+          if (unsubscribe) {
+            unsubscribe()
+            unsubscribe = null
+          }
           resolve()
+        }
+
+        timeout = setTimeout(() => {
+          finalize(firebaseAuth.currentUser ?? null)
+        }, AUTH_INIT_TIMEOUT_MS)
+
+        unsubscribe = onAuthStateChanged(firebaseAuth, (nextUser) => {
+          finalize(nextUser)
         })
       })
     })()
