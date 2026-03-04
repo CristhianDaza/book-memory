@@ -36,4 +36,14 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-vue': ['vue', 'vue-router', 'pinia'],
+          'vendor-i18n': ['vue-i18n'],
+        },
+      },
+    },
+  },
 })

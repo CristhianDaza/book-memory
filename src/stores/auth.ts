@@ -1,16 +1,17 @@
 import { defineStore } from 'pinia'
-import {
-  GoogleAuthProvider,
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-  type User,
-} from 'firebase/auth'
+import type { User } from 'firebase/auth'
 import { computed, ref } from 'vue'
 import { i18n } from '../i18n'
-import { firebaseAuth, isFirebaseConfigured } from '../lib/firebase'
+import { getFirebaseAuth, isFirebaseConfigured } from '../lib/firebase'
+
+let authSdkPromise: Promise<typeof import('firebase/auth')> | null = null
+
+function getAuthSdk() {
+  if (!authSdkPromise) {
+    authSdkPromise = import('firebase/auth')
+  }
+  return authSdkPromise
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -37,34 +38,46 @@ export const useAuthStore = defineStore('auth', () => {
     if (initialized.value) return Promise.resolve()
     if (initPromise) return initPromise
 
-    initPromise = new Promise((resolve) => {
-      if (!firebaseAuth || !isFirebaseConfigured()) {
+    initPromise = (async () => {
+      if (!isFirebaseConfigured()) {
         errorMessage.value = tAuthError('authErrors.firebaseConfigMissing')
         initialized.value = true
-        resolve()
         return
       }
 
-      initializing.value = true
-      onAuthStateChanged(firebaseAuth, (nextUser) => {
-        user.value = nextUser
+      const firebaseAuth = await getFirebaseAuth()
+      if (!firebaseAuth) {
+        errorMessage.value = tAuthError('authErrors.firebaseConfigMissing')
         initialized.value = true
-        initializing.value = false
-        resolve()
+        return
+      }
+
+      const { onAuthStateChanged } = await getAuthSdk()
+      initializing.value = true
+      await new Promise<void>((resolve) => {
+        const unsubscribe = onAuthStateChanged(firebaseAuth, (nextUser) => {
+          user.value = nextUser
+          initialized.value = true
+          initializing.value = false
+          unsubscribe()
+          resolve()
+        })
       })
-    })
+    })()
 
     return initPromise
   }
 
   async function loginWithGoogle() {
     clearError()
+    const firebaseAuth = await getFirebaseAuth()
     if (!firebaseAuth) {
       errorMessage.value = tAuthError('authErrors.firebaseAuthNotConfigured')
       return
     }
 
     try {
+      const { GoogleAuthProvider, signInWithPopup } = await getAuthSdk()
       await signInWithPopup(firebaseAuth, new GoogleAuthProvider())
     } catch (error) {
       errorMessage.value = resolveErrorMessage(error, 'authErrors.googleSignInFailed')
@@ -73,12 +86,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function loginWithEmail(email: string, password: string) {
     clearError()
+    const firebaseAuth = await getFirebaseAuth()
     if (!firebaseAuth) {
       errorMessage.value = tAuthError('authErrors.firebaseAuthNotConfigured')
       return
     }
 
     try {
+      const { signInWithEmailAndPassword } = await getAuthSdk()
       await signInWithEmailAndPassword(firebaseAuth, email, password)
     } catch (error) {
       errorMessage.value = resolveErrorMessage(error, 'authErrors.emailSignInFailed')
@@ -87,12 +102,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function registerWithEmail(email: string, password: string) {
     clearError()
+    const firebaseAuth = await getFirebaseAuth()
     if (!firebaseAuth) {
       errorMessage.value = tAuthError('authErrors.firebaseAuthNotConfigured')
       return
     }
 
     try {
+      const { createUserWithEmailAndPassword } = await getAuthSdk()
       await createUserWithEmailAndPassword(firebaseAuth, email, password)
     } catch (error) {
       errorMessage.value = resolveErrorMessage(error, 'authErrors.emailSignUpFailed')
@@ -101,9 +118,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     clearError()
+    const firebaseAuth = await getFirebaseAuth()
     if (!firebaseAuth) return
 
     try {
+      const { signOut } = await getAuthSdk()
       await signOut(firebaseAuth)
     } catch (error) {
       errorMessage.value = resolveErrorMessage(error, 'authErrors.signOutFailed')

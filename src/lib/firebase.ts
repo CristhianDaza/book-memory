@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import type { Auth } from 'firebase/auth'
+import type { Firestore } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -14,8 +14,26 @@ const firebaseConfig = {
 const hasFirebaseConfig = Object.values(firebaseConfig).every((value) => Boolean(value))
 
 export const firebaseApp = hasFirebaseConfig ? initializeApp(firebaseConfig) : null
-export const firebaseAuth = firebaseApp ? getAuth(firebaseApp) : null
-export const firebaseDb = firebaseApp ? getFirestore(firebaseApp) : null
+let firebaseAuthInstance: Auth | null | undefined
+let firebaseDbInstance: Firestore | null | undefined
+
+export async function getFirebaseAuth(): Promise<Auth | null> {
+  if (!hasFirebaseConfig || !firebaseApp) return null
+  if (firebaseAuthInstance !== undefined) return firebaseAuthInstance
+
+  const { getAuth } = await import('firebase/auth')
+  firebaseAuthInstance = getAuth(firebaseApp)
+  return firebaseAuthInstance
+}
+
+export async function getFirebaseDb(): Promise<Firestore | null> {
+  if (!hasFirebaseConfig || !firebaseApp) return null
+  if (firebaseDbInstance !== undefined) return firebaseDbInstance
+
+  const { getFirestore } = await import('firebase/firestore')
+  firebaseDbInstance = getFirestore(firebaseApp)
+  return firebaseDbInstance
+}
 
 export function isFirebaseConfigured(): boolean {
   return hasFirebaseConfig

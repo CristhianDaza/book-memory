@@ -1,25 +1,21 @@
-import {
-  Timestamp,
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  writeBatch,
-  where,
-} from 'firebase/firestore'
-import { firebaseDb } from '../lib/firebase'
+import { getFirebaseDb } from '../lib/firebase'
 import type { CreateReadingSessionInput, FirestoreTimestampLike, ReadingSessionRecord } from '../types/reading'
 
-function ensureFirestore() {
-  if (!firebaseDb) {
+let firestoreSdkPromise: Promise<typeof import('firebase/firestore')> | null = null
+
+function getFirestoreSdk() {
+  if (!firestoreSdkPromise) {
+    firestoreSdkPromise = import('firebase/firestore')
+  }
+  return firestoreSdkPromise
+}
+
+async function ensureFirestore() {
+  const db = await getFirebaseDb()
+  if (!db) {
     throw new Error('Firebase Firestore is not configured.')
   }
-  return firebaseDb
+  return db
 }
 
 function toMillis(value: unknown): number {
@@ -36,7 +32,8 @@ export async function fetchRecentSessionsForBook(
   bookId: string,
   maxResults = 5,
 ): Promise<ReadingSessionRecord[]> {
-  const db = ensureFirestore()
+  const db = await ensureFirestore()
+  const { collection, getDocs, query, where } = await getFirestoreSdk()
   const ref = collection(db, 'users', uid, 'sessions')
   const q = query(ref, where('bookId', '==', bookId))
   const snapshot = await getDocs(q)
@@ -55,7 +52,8 @@ export async function fetchRecentSessionsForBook(
 }
 
 export async function fetchSessionsForBook(uid: string, bookId: string): Promise<ReadingSessionRecord[]> {
-  const db = ensureFirestore()
+  const db = await ensureFirestore()
+  const { collection, getDocs, query, where } = await getFirestoreSdk()
   const ref = collection(db, 'users', uid, 'sessions')
   const q = query(ref, where('bookId', '==', bookId))
   const snapshot = await getDocs(q)
@@ -72,7 +70,8 @@ export async function fetchSessionsForBook(uid: string, bookId: string): Promise
 }
 
 export async function fetchUserSessions(uid: string): Promise<ReadingSessionRecord[]> {
-  const db = ensureFirestore()
+  const db = await ensureFirestore()
+  const { collection, getDocs, orderBy, query } = await getFirestoreSdk()
   const ref = collection(db, 'users', uid, 'sessions')
   const q = query(ref, orderBy('startedAt', 'desc'))
   const snapshot = await getDocs(q)
@@ -87,7 +86,8 @@ export async function fetchUserSessions(uid: string): Promise<ReadingSessionReco
 }
 
 export async function createReadingSession(uid: string, payload: CreateReadingSessionInput): Promise<void> {
-  const db = ensureFirestore()
+  const db = await ensureFirestore()
+  const { Timestamp, addDoc, collection, serverTimestamp } = await getFirestoreSdk()
   const ref = collection(db, 'users', uid, 'sessions')
 
   await addDoc(ref, {
@@ -107,7 +107,8 @@ export async function updateReadingSession(
   sessionId: string,
   payload: Pick<ReadingSessionRecord, 'startPage' | 'endPage' | 'pagesRead' | 'durationSeconds'>,
 ): Promise<void> {
-  const db = ensureFirestore()
+  const db = await ensureFirestore()
+  const { doc, serverTimestamp, updateDoc } = await getFirestoreSdk()
   const ref = doc(db, 'users', uid, 'sessions', sessionId)
   await updateDoc(ref, {
     ...payload,
@@ -116,13 +117,15 @@ export async function updateReadingSession(
 }
 
 export async function deleteReadingSession(uid: string, sessionId: string): Promise<void> {
-  const db = ensureFirestore()
+  const db = await ensureFirestore()
+  const { deleteDoc, doc } = await getFirestoreSdk()
   const ref = doc(db, 'users', uid, 'sessions', sessionId)
   await deleteDoc(ref)
 }
 
 export async function deleteSessionsForBook(uid: string, bookId: string): Promise<void> {
-  const db = ensureFirestore()
+  const db = await ensureFirestore()
+  const { collection, getDocs, query, where, writeBatch } = await getFirestoreSdk()
   const ref = collection(db, 'users', uid, 'sessions')
   const snapshot = await getDocs(query(ref, where('bookId', '==', bookId)))
   if (snapshot.empty) return

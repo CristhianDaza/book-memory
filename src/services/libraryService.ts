@@ -1,22 +1,21 @@
-import {
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-} from 'firebase/firestore'
-import { firebaseDb } from '../lib/firebase'
+import { getFirebaseDb } from '../lib/firebase'
 import type { BookSearchResult, LibraryBook } from '../types/books'
 
-function ensureFirestore() {
-  if (!firebaseDb) {
+let firestoreSdkPromise: Promise<typeof import('firebase/firestore')> | null = null
+
+function getFirestoreSdk() {
+  if (!firestoreSdkPromise) {
+    firestoreSdkPromise = import('firebase/firestore')
+  }
+  return firestoreSdkPromise
+}
+
+async function ensureFirestore() {
+  const db = await getFirebaseDb()
+  if (!db) {
     throw new Error('Firebase Firestore is not configured.')
   }
-  return firebaseDb
+  return db
 }
 
 function toLibraryDocId(searchResult: BookSearchResult): string {
@@ -24,7 +23,8 @@ function toLibraryDocId(searchResult: BookSearchResult): string {
 }
 
 export async function fetchLibraryBooks(uid: string): Promise<LibraryBook[]> {
-  const db = ensureFirestore()
+  const db = await ensureFirestore()
+  const { collection, getDocs, orderBy, query } = await getFirestoreSdk()
   const ref = collection(db, 'users', uid, 'library')
   const snapshot = await getDocs(query(ref, orderBy('updatedAt', 'desc')))
 
@@ -39,7 +39,8 @@ export async function fetchLibraryBooks(uid: string): Promise<LibraryBook[]> {
 }
 
 export async function addBookToLibrary(uid: string, book: BookSearchResult): Promise<LibraryBook> {
-  const db = ensureFirestore()
+  const db = await ensureFirestore()
+  const { doc, serverTimestamp, setDoc } = await getFirestoreSdk()
   const id = toLibraryDocId(book)
   const ref = doc(db, 'users', uid, 'library', id)
 
@@ -66,7 +67,8 @@ export async function addBookToLibrary(uid: string, book: BookSearchResult): Pro
 }
 
 export async function updateLibraryBookFavorite(uid: string, bookId: string, favorite: boolean) {
-  const db = ensureFirestore()
+  const db = await ensureFirestore()
+  const { doc, serverTimestamp, updateDoc } = await getFirestoreSdk()
   const ref = doc(db, 'users', uid, 'library', bookId)
   await updateDoc(ref, {
     favorite,
@@ -75,7 +77,8 @@ export async function updateLibraryBookFavorite(uid: string, bookId: string, fav
 }
 
 export async function deleteLibraryBook(uid: string, bookId: string) {
-  const db = ensureFirestore()
+  const db = await ensureFirestore()
+  const { deleteDoc, doc } = await getFirestoreSdk()
   const ref = doc(db, 'users', uid, 'library', bookId)
   await deleteDoc(ref)
 }
@@ -85,7 +88,8 @@ export async function updateLibraryBookMetadata(
   bookId: string,
   payload: Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'>,
 ) {
-  const db = ensureFirestore()
+  const db = await ensureFirestore()
+  const { doc, serverTimestamp, updateDoc } = await getFirestoreSdk()
   const ref = doc(db, 'users', uid, 'library', bookId)
   await updateDoc(ref, {
     ...payload,
