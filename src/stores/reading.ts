@@ -1,18 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { clearReadingState, fetchReadingState, saveReadingState } from '../services/readingStateService'
+import type { PersistedReadingState } from '../types/reading-state'
 import { useAuthStore } from './auth'
-
-interface PersistedReadingState {
-  selectedBookId: string
-  sessionBookId: string | null
-  startPage: number
-  endPage: number
-  elapsedSeconds: number
-  sessionStartedAt: string | null
-  running: boolean
-  persistedAt: string
-}
 
 const STORAGE_KEY = 'book-memory-reading-session'
 const CLOUD_SYNC_DELAY_MS = 600

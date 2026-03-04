@@ -1,19 +1,5 @@
 import { getFirebaseDb } from '../lib/firebase'
-
-export interface CloudReadingState {
-  selectedBookId: string
-  sessionBookId: string | null
-  startPage: number
-  endPage: number
-  elapsedSeconds: number
-  sessionStartedAt: Date | null
-  running: boolean
-  persistedAt: Date
-}
-
-interface FirestoreTimestampLike {
-  toDate: () => Date
-}
+import type { CloudReadingState, ReadingStateTimestampLike } from '../types/reading-state'
 
 let firestoreSdkPromise: Promise<typeof import('firebase/firestore')> | null = null
 
@@ -36,7 +22,7 @@ function toDate(value: unknown): Date | null {
   if (!value) return null
   if (value instanceof Date) return value
   if (typeof value === 'object' && value !== null && 'toDate' in value) {
-    return (value as FirestoreTimestampLike).toDate()
+    return (value as ReadingStateTimestampLike).toDate()
   }
   return null
 }
@@ -89,4 +75,3 @@ export async function clearReadingState(uid: string): Promise<void> {
   const ref = doc(db, 'users', uid, 'reading_state', 'current')
   await deleteDoc(ref)
 }
-
