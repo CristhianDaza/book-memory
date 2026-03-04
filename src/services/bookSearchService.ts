@@ -3,6 +3,22 @@ import type { GoogleBooksResponse } from '../types/book-search'
 import type { AppLocale } from '../types/i18n'
 import type { SearchBooksPageResult, SearchLanguageMode } from '../types/books-store'
 
+export type SearchBooksErrorCode = 'quota_exceeded' | 'service_unavailable' | 'network_error' | 'http_error'
+
+export class SearchBooksError extends Error {
+  readonly code: SearchBooksErrorCode
+
+  constructor(code: SearchBooksErrorCode, message: string) {
+    super(message)
+    this.name = 'SearchBooksError'
+    this.code = code
+  }
+}
+
+export function isSearchBooksError(error: unknown): error is SearchBooksError {
+  return error instanceof SearchBooksError
+}
+
 const MAX_RESULTS = 40
 const PAGE_SIZE = 20
 const GOOGLE_LANG_BY_LOCALE: Record<AppLocale, string> = {
@@ -35,20 +51,36 @@ async function searchGoogleBooks(
   startIndex = 0,
   maxResults = PAGE_SIZE,
 ): Promise<SearchBooksPageResult> {
-  if (googleBooksUnavailable) return { items: [], totalItems: 0 }
+  if (googleBooksUnavailable) {
+    throw new SearchBooksError(
+      'service_unavailable',
+      'Google Books is temporarily unavailable because of previous quota/auth failures.',
+    )
+  }
   const apiKey = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY as string | undefined
   const keyParam = apiKey ? `&key=${encodeURIComponent(apiKey)}` : ''
   const langParam = locale ? `&langRestrict=${GOOGLE_LANG_BY_LOCALE[locale]}` : ''
   const safeMaxResults = Math.max(1, Math.min(MAX_RESULTS, Math.floor(maxResults)))
   const safeStartIndex = Math.max(0, Math.floor(startIndex))
   const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=${safeMaxResults}&startIndex=${safeStartIndex}${langParam}${keyParam}`
-  const response = await fetch(url)
+  let response: Response
+  try {
+    response = await fetch(url)
+  } catch {
+    throw new SearchBooksError('network_error', 'Network error while contacting Google Books.')
+  }
+
   if (!response.ok) {
-    if (response.status === 403) {
+    if (response.status === 403 || response.status === 429) {
       googleBooksUnavailable = true
-      return { items: [], totalItems: 0 }
+      throw new SearchBooksError('quota_exceeded', `Google Books quota/auth error (${response.status}).`)
     }
-    throw new Error(`Google Books request failed with status ${response.status}`)
+
+    if (response.status >= 500) {
+      throw new SearchBooksError('service_unavailable', `Google Books service error (${response.status}).`)
+    }
+
+    throw new SearchBooksError('http_error', `Google Books request failed with status ${response.status}.`)
   }
 
   const data = (await response.json()) as GoogleBooksResponse
@@ -91,9 +123,7 @@ export async function searchBooks(
 
   const localeFilter = languageMode === 'active' ? locale : undefined
   const startIndex = Math.max(0, Math.floor(page)) * Math.max(1, Math.floor(pageSize))
-  const localizedGoogleResults = await searchGoogleBooks(trimmedQuery, localeFilter, startIndex, pageSize).catch(
-    () => ({ items: [], totalItems: 0 }),
-  )
+  const localizedGoogleResults = await searchGoogleBooks(trimmedQuery, localeFilter, startIndex, pageSize)
   const unique = new Map<string, BookSearchResult>()
 
   for (const book of localizedGoogleResults.items) {

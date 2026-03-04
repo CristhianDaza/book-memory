@@ -78,6 +78,7 @@ npm run dev
 - `npm run typecheck`: TypeScript checks
 - `npm run lint`: ESLint in strict mode (`--max-warnings=0`)
 - `npm run lint:fix`: auto-fix lint issues where possible
+- `npm run smoke:mvp`: lint + typecheck + production build
 
 ## CI (GitHub Actions)
 
@@ -88,6 +89,11 @@ Lint workflow runs automatically on:
 - Pull requests targeting `main` or `develop`
 
 Workflow file: `.github/workflows/lint.yml`
+
+## MVP QA
+
+- Manual smoke checklist: `docs/mvp-smoke-checklist.md`
+- Release checklist: `docs/mvp-release-checklist.md`
 
 ## Deployment
 

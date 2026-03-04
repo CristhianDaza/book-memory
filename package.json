@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "smoke:mvp": "npm run lint && npm run typecheck && npm run build"
   },
   "dependencies": {
     "dayjs": "^1.11.19",

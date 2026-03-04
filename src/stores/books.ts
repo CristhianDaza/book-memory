@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { searchBooks } from '../services/bookSearchService'
+import { isSearchBooksError, searchBooks } from '../services/bookSearchService'
 import type { LibrarySortMode, SearchLanguageMode } from '../types/books-store'
 import { deleteSessionsForBook, fetchSessionsForBook } from '../services/readingSessionService'
 import {
@@ -61,6 +61,14 @@ export const useBooksStore = defineStore('books', () => {
     errorDetails.value = null
   }
 
+  function mapSearchError(error: unknown): string {
+    if (!isSearchBooksError(error)) return 'books.searchError'
+    if (error.code === 'quota_exceeded') return 'books.searchQuotaError'
+    if (error.code === 'service_unavailable') return 'books.searchServiceUnavailable'
+    if (error.code === 'network_error') return 'books.searchNetworkError'
+    return 'books.searchError'
+  }
+
   async function search(queryText: string, locale: AppLocale) {
     clearError()
     query.value = queryText
@@ -71,7 +79,7 @@ export const useBooksStore = defineStore('books', () => {
       searchPage.value = 0
       hasMoreSearchResults.value = result.totalItems > result.items.length
     } catch (error) {
-      errorKey.value = 'books.searchError'
+      errorKey.value = mapSearchError(error)
       errorDetails.value = error instanceof Error ? error.message : null
       searchResults.value = []
       hasMoreSearchResults.value = false
@@ -103,7 +111,7 @@ export const useBooksStore = defineStore('books', () => {
       searchPage.value = nextPage
       hasMoreSearchResults.value = result.totalItems > searchResults.value.length
     } catch (error) {
-      errorKey.value = 'books.searchError'
+      errorKey.value = mapSearchError(error)
       errorDetails.value = error instanceof Error ? error.message : null
     } finally {
       loadingMoreSearch.value = false
