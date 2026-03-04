@@ -80,7 +80,7 @@ function onCancelLogoutConfirm() {
 async function onConfirmLogout() {
   await authStore.logout()
   showLogoutConfirm.value = false
-  await router.push({ name: 'login' })
+  await router.replace({ name: 'login' })
 }
 
 function onOpenDeleteAccountConfirm() {
@@ -124,7 +124,7 @@ async function onConfirmDeleteAccount() {
   }
   showDeleteAccountConfirm.value = false
   notificationsStore.success(t('notifications.accountDeleted'))
-  await router.push({ name: 'login' })
+  await router.replace({ name: 'login' })
 }
 
 function refreshSyncStatus() {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { setAppLocale } from '../../../i18n'
@@ -17,6 +17,7 @@ const email = ref('')
 const password = ref('')
 const mode = ref<'login' | 'register'>('login')
 const resetInfoMessage = ref<string | null>(null)
+const redirecting = ref(false)
 const currentLocale = computed(() => locale.value as AppLocale)
 const nextLocale = computed<AppLocale>(() => (currentLocale.value === 'es' ? 'en' : 'es'))
 const nextLocaleLabel = computed(() =>
@@ -27,26 +28,36 @@ function onChangeLocale(nextLocale: AppLocale) {
   setAppLocale(nextLocale)
 }
 
+async function navigateAfterAuth() {
+  if (redirecting.value) return
+  redirecting.value = true
+  try {
+    const redirectTarget = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+    await router.replace(redirectTarget)
+  } finally {
+    redirecting.value = false
+  }
+}
+
+watch(
+  isAuthenticated,
+  async (authenticated) => {
+    if (!authenticated) return
+    await navigateAfterAuth()
+  },
+  { immediate: true },
+)
+
 async function onEmailSubmit() {
   if (mode.value === 'login') {
     await authStore.loginWithEmail(email.value, password.value)
   } else {
     await authStore.registerWithEmail(email.value, password.value)
   }
-
-  if (isAuthenticated.value) {
-    const redirectTarget = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
-    await router.push(redirectTarget)
-  }
 }
 
 async function onGoogleSubmit() {
   await authStore.loginWithGoogle()
-
-  if (isAuthenticated.value) {
-    const redirectTarget = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
-    await router.push(redirectTarget)
-  }
 }
 
 async function onResetPassword() {

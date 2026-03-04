@@ -101,7 +101,9 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const { GoogleAuthProvider, signInWithPopup } = await getAuthSdk()
-      await signInWithPopup(firebaseAuth, new GoogleAuthProvider())
+      const credential = await signInWithPopup(firebaseAuth, new GoogleAuthProvider())
+      user.value = credential.user
+      initialized.value = true
     } catch (error) {
       errorMessage.value = resolveErrorMessage(error, 'authErrors.googleSignInFailed')
     }
@@ -117,7 +119,9 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const { signInWithEmailAndPassword } = await getAuthSdk()
-      await signInWithEmailAndPassword(firebaseAuth, email, password)
+      const credential = await signInWithEmailAndPassword(firebaseAuth, email, password)
+      user.value = credential.user
+      initialized.value = true
     } catch (error) {
       errorMessage.value = resolveErrorMessage(error, 'authErrors.emailSignInFailed')
     }
@@ -133,7 +137,9 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const { createUserWithEmailAndPassword } = await getAuthSdk()
-      await createUserWithEmailAndPassword(firebaseAuth, email, password)
+      const credential = await createUserWithEmailAndPassword(firebaseAuth, email, password)
+      user.value = credential.user
+      initialized.value = true
     } catch (error) {
       errorMessage.value = resolveErrorMessage(error, 'authErrors.emailSignUpFailed')
     }
@@ -147,6 +153,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const { signOut } = await getAuthSdk()
       await signOut(firebaseAuth)
+      user.value = null
     } catch (error) {
       errorMessage.value = resolveErrorMessage(error, 'authErrors.signOutFailed')
     }
