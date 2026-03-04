@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useAuthStore } from './auth'
 import { useReadingStore } from './reading'
 import { clearReadingState, fetchReadingState, saveReadingState } from '../services/readingStateService'
+import { enqueueOfflineSaveReadingState, replayOfflineQueue } from '../services/offlineQueueService'
 
 vi.mock('../i18n', () => ({
   i18n: {
@@ -16,6 +17,12 @@ vi.mock('../services/readingStateService', () => ({
   fetchReadingState: vi.fn(),
   saveReadingState: vi.fn(),
   clearReadingState: vi.fn(),
+}))
+
+vi.mock('../services/offlineQueueService', () => ({
+  enqueueOfflineSaveReadingState: vi.fn(),
+  enqueueOfflineClearReadingState: vi.fn(),
+  replayOfflineQueue: vi.fn(),
 }))
 
 const STORAGE_KEY = 'book-memory-reading-session'
@@ -128,5 +135,31 @@ describe('reading store', () => {
     vi.advanceTimersByTime(700)
 
     expect(saveReadingState).toHaveBeenCalled()
+  })
+
+  it('queues reading state when offline and syncs on reconnect', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    vi.stubGlobal('navigator', { onLine: false })
+    vi.mocked(saveReadingState).mockResolvedValue()
+    vi.mocked(replayOfflineQueue).mockResolvedValue()
+
+    const store = useReadingStore()
+    store.setSelectedBook('book-offline')
+    store.setStartPage(10)
+    store.startTimer()
+    vi.advanceTimersByTime(700)
+
+    const enqueueCallsBeforeOnline = vi.mocked(enqueueOfflineSaveReadingState).mock.calls.length
+    const saveCallsBeforeOnline = vi.mocked(saveReadingState).mock.calls.length
+    expect(enqueueOfflineSaveReadingState).toHaveBeenCalled()
+
+    vi.stubGlobal('navigator', { onLine: true })
+    window.dispatchEvent(new Event('online'))
+    vi.advanceTimersByTime(700)
+
+    expect(replayOfflineQueue).toHaveBeenCalled()
+    expect(vi.mocked(enqueueOfflineSaveReadingState).mock.calls.length).toBeGreaterThanOrEqual(enqueueCallsBeforeOnline)
+    expect(vi.mocked(saveReadingState).mock.calls.length).toBeGreaterThan(saveCallsBeforeOnline)
   })
 })

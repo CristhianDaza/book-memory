@@ -1,6 +1,10 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { enqueueOfflineClearReadingState, enqueueOfflineSaveReadingState } from '../services/offlineQueueService'
+import {
+  enqueueOfflineClearReadingState,
+  enqueueOfflineSaveReadingState,
+  replayOfflineQueue,
+} from '../services/offlineQueueService'
 import { clearReadingState, fetchReadingState, saveReadingState } from '../services/readingStateService'
 import type { PersistedReadingState } from '../types/reading-state'
 import { useAuthStore } from './auth'
@@ -10,6 +14,11 @@ const CLOUD_SYNC_DELAY_MS = 600
 
 function canUseLocalStorage(): boolean {
   return typeof globalThis !== 'undefined' && 'localStorage' in globalThis
+}
+
+function isNavigatorOnline(): boolean {
+  if (typeof navigator === 'undefined') return true
+  return navigator.onLine
 }
 
 export const useReadingStore = defineStore('reading', () => {
@@ -23,12 +32,12 @@ export const useReadingStore = defineStore('reading', () => {
   let timer: ReturnType<typeof setInterval> | null = null
   let cloudSyncTimer: ReturnType<typeof setTimeout> | null = null
   let hydratingFromCloud = false
+  let onlineListenerInstalled = false
 
   const hasActiveSession = computed(() => sessionStartedAt.value !== null)
 
-  function persistState() {
-    if (!canUseLocalStorage()) return
-    const payload: PersistedReadingState = {
+  function buildPersistedPayload(): PersistedReadingState {
+    return {
       selectedBookId: selectedBookId.value,
       sessionBookId: sessionBookId.value,
       startPage: startPage.value,
@@ -38,6 +47,11 @@ export const useReadingStore = defineStore('reading', () => {
       running: running.value,
       persistedAt: new Date().toISOString(),
     }
+  }
+
+  function persistState() {
+    if (!canUseLocalStorage()) return
+    const payload = buildPersistedPayload()
     globalThis.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
     queueCloudSync(payload)
   }
@@ -46,6 +60,10 @@ export const useReadingStore = defineStore('reading', () => {
     const authStore = useAuthStore()
     const uid = authStore.user?.uid
     if (!uid || hydratingFromCloud) return
+    if (!isNavigatorOnline()) {
+      enqueueOfflineSaveReadingState(uid, payload)
+      return
+    }
 
     try {
       await saveReadingState(uid, {
@@ -71,6 +89,16 @@ export const useReadingStore = defineStore('reading', () => {
     cloudSyncTimer = setTimeout(() => {
       void syncCloud(payload)
     }, CLOUD_SYNC_DELAY_MS)
+  }
+
+  function installOnlineSyncBridge() {
+    if (onlineListenerInstalled || typeof window === 'undefined') return
+    onlineListenerInstalled = true
+    window.addEventListener('online', () => {
+      const payload = buildPersistedPayload()
+      queueCloudSync(payload)
+      void replayOfflineQueue()
+    })
   }
 
   function startTicker() {
@@ -196,6 +224,7 @@ export const useReadingStore = defineStore('reading', () => {
   }
 
   restoreState()
+  installOnlineSyncBridge()
 
   return {
     selectedBookId,
