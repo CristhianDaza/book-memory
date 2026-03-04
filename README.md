@@ -59,6 +59,10 @@ VITE_FIREBASE_APP_ID=
 VITE_GOOGLE_BOOKS_API_KEY=
 ```
 
+Detailed Firebase setup and deployment guide:
+
+- `docs/firebase-setup.md`
+
 ## Local Development
 
 ```bash
@@ -84,3 +88,10 @@ Lint workflow runs automatically on:
 - Pull requests targeting `main` or `develop`
 
 Workflow file: `.github/workflows/lint.yml`
+
+## Deployment
+
+- Firestore and Hosting config files are included:
+  - `firebase.json`
+  - `firestore.rules`
+  - `firestore.indexes.json`
