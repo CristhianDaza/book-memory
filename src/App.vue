@@ -52,6 +52,8 @@ let removeWindowRejectionListener: (() => void) | null = null
 const showSyncBanner = computed(
   () => !isOnline.value || pendingSyncCount.value > 0 || conflictSyncCount.value > 0,
 )
+const currentYear = computed(() => new Date().getFullYear())
+const appVersion = computed(() => import.meta.env.VITE_APP_VERSION || 'v0.0.0')
 const syncMessage = computed(() => {
   if (conflictSyncCount.value > 0) {
     return t('common.syncConflict', { count: conflictSyncCount.value })
@@ -215,9 +217,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-950 text-slate-100">
+  <div class="flex min-h-screen flex-col bg-slate-950 text-slate-100">
     <AppNotifications />
-    <main class="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+    <main class="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
       <div
         v-if="showUserControls"
         class="mb-3 flex items-center justify-end gap-2"
@@ -361,6 +363,12 @@ onBeforeUnmount(() => {
       </section>
       <RouterView />
     </main>
+    <footer class="border-t border-slate-800 bg-slate-950/70">
+      <div class="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-4 text-xs text-slate-400 sm:px-6 lg:px-8 md:flex-row md:items-center md:justify-between">
+        <p>© {{ currentYear }} BookMemory. Designed &amp; Developed by cris-dev.com. All rights reserved.</p>
+        <p>{{ appVersion }}</p>
+      </div>
+    </footer>
 
     <ConfirmModal
       :open="showLogoutConfirm"
