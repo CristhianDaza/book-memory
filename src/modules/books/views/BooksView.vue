@@ -4,7 +4,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BookSearchResult } from '../../../types/books'
 import type { AppLocale } from '../../../types/i18n'
-import type { SearchLanguageMode } from '../../../types/books-store'
+import type { LibraryStatusFilter, SearchLanguageMode } from '../../../types/books-store'
 import PromptModal from '../../../components/PromptModal.vue'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
@@ -20,6 +20,10 @@ const searchInputRef = ref<HTMLInputElement | null>(null)
 const pendingBookToAdd = ref<BookSearchResult | null>(null)
 const showAddBookPagesModal = ref(false)
 const pendingManualPages = ref<string>('')
+const manualTitle = ref('')
+const manualAuthors = ref('')
+const manualPages = ref('')
+const manualCoverUrl = ref('')
 
 const {
   query,
@@ -33,6 +37,8 @@ const {
   filteredSortedLibrary,
   favoriteUpdatingIds,
   showOnlyFavorites,
+  libraryStatusFilter,
+  librarySearchQuery,
   librarySortMode,
   searchLanguageMode,
 } = storeToRefs(booksStore)
@@ -72,6 +78,10 @@ function closeAddModal() {
 
 function onChangeSearchLanguageMode(mode: SearchLanguageMode) {
   booksStore.setSearchLanguageMode(mode)
+}
+
+function onChangeLibraryStatusFilter(filter: LibraryStatusFilter) {
+  libraryStatusFilter.value = filter
 }
 
 function isSaving(bookId: string): boolean {
@@ -157,6 +167,47 @@ async function onToggleFavorite(bookId: string) {
   )
 }
 
+function resetManualForm() {
+  manualTitle.value = ''
+  manualAuthors.value = ''
+  manualPages.value = ''
+  manualCoverUrl.value = ''
+}
+
+async function onAddManualBook() {
+  const title = manualTitle.value.trim()
+  if (!title) {
+    notificationsStore.error(t('books.manualTitleRequired'))
+    return
+  }
+
+  const authors = manualAuthors.value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+  const parsedPages = Number(manualPages.value)
+  const totalPages = Number.isFinite(parsedPages) && parsedPages > 0 ? Math.floor(parsedPages) : null
+  const coverUrl = manualCoverUrl.value.trim() || null
+
+  const payload: BookSearchResult = {
+    id: `manual:${Date.now()}`,
+    source: 'manual',
+    title,
+    authors,
+    coverUrl,
+    totalPages,
+    publishedYear: null,
+  }
+
+  await booksStore.addSearchResultToLibrary(payload)
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
+  notificationsStore.success(t('notifications.bookAdded'))
+  resetManualForm()
+}
+
 onMounted(async () => {
   await booksStore.loadLibrary()
 })
@@ -202,26 +253,50 @@ watch(showAddModal, async (isOpen) => {
       </p>
 
       <div class="mt-4 flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
-          <input
-            v-model="showOnlyFavorites"
-            type="checkbox"
-            class="h-4 w-4 cursor-pointer rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
-          >
-          {{ t('books.onlyFavorites') }}
-        </label>
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+            <input
+              v-model="showOnlyFavorites"
+              type="checkbox"
+              class="h-4 w-4 cursor-pointer rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
+            >
+            {{ t('books.onlyFavorites') }}
+          </label>
 
-        <label class="flex items-center gap-2 text-sm text-slate-300">
-          <span>{{ t('books.sortBy') }}</span>
-          <select
-            v-model="librarySortMode"
-            class="cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-cyan-400"
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <span>{{ t('books.filterStatus') }}</span>
+            <select
+              :value="libraryStatusFilter"
+              class="cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-cyan-400"
+              @change="onChangeLibraryStatusFilter(($event.target as HTMLSelectElement).value as LibraryStatusFilter)"
+            >
+              <option value="all">{{ t('books.status_all') }}</option>
+              <option value="reading">{{ t('books.status_reading') }}</option>
+              <option value="finished">{{ t('books.status_finished') }}</option>
+              <option value="wishlist">{{ t('books.status_wishlist') }}</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <input
+            v-model="librarySearchQuery"
+            type="text"
+            :placeholder="t('books.librarySearchPlaceholder')"
+            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-cyan-400 sm:w-56"
           >
-            <option value="favorite_first">{{ t('books.sortFavoriteFirst') }}</option>
-            <option value="recent">{{ t('books.sortRecent') }}</option>
-            <option value="title_asc">{{ t('books.sortTitleAsc') }}</option>
-          </select>
-        </label>
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <span>{{ t('books.sortBy') }}</span>
+            <select
+              v-model="librarySortMode"
+              class="cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-cyan-400"
+            >
+              <option value="favorite_first">{{ t('books.sortFavoriteFirst') }}</option>
+              <option value="recent">{{ t('books.sortRecent') }}</option>
+              <option value="title_asc">{{ t('books.sortTitleAsc') }}</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <div
@@ -388,6 +463,58 @@ watch(showAddModal, async (isOpen) => {
             </button>
           </div>
         </form>
+
+        <section class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+          <p class="text-xs uppercase tracking-wide text-slate-400">
+            {{ t('books.manualAddTitle') }}
+          </p>
+          <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <label class="text-xs text-slate-300 sm:col-span-2">
+              {{ t('books.manualBookTitle') }}
+              <input
+                v-model="manualTitle"
+                type="text"
+                :placeholder="t('books.manualBookTitlePlaceholder')"
+                class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
+              >
+            </label>
+            <label class="text-xs text-slate-300">
+              {{ t('books.manualAuthors') }}
+              <input
+                v-model="manualAuthors"
+                type="text"
+                :placeholder="t('books.manualAuthorsPlaceholder')"
+                class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
+              >
+            </label>
+            <label class="text-xs text-slate-300">
+              {{ t('books.manualPages') }}
+              <input
+                v-model="manualPages"
+                type="number"
+                min="1"
+                :placeholder="t('books.manualPagesPlaceholder')"
+                class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
+              >
+            </label>
+            <label class="text-xs text-slate-300 sm:col-span-2">
+              {{ t('books.manualCoverUrl') }}
+              <input
+                v-model="manualCoverUrl"
+                type="url"
+                :placeholder="t('books.manualCoverUrlPlaceholder')"
+                class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
+              >
+            </label>
+          </div>
+          <button
+            type="button"
+            class="mt-3 cursor-pointer rounded-lg border border-emerald-500/60 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/10"
+            @click="onAddManualBook"
+          >
+            {{ t('books.manualAddAction') }}
+          </button>
+        </section>
 
         <div
           v-if="!hasSearchExecuted && !searching"

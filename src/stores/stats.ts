@@ -1,9 +1,12 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { fetchLibraryBooks } from '../services/libraryService'
 import { fetchUserSessions } from '../services/readingSessionService'
 import type { ReadingSessionRecord } from '../types/reading'
 import type {
+  BookStatsEntry,
   FirestoreDateLike,
+  StatsGoalsProgress,
   StatsActivityMetric,
   ReadingSessionWithDate,
   StatsActivityPoint,
@@ -79,10 +82,13 @@ function bestStreakDays(daysDesc: number[]): number {
 
 export const useStatsStore = defineStore('stats', () => {
   const sessions = ref<ReadingSessionRecord[]>([])
+  const libraryTitles = ref<Record<string, string>>({})
   const loading = ref(false)
   const errorKey = ref<string | null>(null)
   const range = ref<StatsRange>('7d')
   const activityMetric = ref<StatsActivityMetric>('sessions')
+  const weeklyPagesGoal = ref(100)
+  const monthlyMinutesGoal = ref(600)
 
   const sessionsWithDates = computed(() =>
     sessions.value
@@ -149,12 +155,24 @@ export const useStatsStore = defineStore('stats', () => {
     const sessionsThisWeek = sessionsWithDates.value.filter(
       (session) => session.startedAtDate.getTime() >= currentWeekStart,
     ).length
+    const pagesThisWeek = sessionsWithDates.value
+      .filter((session) => session.startedAtDate.getTime() >= currentWeekStart)
+      .reduce((acc, item) => acc + Math.max(0, item.pagesRead ?? 0), 0)
 
     const sessionsThisMonth = sessionsWithDates.value.filter(
       (session) =>
         session.startedAtDate.getMonth() === currentMonth &&
         session.startedAtDate.getFullYear() === currentYear,
     ).length
+    const minutesThisMonth = Math.floor(
+      sessionsWithDates.value
+        .filter(
+          (session) =>
+            session.startedAtDate.getMonth() === currentMonth &&
+            session.startedAtDate.getFullYear() === currentYear,
+        )
+        .reduce((acc, item) => acc + Math.max(0, item.durationSeconds ?? 0), 0) / 60,
+    )
 
     const uniqueDaysDesc = Array.from(
       new Set(
@@ -174,9 +192,50 @@ export const useStatsStore = defineStore('stats', () => {
       currentStreakDays,
       bestStreakDays: longestStreakDays,
       sessionsThisWeek,
+      pagesThisWeek,
       sessionsThisMonth,
+      minutesThisMonth,
     }
   })
+
+  const topBooks = computed<BookStatsEntry[]>(() => {
+    const byBook = new Map<string, Omit<BookStatsEntry, 'avgPagesPerSession' | 'avgMinutesPerSession'>>()
+
+    sessionsWithDates.value.forEach((session) => {
+      const current = byBook.get(session.bookId) ?? {
+        bookId: session.bookId,
+        title: libraryTitles.value[session.bookId] ?? 'Unknown',
+        sessionCount: 0,
+        totalPages: 0,
+        totalMinutes: 0,
+      }
+
+      current.sessionCount += 1
+      current.totalPages += Math.max(0, session.pagesRead ?? 0)
+      current.totalMinutes += Math.floor(Math.max(0, session.durationSeconds ?? 0) / 60)
+      byBook.set(session.bookId, current)
+    })
+
+    return Array.from(byBook.values())
+      .map((item) => ({
+        ...item,
+        avgPagesPerSession: item.sessionCount > 0 ? item.totalPages / item.sessionCount : 0,
+        avgMinutesPerSession: item.sessionCount > 0 ? item.totalMinutes / item.sessionCount : 0,
+      }))
+      .sort((a, b) => b.totalPages - a.totalPages)
+      .slice(0, 5)
+  })
+
+  const goalsProgress = computed<StatsGoalsProgress>(() => ({
+    weeklyPagesGoal: weeklyPagesGoal.value,
+    monthlyMinutesGoal: monthlyMinutesGoal.value,
+    weeklyPagesProgress:
+      weeklyPagesGoal.value > 0 ? Math.min(100, Math.round((summary.value.pagesThisWeek / weeklyPagesGoal.value) * 100)) : 0,
+    monthlyMinutesProgress:
+      monthlyMinutesGoal.value > 0
+        ? Math.min(100, Math.round((summary.value.minutesThisMonth / monthlyMinutesGoal.value) * 100))
+        : 0,
+  }))
 
   function setRange(nextRange: StatsRange) {
     range.value = nextRange
@@ -184,6 +243,14 @@ export const useStatsStore = defineStore('stats', () => {
 
   function setActivityMetric(nextMetric: StatsActivityMetric) {
     activityMetric.value = nextMetric
+  }
+
+  function setWeeklyPagesGoal(value: number) {
+    weeklyPagesGoal.value = Math.max(1, Math.floor(value || 1))
+  }
+
+  function setMonthlyMinutesGoal(value: number) {
+    monthlyMinutesGoal.value = Math.max(1, Math.floor(value || 1))
   }
 
   async function loadStats() {
@@ -198,9 +265,18 @@ export const useStatsStore = defineStore('stats', () => {
     loading.value = true
     errorKey.value = null
     try {
-      sessions.value = await fetchUserSessions(uid)
+      const [loadedSessions, loadedLibrary] = await Promise.all([
+        fetchUserSessions(uid),
+        fetchLibraryBooks(uid),
+      ])
+      sessions.value = loadedSessions
+      libraryTitles.value = loadedLibrary.reduce<Record<string, string>>((acc, book) => {
+        acc[book.id] = book.title
+        return acc
+      }, {})
     } catch {
       sessions.value = []
+      libraryTitles.value = {}
       errorKey.value = 'stats.loadError'
     } finally {
       loading.value = false
@@ -214,10 +290,14 @@ export const useStatsStore = defineStore('stats', () => {
     range,
     activityMetric,
     summary,
+    topBooks,
+    goalsProgress,
     filteredSessions,
     activitySeries,
     setRange,
     setActivityMetric,
+    setWeeklyPagesGoal,
+    setMonthlyMinutesGoal,
     loadStats,
   }
 })

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { isSearchBooksError, searchBooks } from '../services/bookSearchService'
-import type { LibrarySortMode, SearchLanguageMode } from '../types/books-store'
+import type { LibrarySortMode, LibraryStatusFilter, SearchLanguageMode } from '../types/books-store'
 import { deleteSessionsForBook, fetchSessionsForBook } from '../services/readingSessionService'
 import {
   addBookToLibrary,
@@ -29,6 +29,8 @@ export const useBooksStore = defineStore('books', () => {
   const deletingIds = ref<string[]>([])
   const selectedLibraryBookId = ref<string | null>(null)
   const showOnlyFavorites = ref(false)
+  const libraryStatusFilter = ref<LibraryStatusFilter>('all')
+  const librarySearchQuery = ref('')
   const librarySortMode = ref<LibrarySortMode>('favorite_first')
   const searchLanguageMode = ref<SearchLanguageMode>('active')
   const errorKey = ref<string | null>(null)
@@ -41,19 +43,25 @@ export const useBooksStore = defineStore('books', () => {
       : null,
   )
   const filteredSortedLibrary = computed(() => {
-    const base = showOnlyFavorites.value
-      ? library.value.filter((book) => book.favorite)
-      : [...library.value]
+    const normalizedQuery = librarySearchQuery.value.trim().toLowerCase()
+    const base = library.value.filter((book) => {
+      if (showOnlyFavorites.value && !book.favorite) return false
+      if (libraryStatusFilter.value !== 'all' && book.status !== libraryStatusFilter.value) return false
+      if (!normalizedQuery) return true
+      const titleMatch = book.title.toLowerCase().includes(normalizedQuery)
+      const authorMatch = book.authors.some((author) => author.toLowerCase().includes(normalizedQuery))
+      return titleMatch || authorMatch
+    })
 
     if (librarySortMode.value === 'title_asc') {
-      return base.sort((a, b) => a.title.localeCompare(b.title))
+      return [...base].sort((a, b) => a.title.localeCompare(b.title))
     }
 
     if (librarySortMode.value === 'recent') {
       return base
     }
 
-    return base.sort((a, b) => Number(b.favorite) - Number(a.favorite))
+    return [...base].sort((a, b) => Number(b.favorite) - Number(a.favorite))
   })
 
   function clearError() {
@@ -325,6 +333,8 @@ export const useBooksStore = defineStore('books', () => {
     deletingIds,
     selectedLibraryBookId,
     showOnlyFavorites,
+    libraryStatusFilter,
+    librarySearchQuery,
     librarySortMode,
     searchLanguageMode,
     selectedBook,

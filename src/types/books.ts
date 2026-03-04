@@ -1,4 +1,4 @@
-export type BookSource = 'openlibrary' | 'google'
+export type BookSource = 'openlibrary' | 'google' | 'manual'
 
 export interface BookSearchResult {
   id: string

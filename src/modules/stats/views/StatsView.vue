@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useStatsStore } from '../../../stores/stats'
 import type { StatsActivityMetric, StatsRange } from '../../../types/stats'
 
 const { t, locale } = useI18n()
 const statsStore = useStatsStore()
-const { loading, errorKey, range, activityMetric, summary, filteredSessions, activitySeries } =
+const { loading, errorKey, range, activityMetric, summary, filteredSessions, activitySeries, topBooks, goalsProgress } =
   storeToRefs(statsStore)
+const weeklyGoalInput = ref(100)
+const monthlyGoalInput = ref(600)
 
 const mappedError = computed(() => (errorKey.value ? t(errorKey.value) : null))
 const maxActivityValue = computed(() =>
@@ -75,8 +77,48 @@ function isToday(dayStart: number): boolean {
   )
 }
 
+function onUpdateWeeklyGoal() {
+  statsStore.setWeeklyPagesGoal(Number(weeklyGoalInput.value))
+}
+
+function onUpdateMonthlyGoal() {
+  statsStore.setMonthlyMinutesGoal(Number(monthlyGoalInput.value))
+}
+
+function formatCsvCell(value: string | number): string {
+  const text = String(value).replace(/"/g, '""')
+  return `"${text}"`
+}
+
+function onExportCsv() {
+  const header = ['date', 'book', 'bookId', 'pagesRead', 'minutesRead', 'startPage', 'endPage']
+  const rows = filteredSessions.value.map((session) => {
+    const bookTitle = topBooks.value.find((entry) => entry.bookId === session.bookId)?.title ?? 'Unknown'
+    return [
+      session.startedAtDate.toISOString(),
+      bookTitle,
+      session.bookId,
+      Math.max(0, session.pagesRead ?? 0),
+      Math.floor(Math.max(0, session.durationSeconds ?? 0) / 60),
+      Math.max(0, session.startPage ?? 0),
+      Math.max(0, session.endPage ?? 0),
+    ]
+  })
+  const csv = [header, ...rows].map((line) => line.map((cell) => formatCsvCell(cell)).join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  const date = new Date().toISOString().slice(0, 10)
+  link.href = url
+  link.download = `bookmemory-sessions-${range.value}-${date}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 onMounted(async () => {
   await statsStore.loadStats()
+  weeklyGoalInput.value = goalsProgress.value.weeklyPagesGoal
+  monthlyGoalInput.value = goalsProgress.value.monthlyMinutesGoal
 })
 </script>
 
@@ -92,42 +134,53 @@ onMounted(async () => {
       {{ t('stats.subtitle') }}
     </p>
 
-    <div class="mt-4 inline-flex rounded-xl border border-slate-800 bg-slate-950/60 p-1">
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
+      <div class="inline-flex rounded-xl border border-slate-800 bg-slate-950/60 p-1">
+        <button
+          type="button"
+          class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+          :class="
+            range === '7d'
+              ? 'bg-cyan-500 text-slate-950'
+              : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+          "
+          @click="onChangeRange('7d')"
+        >
+          {{ t('stats.range7d') }}
+        </button>
+        <button
+          type="button"
+          class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+          :class="
+            range === '30d'
+              ? 'bg-cyan-500 text-slate-950'
+              : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+          "
+          @click="onChangeRange('30d')"
+        >
+          {{ t('stats.range30d') }}
+        </button>
+        <button
+          type="button"
+          class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+          :class="
+            range === 'all'
+              ? 'bg-cyan-500 text-slate-950'
+              : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+          "
+          @click="onChangeRange('all')"
+        >
+          {{ t('stats.rangeAll') }}
+        </button>
+      </div>
+
       <button
         type="button"
-        class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
-        :class="
-          range === '7d'
-            ? 'bg-cyan-500 text-slate-950'
-            : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
-        "
-        @click="onChangeRange('7d')"
+        class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-slate-800"
+        :disabled="filteredSessions.length === 0"
+        @click="onExportCsv"
       >
-        {{ t('stats.range7d') }}
-      </button>
-      <button
-        type="button"
-        class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
-        :class="
-          range === '30d'
-            ? 'bg-cyan-500 text-slate-950'
-            : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
-        "
-        @click="onChangeRange('30d')"
-      >
-        {{ t('stats.range30d') }}
-      </button>
-      <button
-        type="button"
-        class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
-        :class="
-          range === 'all'
-            ? 'bg-cyan-500 text-slate-950'
-            : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
-        "
-        @click="onChangeRange('all')"
-      >
-        {{ t('stats.rangeAll') }}
+        {{ t('stats.exportCsv') }}
       </button>
     </div>
 
@@ -212,6 +265,60 @@ onMounted(async () => {
         </p>
       </article>
     </div>
+
+    <section
+      v-if="!loading"
+      class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+    >
+      <p class="text-sm font-semibold text-white">
+        {{ t('stats.goalsTitle') }}
+      </p>
+      <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+          <label class="text-[11px] uppercase tracking-wide text-slate-400">
+            {{ t('stats.weeklyPagesGoal') }}
+            <input
+              v-model.number="weeklyGoalInput"
+              type="number"
+              min="1"
+              class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100"
+              @change="onUpdateWeeklyGoal"
+            >
+          </label>
+          <p class="mt-2 text-xs text-slate-300">
+            {{ summary.pagesThisWeek }} / {{ goalsProgress.weeklyPagesGoal }} {{ t('stats.pagesShort') }}
+          </p>
+          <div class="mt-1 h-2 rounded bg-slate-800">
+            <div
+              class="h-full rounded bg-cyan-400"
+              :style="{ width: `${goalsProgress.weeklyPagesProgress}%` }"
+            />
+          </div>
+        </article>
+
+        <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+          <label class="text-[11px] uppercase tracking-wide text-slate-400">
+            {{ t('stats.monthlyMinutesGoal') }}
+            <input
+              v-model.number="monthlyGoalInput"
+              type="number"
+              min="1"
+              class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100"
+              @change="onUpdateMonthlyGoal"
+            >
+          </label>
+          <p class="mt-2 text-xs text-slate-300">
+            {{ summary.minutesThisMonth }} / {{ goalsProgress.monthlyMinutesGoal }} {{ t('stats.minutesShort') }}
+          </p>
+          <div class="mt-1 h-2 rounded bg-slate-800">
+            <div
+              class="h-full rounded bg-emerald-400"
+              :style="{ width: `${goalsProgress.monthlyMinutesProgress}%` }"
+            />
+          </div>
+        </article>
+      </div>
+    </section>
 
     <section
       v-if="!loading"
@@ -338,6 +445,42 @@ onMounted(async () => {
           {{ t('stats.today') }}
         </span>
       </div>
+    </section>
+
+    <section
+      v-if="!loading"
+      class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+    >
+      <p class="text-sm font-semibold text-white">
+        {{ t('stats.topBooksTitle') }}
+      </p>
+      <p
+        v-if="topBooks.length === 0"
+        class="mt-2 text-sm text-slate-400"
+      >
+        {{ t('stats.topBooksEmpty') }}
+      </p>
+      <ul
+        v-else
+        class="mt-2 space-y-2"
+      >
+        <li
+          v-for="entry in topBooks"
+          :key="entry.bookId"
+          class="rounded-lg border border-slate-800 bg-slate-900/70 p-3"
+        >
+          <p class="text-sm font-semibold text-white">
+            {{ entry.title }}
+          </p>
+          <p class="mt-1 text-xs text-slate-300">
+            {{ t('stats.totalPages') }}: {{ entry.totalPages }} · {{ t('stats.totalMinutes') }}: {{ entry.totalMinutes }}
+          </p>
+          <p class="text-xs text-slate-400">
+            {{ t('stats.bookAvgPages') }}: {{ formatDecimal(entry.avgPagesPerSession) }} ·
+            {{ t('stats.bookAvgMinutes') }}: {{ formatDecimal(entry.avgMinutesPerSession) }}
+          </p>
+        </li>
+      </ul>
     </section>
 
     <p

@@ -29,5 +29,24 @@ export interface StatsSummary {
   currentStreakDays: number
   bestStreakDays: number
   sessionsThisWeek: number
+  pagesThisWeek: number
   sessionsThisMonth: number
+  minutesThisMonth: number
+}
+
+export interface BookStatsEntry {
+  bookId: string
+  title: string
+  sessionCount: number
+  totalPages: number
+  totalMinutes: number
+  avgPagesPerSession: number
+  avgMinutesPerSession: number
+}
+
+export interface StatsGoalsProgress {
+  weeklyPagesGoal: number
+  monthlyMinutesGoal: number
+  weeklyPagesProgress: number
+  monthlyMinutesProgress: number
 }
