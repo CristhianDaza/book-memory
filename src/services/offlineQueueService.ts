@@ -38,6 +38,10 @@ function readQueue(): OfflineQueueItem[] {
   }
 }
 
+export function getOfflineQueueItems(): OfflineQueueItem[] {
+  return readQueue()
+}
+
 function writeQueue(items: OfflineQueueItem[]) {
   if (!canUseStorage()) return
   const compacted = compactQueue(items)
@@ -73,6 +77,48 @@ function writeConflicts(items: OfflineConflictItem[]) {
 
 export function getOfflineConflicts(): OfflineConflictItem[] {
   return readConflicts()
+}
+
+export function removeOfflineQueueItem(id: string) {
+  const next = readQueue().filter((item) => item.id !== id)
+  writeQueue(next)
+}
+
+export function removeOfflineConflict(id: string) {
+  const next = readConflicts().filter((item) => item.id !== id)
+  writeConflicts(next)
+}
+
+export function requeueOfflineConflictById(id: string, force = false) {
+  const conflicts = readConflicts()
+  const target = conflicts.find((entry) => entry.id === id)
+  if (!target) return
+  const retryable = force || new Date(target.nextRetryAt).getTime() <= Date.now()
+  if (!retryable) return
+
+  const queue = readQueue()
+  const queueIds = new Set(queue.map((entry) => entry.id))
+  if (!queueIds.has(target.id)) {
+    queue.push({
+      id: target.id,
+      action: target.action,
+      uid: target.uid,
+      payload: target.payload,
+      createdAt: new Date().toISOString(),
+    })
+    writeQueue(queue)
+  }
+
+  writeConflicts(
+    conflicts.map((entry) =>
+      entry.id === id
+        ? {
+            ...entry,
+            status: 'retrying',
+          }
+        : entry,
+    ),
+  )
 }
 
 function conflictIdFromItem(item: OfflineQueueItem): string {

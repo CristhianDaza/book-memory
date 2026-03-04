@@ -146,7 +146,7 @@ onBeforeUnmount(() => {
 
       <nav
         v-if="showSectionNav"
-        class="mb-4 grid grid-cols-4 gap-2 rounded-2xl border border-slate-800 bg-slate-900/60 p-2"
+        class="mb-4 grid grid-cols-5 gap-2 rounded-2xl border border-slate-800 bg-slate-900/60 p-2"
       >
         <RouterLink
           to="/"
@@ -179,6 +179,13 @@ onBeforeUnmount(() => {
           :class="route.name === 'stats' ? 'bg-cyan-500 text-slate-950' : 'text-slate-200 hover:bg-slate-800'"
         >
           {{ t('home.stats') }}
+        </RouterLink>
+        <RouterLink
+          to="/sync"
+          class="cursor-pointer rounded-xl px-3 py-2 text-center text-sm font-medium transition"
+          :class="route.name === 'sync' ? 'bg-cyan-500 text-slate-950' : 'text-slate-200 hover:bg-slate-800'"
+        >
+          {{ t('home.sync') }}
         </RouterLink>
       </nav>
 

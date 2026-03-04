@@ -6,8 +6,12 @@ import {
   enqueueOfflineSaveReadingState,
   getOfflineConflicts,
   getOfflineConflictCount,
+  getOfflineQueueItems,
   getOfflineQueueCount,
   getRetryableOfflineConflictCount,
+  removeOfflineConflict,
+  removeOfflineQueueItem,
+  requeueOfflineConflictById,
   requeueOfflineConflicts,
   replayOfflineQueue,
 } from './offlineQueueService'
@@ -283,5 +287,84 @@ describe('offlineQueueService', () => {
     expect(getRetryableOfflineConflictCount()).toBe(1)
     requeueOfflineConflicts()
     expect(getOfflineQueueCount()).toBe(1)
+  })
+
+  it('removes queue item by id', async () => {
+    enqueueOfflineSaveReadingState('u1', {
+      selectedBookId: 'b1',
+      sessionBookId: 'b1',
+      startPage: 1,
+      endPage: 2,
+      elapsedSeconds: 3,
+      sessionStartedAt: '2026-01-01T00:00:00.000Z',
+      running: true,
+      persistedAt: '2026-01-01T00:01:00.000Z',
+    })
+    enqueueOfflineSaveReadingState('u2', {
+      selectedBookId: 'b2',
+      sessionBookId: 'b2',
+      startPage: 4,
+      endPage: 5,
+      elapsedSeconds: 6,
+      sessionStartedAt: '2026-01-01T00:00:00.000Z',
+      running: true,
+      persistedAt: '2026-01-01T00:01:00.000Z',
+    })
+
+    const items = getOfflineQueueItems()
+    expect(items).toHaveLength(2)
+    removeOfflineQueueItem(items[0].id)
+
+    expect(getOfflineQueueCount()).toBe(1)
+    expect(getOfflineQueueItems()[0]?.id).toBe(items[1].id)
+  })
+
+  it('removes conflict by id', async () => {
+    vi.mocked(createReadingSessionWithId).mockRejectedValueOnce(new Error('permission'))
+    enqueueOfflineFinishReadingSession('u1', {
+      transactionId: 'tx-remove-conflict',
+      bookId: 'b1',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      endedAt: '2026-01-01T00:10:00.000Z',
+      durationSeconds: 600,
+      startPage: 10,
+      endPage: 20,
+      pagesRead: 10,
+      totalPages: 300,
+      currentPage: 20,
+      status: 'reading',
+    })
+    await replayOfflineQueue()
+
+    const conflictId = getOfflineConflicts()[0]?.id
+    expect(conflictId).toBeTypeOf('string')
+    removeOfflineConflict(conflictId as string)
+    expect(getOfflineConflictCount()).toBe(0)
+  })
+
+  it('requeues a conflict by id and marks it retrying', async () => {
+    vi.mocked(createReadingSessionWithId).mockRejectedValueOnce(new Error('permission'))
+    enqueueOfflineFinishReadingSession('u1', {
+      transactionId: 'tx-id-requeue',
+      bookId: 'b1',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      endedAt: '2026-01-01T00:10:00.000Z',
+      durationSeconds: 600,
+      startPage: 10,
+      endPage: 20,
+      pagesRead: 10,
+      totalPages: 300,
+      currentPage: 20,
+      status: 'reading',
+    })
+    await replayOfflineQueue()
+    expect(getOfflineConflictCount()).toBe(1)
+    expect(getOfflineQueueCount()).toBe(0)
+
+    const conflictId = getOfflineConflicts()[0]?.id as string
+    requeueOfflineConflictById(conflictId, true)
+
+    expect(getOfflineQueueCount()).toBe(1)
+    expect(getOfflineConflicts()[0]?.status).toBe('retrying')
   })
 })
