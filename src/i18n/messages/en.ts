@@ -12,6 +12,8 @@ export const en = {
     syncRetry: 'Retry sync',
     syncConflict: 'Sync conflicts: {count}. Review and resolve them manually.',
     syncClearConflicts: 'Mark conflicts as reviewed',
+    syncRetryConflicts: 'Retry conflicts',
+    syncLatestConflict: 'Latest: {label}',
   },
   home: {
     home: 'Home',

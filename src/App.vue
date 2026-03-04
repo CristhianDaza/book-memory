@@ -7,9 +7,11 @@ import ConfirmModal from './components/ConfirmModal.vue'
 import { setAppLocale } from './i18n'
 import {
   clearOfflineConflicts,
+  getOfflineConflicts,
   getOfflineConflictCount,
   getOfflineQueueCount,
   onOfflineQueueChange,
+  requeueOfflineConflicts,
   replayOfflineQueue,
 } from './services/offlineQueueService'
 import type { AppLocale } from './types/i18n'
@@ -31,6 +33,7 @@ const showLogoutConfirm = ref(false)
 const isOnline = ref(typeof navigator === 'undefined' ? true : navigator.onLine)
 const pendingSyncCount = ref(getOfflineQueueCount())
 const conflictSyncCount = ref(getOfflineConflictCount())
+const latestConflictLabel = ref<string | null>(null)
 let removeQueueListener: (() => void) | null = null
 
 const showSyncBanner = computed(
@@ -71,6 +74,9 @@ function refreshSyncStatus() {
   isOnline.value = typeof navigator === 'undefined' ? true : navigator.onLine
   pendingSyncCount.value = getOfflineQueueCount()
   conflictSyncCount.value = getOfflineConflictCount()
+  const conflicts = getOfflineConflicts()
+  const latest = conflicts[conflicts.length - 1]
+  latestConflictLabel.value = latest ? `${latest.action} · ${latest.uid}` : null
 }
 
 async function onRetrySync() {
@@ -80,6 +86,12 @@ async function onRetrySync() {
 
 function onClearConflicts() {
   clearOfflineConflicts()
+  refreshSyncStatus()
+}
+
+async function onRetryConflicts() {
+  requeueOfflineConflicts()
+  await replayOfflineQueue()
   refreshSyncStatus()
 }
 
@@ -177,6 +189,12 @@ onBeforeUnmount(() => {
           :class="conflictSyncCount > 0 ? 'text-rose-200' : 'text-amber-200'"
         >
           {{ syncMessage }}
+          <span
+            v-if="conflictSyncCount > 0 && latestConflictLabel"
+            class="ml-1 text-[11px] text-rose-300/90"
+          >
+            {{ t('common.syncLatestConflict', { label: latestConflictLabel }) }}
+          </span>
         </p>
         <div class="flex gap-2">
           <button
@@ -186,6 +204,14 @@ onBeforeUnmount(() => {
             @click="onRetrySync"
           >
             {{ t('common.syncRetry') }}
+          </button>
+          <button
+            v-if="conflictSyncCount > 0"
+            type="button"
+            class="cursor-pointer rounded-lg border border-rose-500/60 px-3 py-1.5 text-xs font-semibold text-rose-100 transition hover:bg-rose-500/20"
+            @click="onRetryConflicts"
+          >
+            {{ t('common.syncRetryConflicts') }}
           </button>
           <button
             v-if="conflictSyncCount > 0"

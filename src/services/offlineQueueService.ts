@@ -65,6 +65,10 @@ function writeConflicts(items: OfflineConflictItem[]) {
   }
 }
 
+export function getOfflineConflicts(): OfflineConflictItem[] {
+  return readConflicts()
+}
+
 function appendConflict(item: OfflineQueueItem) {
   const conflicts = readConflicts()
   const conflictId =
@@ -114,6 +118,21 @@ export function getOfflineConflictCount(): number {
 }
 
 export function clearOfflineConflicts() {
+  writeConflicts([])
+}
+
+export function requeueOfflineConflicts() {
+  const conflicts = readConflicts()
+  if (conflicts.length === 0) return
+  const queue = readQueue()
+  const restored: OfflineQueueItem[] = conflicts.map((entry) => ({
+    id: `${entry.id}-retry-${Date.now()}`,
+    action: entry.action,
+    uid: entry.uid,
+    payload: entry.payload,
+    createdAt: new Date().toISOString(),
+  }))
+  writeQueue([...queue, ...restored])
   writeConflicts([])
 }
 

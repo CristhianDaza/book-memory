@@ -4,8 +4,10 @@ import {
   enqueueOfflineFinishReadingSession,
   enqueueOfflineClearReadingState,
   enqueueOfflineSaveReadingState,
+  getOfflineConflicts,
   getOfflineConflictCount,
   getOfflineQueueCount,
+  requeueOfflineConflicts,
   replayOfflineQueue,
 } from './offlineQueueService'
 import { updateLibraryBookMetadata } from './libraryService'
@@ -185,5 +187,29 @@ describe('offlineQueueService', () => {
 
     expect(getOfflineQueueCount()).toBe(0)
     expect(getOfflineConflictCount()).toBe(1)
+    expect(getOfflineConflicts()[0]?.action).toBe('finish_reading_session')
+  })
+
+  it('requeues conflicts back into queue and clears conflict list', async () => {
+    vi.mocked(createReadingSessionWithId).mockRejectedValueOnce(new Error('permission'))
+    enqueueOfflineFinishReadingSession('u1', {
+      transactionId: 'tx-requeue',
+      bookId: 'b1',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      endedAt: '2026-01-01T00:10:00.000Z',
+      durationSeconds: 600,
+      startPage: 10,
+      endPage: 20,
+      pagesRead: 10,
+      totalPages: 300,
+      currentPage: 20,
+      status: 'reading',
+    })
+    await replayOfflineQueue()
+    expect(getOfflineConflictCount()).toBe(1)
+
+    requeueOfflineConflicts()
+    expect(getOfflineConflictCount()).toBe(0)
+    expect(getOfflineQueueCount()).toBe(1)
   })
 })
