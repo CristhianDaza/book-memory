@@ -67,4 +67,52 @@ describe('offlineQueueService', () => {
     expect(raw).toContain('clear_reading_state')
     expect(getOfflineQueueCount()).toBe(1)
   })
+
+  it('compacts queue to latest action per user', async () => {
+    enqueueOfflineSaveReadingState('u1', {
+      selectedBookId: 'b1',
+      sessionBookId: 'b1',
+      startPage: 1,
+      endPage: 2,
+      elapsedSeconds: 3,
+      sessionStartedAt: '2026-01-01T00:00:00.000Z',
+      running: true,
+      persistedAt: '2026-01-01T00:01:00.000Z',
+    })
+    enqueueOfflineSaveReadingState('u1', {
+      selectedBookId: 'b2',
+      sessionBookId: 'b2',
+      startPage: 4,
+      endPage: 5,
+      elapsedSeconds: 6,
+      sessionStartedAt: '2026-01-01T00:00:00.000Z',
+      running: true,
+      persistedAt: '2026-01-01T00:01:00.000Z',
+    })
+
+    expect(getOfflineQueueCount()).toBe(1)
+    await replayOfflineQueue()
+    expect(saveReadingState).toHaveBeenCalledTimes(1)
+    const savedArg = vi.mocked(saveReadingState).mock.calls[0]?.[1]
+    expect(savedArg?.selectedBookId).toBe('b2')
+  })
+
+  it('keeps clear as latest action over previous save for same user', async () => {
+    enqueueOfflineSaveReadingState('u1', {
+      selectedBookId: 'b1',
+      sessionBookId: 'b1',
+      startPage: 1,
+      endPage: 2,
+      elapsedSeconds: 3,
+      sessionStartedAt: '2026-01-01T00:00:00.000Z',
+      running: true,
+      persistedAt: '2026-01-01T00:01:00.000Z',
+    })
+    enqueueOfflineClearReadingState('u1')
+
+    expect(getOfflineQueueCount()).toBe(1)
+    await replayOfflineQueue()
+    expect(clearReadingState).toHaveBeenCalledTimes(1)
+    expect(saveReadingState).toHaveBeenCalledTimes(0)
+  })
 })

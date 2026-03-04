@@ -3,6 +3,7 @@ import type { OfflineQueueItem, QueuedReadingStatePayload } from '../types/offli
 
 const STORAGE_KEY = 'book-memory-offline-queue'
 const QUEUE_EVENT = 'book-memory-offline-queue-changed'
+const MAX_QUEUE_ITEMS = 200
 let replaying = false
 
 function canUseStorage(): boolean {
@@ -24,10 +25,26 @@ function readQueue(): OfflineQueueItem[] {
 
 function writeQueue(items: OfflineQueueItem[]) {
   if (!canUseStorage()) return
-  globalThis.localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+  const compacted = compactQueue(items)
+  const bounded =
+    compacted.length > MAX_QUEUE_ITEMS ? compacted.slice(compacted.length - MAX_QUEUE_ITEMS) : compacted
+  globalThis.localStorage.setItem(STORAGE_KEY, JSON.stringify(bounded))
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(QUEUE_EVENT))
   }
+}
+
+function compactQueue(items: OfflineQueueItem[]): OfflineQueueItem[] {
+  const lastIndexByUid = new Map<string, number>()
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]
+    if (!item) continue
+    lastIndexByUid.set(item.uid, index)
+  }
+  return Array.from(lastIndexByUid.entries())
+    .sort((a, b) => a[1] - b[1])
+    .map((entry) => items[entry[1]])
+    .filter((item): item is OfflineQueueItem => Boolean(item))
 }
 
 export function getOfflineQueueCount(): number {
@@ -44,7 +61,7 @@ export function onOfflineQueueChange(listener: () => void): () => void {
 }
 
 export function enqueueOfflineSaveReadingState(uid: string, payload: QueuedReadingStatePayload) {
-  const items = readQueue()
+  const items = compactQueue(readQueue())
   items.push({
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     action: 'save_reading_state',
@@ -56,7 +73,7 @@ export function enqueueOfflineSaveReadingState(uid: string, payload: QueuedReadi
 }
 
 export function enqueueOfflineClearReadingState(uid: string) {
-  const items = readQueue()
+  const items = compactQueue(readQueue())
   items.push({
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     action: 'clear_reading_state',
@@ -72,7 +89,7 @@ export async function replayOfflineQueue() {
   replaying = true
   try {
     if (typeof navigator !== 'undefined' && !navigator.onLine) return
-    const items = readQueue()
+    const items = compactQueue(readQueue())
     if (items.length === 0) return
 
     const pending: OfflineQueueItem[] = []
