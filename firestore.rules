@@ -132,6 +132,30 @@ service cloud.firestore {
       && request.resource.data.pagesRead == (request.resource.data.endPage - request.resource.data.startPage);
     }
 
+    function isValidReadingStateData(data) {
+      return data.keys().hasOnly([
+        'selectedBookId',
+        'sessionBookId',
+        'startPage',
+        'endPage',
+        'elapsedSeconds',
+        'sessionStartedAt',
+        'running',
+        'persistedAt',
+        'updatedAt',
+      ])
+      && data.selectedBookId is string
+      && isStringOrNull(data.sessionBookId)
+      && isNonNegativeInt(data.startPage)
+      && isNonNegativeInt(data.endPage)
+      && data.endPage >= data.startPage
+      && isNonNegativeInt(data.elapsedSeconds)
+      && (data.sessionStartedAt == null || data.sessionStartedAt is timestamp)
+      && data.running is bool
+      && data.persistedAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
     match /users/{uid} {
       allow read, write: if false;
 
@@ -151,6 +175,12 @@ service cloud.firestore {
           && isValidSessionCreateData(request.resource.data)
           && request.resource.data.createdAt == request.time;
         allow update: if isOwner(uid) && isValidSessionUpdateData();
+        allow delete: if isOwner(uid);
+      }
+
+      match /reading_state/{docId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && isValidReadingStateData(request.resource.data);
         allow delete: if isOwner(uid);
       }
     }

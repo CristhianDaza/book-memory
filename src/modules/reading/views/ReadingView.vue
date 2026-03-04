@@ -189,6 +189,7 @@ async function onConfirmFinish() {
 }
 
 onMounted(async () => {
+  await readingStore.hydrateFromCloud()
   await loadContext()
 })
 </script>
