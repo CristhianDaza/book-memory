@@ -52,7 +52,9 @@ async function onGoogleSubmit() {
 <template>
   <section class="mx-auto max-w-md rounded-2xl border border-slate-800 bg-slate-900/70 p-5 sm:p-7">
     <div class="flex items-center justify-between gap-2">
-      <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">{{ t('auth.section') }}</p>
+      <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">
+        {{ t('auth.section') }}
+      </p>
       <div class="flex items-center gap-2">
         <button
           type="button"
@@ -64,10 +66,17 @@ async function onGoogleSubmit() {
       </div>
     </div>
 
-    <h1 class="mt-2 text-2xl font-semibold text-white">{{ t('auth.title') }}</h1>
-    <p class="mt-2 text-sm text-slate-300">{{ t('auth.subtitle') }}</p>
+    <h1 class="mt-2 text-2xl font-semibold text-white">
+      {{ t('auth.title') }}
+    </h1>
+    <p class="mt-2 text-sm text-slate-300">
+      {{ t('auth.subtitle') }}
+    </p>
 
-    <form class="mt-6 space-y-3" @submit.prevent="onEmailSubmit">
+    <form
+      class="mt-6 space-y-3"
+      @submit.prevent="onEmailSubmit"
+    >
       <label class="block">
         <span class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">{{ t('auth.email') }}</span>
         <input
@@ -76,7 +85,7 @@ async function onGoogleSubmit() {
           required
           autocomplete="email"
           class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-cyan-400 transition focus:ring-2"
-        />
+        >
       </label>
 
       <label class="block">
@@ -88,7 +97,7 @@ async function onGoogleSubmit() {
           minlength="6"
           autocomplete="current-password"
           class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-cyan-400 transition focus:ring-2"
-        />
+        >
       </label>
 
       <div class="flex gap-2">
@@ -117,7 +126,10 @@ async function onGoogleSubmit() {
       {{ t('auth.continueWithGoogle') }}
     </button>
 
-    <p v-if="errorMessage" class="mt-3 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200">
+    <p
+      v-if="errorMessage"
+      class="mt-3 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200"
+    >
       {{ errorMessage }}
     </p>
   </section>

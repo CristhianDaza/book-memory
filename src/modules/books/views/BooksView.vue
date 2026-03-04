@@ -171,12 +171,18 @@ watch(showAddModal, async (isOpen) => {
 <template>
   <div class="space-y-4">
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
-      <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">{{ t('modules.booksLabel') }}</p>
+      <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">
+        {{ t('modules.booksLabel') }}
+      </p>
 
       <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 class="text-2xl font-semibold text-white">{{ t('books.libraryTitle') }}</h1>
-          <p class="mt-2 text-sm text-slate-300">{{ t('books.librarySubtitle') }}</p>
+          <h1 class="text-2xl font-semibold text-white">
+            {{ t('books.libraryTitle') }}
+          </h1>
+          <p class="mt-2 text-sm text-slate-300">
+            {{ t('books.librarySubtitle') }}
+          </p>
         </div>
 
         <button
@@ -188,7 +194,10 @@ watch(showAddModal, async (isOpen) => {
         </button>
       </div>
 
-      <p v-if="mappedError" class="mt-3 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200">
+      <p
+        v-if="mappedError"
+        class="mt-3 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200"
+      >
         {{ mappedError }}
       </p>
 
@@ -198,7 +207,7 @@ watch(showAddModal, async (isOpen) => {
             v-model="showOnlyFavorites"
             type="checkbox"
             class="h-4 w-4 cursor-pointer rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
-          />
+          >
           {{ t('books.onlyFavorites') }}
         </label>
 
@@ -215,7 +224,10 @@ watch(showAddModal, async (isOpen) => {
         </label>
       </div>
 
-      <div v-if="loadingLibrary" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+      <div
+        v-if="loadingLibrary"
+        class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5"
+      >
         <article
           v-for="item in librarySkeletonKeys"
           :key="item"
@@ -229,15 +241,26 @@ watch(showAddModal, async (isOpen) => {
         </article>
       </div>
 
-      <div v-else class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+      <div
+        v-else
+        class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5"
+      >
         <article
           v-for="item in filteredSortedLibrary"
           :key="item.id"
           class="group overflow-hidden rounded-xl border border-slate-800 bg-slate-950/70 transition hover:border-cyan-400"
         >
-          <RouterLink class="block" :to="{ name: 'book-detail', params: { id: item.id } }">
+          <RouterLink
+            class="block"
+            :to="{ name: 'book-detail', params: { id: item.id } }"
+          >
             <div class="relative aspect-[2/3] w-full bg-slate-900">
-              <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" class="h-full w-full object-cover" />
+              <img
+                v-if="item.coverUrl"
+                :src="item.coverUrl"
+                :alt="item.title"
+                class="h-full w-full object-cover"
+              >
               <div
                 v-else
                 class="flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-slate-400"
@@ -272,7 +295,10 @@ watch(showAddModal, async (isOpen) => {
         </article>
       </div>
 
-      <p v-if="!loadingLibrary && filteredSortedLibrary.length === 0" class="mt-3 text-sm text-slate-400">
+      <p
+        v-if="!loadingLibrary && filteredSortedLibrary.length === 0"
+        class="mt-3 text-sm text-slate-400"
+      >
         {{ t('books.emptyLibrary') }}
       </p>
     </section>
@@ -287,9 +313,15 @@ watch(showAddModal, async (isOpen) => {
       >
         <div class="flex items-center justify-between gap-3">
           <div>
-            <h2 class="text-xl font-semibold text-white">{{ t('books.title') }}</h2>
-            <p class="mt-1 text-sm text-slate-300">{{ t('books.subtitle') }}</p>
-            <p class="mt-1 text-xs text-slate-500">{{ t('books.modalCloseHint') }}</p>
+            <h2 class="text-xl font-semibold text-white">
+              {{ t('books.title') }}
+            </h2>
+            <p class="mt-1 text-sm text-slate-300">
+              {{ t('books.subtitle') }}
+            </p>
+            <p class="mt-1 text-xs text-slate-500">
+              {{ t('books.modalCloseHint') }}
+            </p>
           </div>
           <button
             type="button"
@@ -300,7 +332,10 @@ watch(showAddModal, async (isOpen) => {
           </button>
         </div>
 
-        <form class="mt-4 space-y-2" @submit.prevent="onSearchSubmit">
+        <form
+          class="mt-4 space-y-2"
+          @submit.prevent="onSearchSubmit"
+        >
           <label class="block text-xs uppercase tracking-wide text-slate-400">{{ t('books.searchLabel') }}</label>
           <div class="inline-flex rounded-lg border border-slate-800 bg-slate-950/60 p-1">
             <button
@@ -335,7 +370,7 @@ watch(showAddModal, async (isOpen) => {
               type="text"
               :placeholder="t('books.searchPlaceholder')"
               class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-cyan-400 transition focus:ring-2"
-            />
+            >
             <button
               type="submit"
               class="cursor-pointer rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
@@ -354,12 +389,22 @@ watch(showAddModal, async (isOpen) => {
           </div>
         </form>
 
-        <div v-if="!hasSearchExecuted && !searching" class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-          <p class="text-sm font-medium text-slate-200">{{ t('books.searchIdleTitle') }}</p>
-          <p class="mt-1 text-xs text-slate-400">{{ t('books.searchIdleSubtitle') }}</p>
+        <div
+          v-if="!hasSearchExecuted && !searching"
+          class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4"
+        >
+          <p class="text-sm font-medium text-slate-200">
+            {{ t('books.searchIdleTitle') }}
+          </p>
+          <p class="mt-1 text-xs text-slate-400">
+            {{ t('books.searchIdleSubtitle') }}
+          </p>
         </div>
 
-        <div v-else-if="searching" class="mt-4 max-h-[48vh] space-y-3 overflow-y-auto pr-1">
+        <div
+          v-else-if="searching"
+          class="mt-4 max-h-[48vh] space-y-3 overflow-y-auto pr-1"
+        >
           <article
             v-for="item in skeletonKeys"
             :key="item"
@@ -377,9 +422,16 @@ watch(showAddModal, async (isOpen) => {
           </article>
         </div>
 
-        <div v-else-if="searchResults.length === 0" class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-          <p class="text-sm font-medium text-slate-200">{{ t('books.searchEmptyTitle') }}</p>
-          <p class="mt-1 text-xs text-slate-400">{{ t('books.searchEmptySubtitle') }}</p>
+        <div
+          v-else-if="searchResults.length === 0"
+          class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4"
+        >
+          <p class="text-sm font-medium text-slate-200">
+            {{ t('books.searchEmptyTitle') }}
+          </p>
+          <p class="mt-1 text-xs text-slate-400">
+            {{ t('books.searchEmptySubtitle') }}
+          </p>
           <div class="mt-3 flex gap-2">
             <button
               type="button"
@@ -399,7 +451,10 @@ watch(showAddModal, async (isOpen) => {
           </div>
         </div>
 
-        <div v-else class="mt-4 max-h-[48vh] space-y-3 overflow-y-auto pr-1">
+        <div
+          v-else
+          class="mt-4 max-h-[48vh] space-y-3 overflow-y-auto pr-1"
+        >
           <article
             v-for="book in searchResults"
             :key="book.id"
@@ -411,7 +466,7 @@ watch(showAddModal, async (isOpen) => {
                 :src="book.coverUrl"
                 :alt="book.title"
                 class="h-24 w-16 rounded-md border border-slate-700 object-cover shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
-              />
+              >
               <div
                 v-else
                 class="flex h-24 w-16 items-center justify-center rounded-md border border-slate-700 bg-slate-800 text-[10px] text-slate-400"
@@ -446,7 +501,10 @@ watch(showAddModal, async (isOpen) => {
                 >
                   {{ addButtonLabel(book) }}
                 </button>
-                <p v-if="addDisabledReason(book)" class="mt-1 text-[10px] leading-tight text-slate-400">
+                <p
+                  v-if="addDisabledReason(book)"
+                  class="mt-1 text-[10px] leading-tight text-slate-400"
+                >
                   {{ addDisabledReason(book) }}
                 </p>
               </div>

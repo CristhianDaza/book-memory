@@ -32,10 +32,20 @@ function onUpdateValue(value: string) {
     @click.self="onCancel"
   >
     <section class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-2xl sm:p-6">
-      <h3 class="text-lg font-semibold text-white">{{ title }}</h3>
-      <p v-if="message" class="mt-1 text-sm text-slate-300">{{ message }}</p>
+      <h3 class="text-lg font-semibold text-white">
+        {{ title }}
+      </h3>
+      <p
+        v-if="message"
+        class="mt-1 text-sm text-slate-300"
+      >
+        {{ message }}
+      </p>
 
-      <label v-if="inputLabel" class="mt-3 block text-xs text-slate-300">
+      <label
+        v-if="inputLabel"
+        class="mt-3 block text-xs text-slate-300"
+      >
         {{ inputLabel }}
         <input
           :value="value"
@@ -44,7 +54,7 @@ function onUpdateValue(value: string) {
           :placeholder="inputPlaceholder || undefined"
           class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
           @input="onUpdateValue(($event.target as HTMLInputElement).value)"
-        />
+        >
       </label>
 
       <slot name="details" />

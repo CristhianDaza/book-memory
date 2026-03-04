@@ -190,9 +190,15 @@ onMounted(async () => {
 
 <template>
   <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
-    <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">{{ t('modules.readingLabel') }}</p>
-    <h1 class="mt-2 text-2xl font-semibold text-white">{{ t('reading.title') }}</h1>
-    <p class="mt-2 text-sm text-slate-300">{{ t('reading.subtitle') }}</p>
+    <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">
+      {{ t('modules.readingLabel') }}
+    </p>
+    <h1 class="mt-2 text-2xl font-semibold text-white">
+      {{ t('reading.title') }}
+    </h1>
+    <p class="mt-2 text-sm text-slate-300">
+      {{ t('reading.subtitle') }}
+    </p>
 
     <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
       <label class="text-xs text-slate-300">
@@ -202,15 +208,23 @@ onMounted(async () => {
           class="mt-1 w-full cursor-pointer rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
           @change="onSelectBook(selectedBookId)"
         >
-          <option v-for="book in library" :key="book.id" :value="book.id">
+          <option
+            v-for="book in library"
+            :key="book.id"
+            :value="book.id"
+          >
             {{ book.title }}
           </option>
         </select>
       </label>
 
       <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-        <p class="text-xs uppercase tracking-wide text-slate-400">{{ t('reading.timer') }}</p>
-        <p class="mt-1 font-mono text-2xl font-semibold text-cyan-300">{{ formattedElapsed }}</p>
+        <p class="text-xs uppercase tracking-wide text-slate-400">
+          {{ t('reading.timer') }}
+        </p>
+        <p class="mt-1 font-mono text-2xl font-semibold text-cyan-300">
+          {{ formattedElapsed }}
+        </p>
       </div>
     </div>
 
@@ -223,11 +237,14 @@ onMounted(async () => {
           min="0"
           class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
           @input="readingStore.setStartPage(Number(($event.target as HTMLInputElement).value))"
-        />
+        >
       </label>
     </div>
 
-    <p v-if="localError" class="mt-3 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200">
+    <p
+      v-if="localError"
+      class="mt-3 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200"
+    >
       {{ localError }}
     </p>
 

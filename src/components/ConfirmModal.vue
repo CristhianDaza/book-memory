@@ -25,8 +25,15 @@ function onConfirm() {
     @click.self="onCancel"
   >
     <section class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-2xl sm:p-6">
-      <h2 class="text-lg font-semibold text-white">{{ title }}</h2>
-      <p v-if="message" class="mt-2 text-sm text-slate-300">{{ message }}</p>
+      <h2 class="text-lg font-semibold text-white">
+        {{ title }}
+      </h2>
+      <p
+        v-if="message"
+        class="mt-2 text-sm text-slate-300"
+      >
+        {{ message }}
+      </p>
 
       <div class="mt-4 grid grid-cols-2 gap-2">
         <button

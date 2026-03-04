@@ -82,9 +82,15 @@ onMounted(async () => {
 
 <template>
   <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
-    <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">{{ t('modules.statsLabel') }}</p>
-    <h1 class="mt-2 text-2xl font-semibold text-white">{{ t('stats.title') }}</h1>
-    <p class="mt-3 text-sm text-slate-300">{{ t('stats.subtitle') }}</p>
+    <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">
+      {{ t('modules.statsLabel') }}
+    </p>
+    <h1 class="mt-2 text-2xl font-semibold text-white">
+      {{ t('stats.title') }}
+    </h1>
+    <p class="mt-3 text-sm text-slate-300">
+      {{ t('stats.subtitle') }}
+    </p>
 
     <div class="mt-4 inline-flex rounded-xl border border-slate-800 bg-slate-950/60 p-1">
       <button
@@ -125,50 +131,99 @@ onMounted(async () => {
       </button>
     </div>
 
-    <p v-if="mappedError" class="mt-4 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200">
+    <p
+      v-if="mappedError"
+      class="mt-4 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200"
+    >
       {{ mappedError }}
     </p>
 
-    <p v-if="loading" class="mt-4 text-sm text-slate-400">{{ t('stats.loading') }}</p>
+    <p
+      v-if="loading"
+      class="mt-4 text-sm text-slate-400"
+    >
+      {{ t('stats.loading') }}
+    </p>
 
-    <div v-else class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+    <div
+      v-else
+      class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4"
+    >
       <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('stats.totalSessions') }}</p>
-        <p class="mt-1 text-xl font-semibold text-white">{{ summary.totalSessions }}</p>
+        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+          {{ t('stats.totalSessions') }}
+        </p>
+        <p class="mt-1 text-xl font-semibold text-white">
+          {{ summary.totalSessions }}
+        </p>
       </article>
       <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('stats.totalPages') }}</p>
-        <p class="mt-1 text-xl font-semibold text-white">{{ summary.totalPages }}</p>
+        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+          {{ t('stats.totalPages') }}
+        </p>
+        <p class="mt-1 text-xl font-semibold text-white">
+          {{ summary.totalPages }}
+        </p>
       </article>
       <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('stats.totalMinutes') }}</p>
-        <p class="mt-1 text-xl font-semibold text-white">{{ summary.totalMinutes }}</p>
+        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+          {{ t('stats.totalMinutes') }}
+        </p>
+        <p class="mt-1 text-xl font-semibold text-white">
+          {{ summary.totalMinutes }}
+        </p>
       </article>
       <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('stats.currentStreak') }}</p>
-        <p class="mt-1 text-xl font-semibold text-white">{{ summary.currentStreakDays }}</p>
+        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+          {{ t('stats.currentStreak') }}
+        </p>
+        <p class="mt-1 text-xl font-semibold text-white">
+          {{ summary.currentStreakDays }}
+        </p>
       </article>
     </div>
 
-    <div v-if="!loading" class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+    <div
+      v-if="!loading"
+      class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3"
+    >
       <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('stats.bestStreak') }}</p>
-        <p class="mt-1 text-lg font-semibold text-white">{{ summary.bestStreakDays }}</p>
+        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+          {{ t('stats.bestStreak') }}
+        </p>
+        <p class="mt-1 text-lg font-semibold text-white">
+          {{ summary.bestStreakDays }}
+        </p>
       </article>
       <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('stats.sessionsThisWeek') }}</p>
-        <p class="mt-1 text-lg font-semibold text-white">{{ summary.sessionsThisWeek }}</p>
+        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+          {{ t('stats.sessionsThisWeek') }}
+        </p>
+        <p class="mt-1 text-lg font-semibold text-white">
+          {{ summary.sessionsThisWeek }}
+        </p>
       </article>
       <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('stats.sessionsThisMonth') }}</p>
-        <p class="mt-1 text-lg font-semibold text-white">{{ summary.sessionsThisMonth }}</p>
+        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+          {{ t('stats.sessionsThisMonth') }}
+        </p>
+        <p class="mt-1 text-lg font-semibold text-white">
+          {{ summary.sessionsThisMonth }}
+        </p>
       </article>
     </div>
 
-    <section v-if="!loading" class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+    <section
+      v-if="!loading"
+      class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+    >
       <div class="mb-3 flex items-center justify-between gap-2">
-        <p class="text-sm font-semibold text-white">{{ t('stats.activityTitle') }}</p>
-        <p class="text-xs text-slate-400">{{ t('stats.activitySubtitle') }}</p>
+        <p class="text-sm font-semibold text-white">
+          {{ t('stats.activityTitle') }}
+        </p>
+        <p class="text-xs text-slate-400">
+          {{ t('stats.activitySubtitle') }}
+        </p>
       </div>
 
       <div class="mb-3 inline-flex rounded-lg border border-slate-800 bg-slate-900/70 p-1">
@@ -212,15 +267,25 @@ onMounted(async () => {
 
       <div class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
         <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-2">
-          <p class="text-[10px] uppercase tracking-wide text-slate-400">{{ t('stats.avgDailySessions') }}</p>
-          <p class="mt-1 text-sm font-semibold text-cyan-300">{{ formatDecimal(averageDailySessions) }}</p>
+          <p class="text-[10px] uppercase tracking-wide text-slate-400">
+            {{ t('stats.avgDailySessions') }}
+          </p>
+          <p class="mt-1 text-sm font-semibold text-cyan-300">
+            {{ formatDecimal(averageDailySessions) }}
+          </p>
         </article>
         <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-2">
-          <p class="text-[10px] uppercase tracking-wide text-slate-400">{{ t('stats.activeDays') }}</p>
-          <p class="mt-1 text-sm font-semibold text-white">{{ activeDays }}</p>
+          <p class="text-[10px] uppercase tracking-wide text-slate-400">
+            {{ t('stats.activeDays') }}
+          </p>
+          <p class="mt-1 text-sm font-semibold text-white">
+            {{ activeDays }}
+          </p>
         </article>
         <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-2 col-span-2 sm:col-span-1">
-          <p class="text-[10px] uppercase tracking-wide text-slate-400">{{ t('stats.peakDay') }}</p>
+          <p class="text-[10px] uppercase tracking-wide text-slate-400">
+            {{ t('stats.peakDay') }}
+          </p>
           <p class="mt-1 text-sm font-semibold text-white">
             {{
               peakActivity
@@ -233,31 +298,34 @@ onMounted(async () => {
 
       <div class="-mx-1 overflow-x-auto px-1">
         <div class="flex h-48 min-w-max items-end gap-2 border-b border-slate-800/80 pb-2 sm:gap-3">
-        <article
-          v-for="point in activitySeries"
-          :key="point.dayStart"
-          class="flex w-8 flex-col items-center gap-1 sm:w-9"
-          :title="`${formatDayTitle(point.dayStart)}: ${getActivityValue(point)} ${metricUnitLabel()}`"
-        >
-          <div class="relative flex h-36 w-full items-end rounded-md border border-slate-800 bg-slate-900/70 p-1">
-            <div
-              class="w-full rounded-sm transition"
-              :class="
-                getActivityValue(point) === 0
-                  ? 'bg-slate-700/60'
-                  : isToday(point.dayStart)
-                    ? 'bg-amber-400'
-                    : 'bg-cyan-400/90'
-              "
-              :style="{ height: barHeight(getActivityValue(point)) }"
-            />
-          </div>
-          <span class="text-[10px]" :class="isToday(point.dayStart) ? 'text-amber-300' : 'text-slate-400'">
-            {{ formatDayLabel(point.dayStart) }}
-          </span>
-          <span class="text-[10px] font-semibold text-slate-300">{{ getActivityValue(point) }}</span>
-        </article>
-      </div>
+          <article
+            v-for="point in activitySeries"
+            :key="point.dayStart"
+            class="flex w-8 flex-col items-center gap-1 sm:w-9"
+            :title="`${formatDayTitle(point.dayStart)}: ${getActivityValue(point)} ${metricUnitLabel()}`"
+          >
+            <div class="relative flex h-36 w-full items-end rounded-md border border-slate-800 bg-slate-900/70 p-1">
+              <div
+                class="w-full rounded-sm transition"
+                :class="
+                  getActivityValue(point) === 0
+                    ? 'bg-slate-700/60'
+                    : isToday(point.dayStart)
+                      ? 'bg-amber-400'
+                      : 'bg-cyan-400/90'
+                "
+                :style="{ height: barHeight(getActivityValue(point)) }"
+              />
+            </div>
+            <span
+              class="text-[10px]"
+              :class="isToday(point.dayStart) ? 'text-amber-300' : 'text-slate-400'"
+            >
+              {{ formatDayLabel(point.dayStart) }}
+            </span>
+            <span class="text-[10px] font-semibold text-slate-300">{{ getActivityValue(point) }}</span>
+          </article>
+        </div>
       </div>
 
       <div class="mt-3 flex items-center gap-3 text-[11px] text-slate-400">
@@ -272,7 +340,10 @@ onMounted(async () => {
       </div>
     </section>
 
-    <p v-if="!loading && filteredSessions.length === 0" class="mt-4 text-sm text-slate-400">
+    <p
+      v-if="!loading && filteredSessions.length === 0"
+      class="mt-4 text-sm text-slate-400"
+    >
       {{ t('stats.empty') }}
     </p>
   </section>

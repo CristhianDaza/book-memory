@@ -42,27 +42,45 @@ onMounted(async () => {
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg sm:p-8">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">{{ t('common.bookMemory') }}</p>
-          <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">{{ t('home.libraryHubTitle') }}</h1>
+          <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">
+            {{ t('common.bookMemory') }}
+          </p>
+          <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">
+            {{ t('home.libraryHubTitle') }}
+          </h1>
           <p class="mt-3 max-w-2xl text-sm text-slate-300 sm:text-base">
             {{ t('home.libraryHubSubtitle') }}
           </p>
-          <p class="mt-2 text-xs text-slate-400">{{ user?.email ?? t('home.fallbackUser') }}</p>
+          <p class="mt-2 text-xs text-slate-400">
+            {{ user?.email ?? t('home.fallbackUser') }}
+          </p>
         </div>
       </div>
 
       <div class="mt-4 grid grid-cols-3 gap-3">
         <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-          <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('home.kpiBooks') }}</p>
-          <p class="mt-1 text-xl font-semibold text-white">{{ totalBooks }}</p>
+          <p class="text-[11px] uppercase tracking-wide text-slate-400">
+            {{ t('home.kpiBooks') }}
+          </p>
+          <p class="mt-1 text-xl font-semibold text-white">
+            {{ totalBooks }}
+          </p>
         </article>
         <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-          <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('home.kpiFavorites') }}</p>
-          <p class="mt-1 text-xl font-semibold text-amber-300">{{ favoriteBooks }}</p>
+          <p class="text-[11px] uppercase tracking-wide text-slate-400">
+            {{ t('home.kpiFavorites') }}
+          </p>
+          <p class="mt-1 text-xl font-semibold text-amber-300">
+            {{ favoriteBooks }}
+          </p>
         </article>
         <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-          <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('home.kpiReading') }}</p>
-          <p class="mt-1 text-xl font-semibold text-cyan-300">{{ readingBooks }}</p>
+          <p class="text-[11px] uppercase tracking-wide text-slate-400">
+            {{ t('home.kpiReading') }}
+          </p>
+          <p class="mt-1 text-xl font-semibold text-cyan-300">
+            {{ readingBooks }}
+          </p>
         </article>
       </div>
     </section>
@@ -70,8 +88,12 @@ onMounted(async () => {
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
       <div class="mb-3 flex items-center justify-between gap-2">
         <div>
-          <h2 class="text-lg font-semibold text-white">{{ t('home.yourBooksTitle') }}</h2>
-          <p class="text-xs text-slate-400">{{ t('home.yourBooksSubtitle') }}</p>
+          <h2 class="text-lg font-semibold text-white">
+            {{ t('home.yourBooksTitle') }}
+          </h2>
+          <p class="text-xs text-slate-400">
+            {{ t('home.yourBooksSubtitle') }}
+          </p>
         </div>
         <RouterLink
           class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-slate-800"
@@ -81,9 +103,17 @@ onMounted(async () => {
         </RouterLink>
       </div>
 
-      <p v-if="loadingLibrary" class="text-sm text-slate-400">{{ t('books.loadingLibrary') }}</p>
+      <p
+        v-if="loadingLibrary"
+        class="text-sm text-slate-400"
+      >
+        {{ t('books.loadingLibrary') }}
+      </p>
 
-      <div v-else-if="previewBooks.length > 0" class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+      <div
+        v-else-if="previewBooks.length > 0"
+        class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5"
+      >
         <RouterLink
           v-for="item in previewBooks"
           :key="item.id"
@@ -104,7 +134,12 @@ onMounted(async () => {
             <span class="text-sm leading-none">{{ item.favorite ? '♥' : '♡' }}</span>
           </button>
           <div class="relative aspect-[2/3] w-full bg-slate-900">
-            <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" class="h-full w-full object-cover" />
+            <img
+              v-if="item.coverUrl"
+              :src="item.coverUrl"
+              :alt="item.title"
+              class="h-full w-full object-cover"
+            >
             <div
               v-else
               class="flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-slate-400"
@@ -124,8 +159,13 @@ onMounted(async () => {
         </RouterLink>
       </div>
 
-      <div v-else class="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-        <p class="text-sm text-slate-300">{{ t('books.emptyLibrary') }}</p>
+      <div
+        v-else
+        class="rounded-xl border border-slate-800 bg-slate-950/50 p-4"
+      >
+        <p class="text-sm text-slate-300">
+          {{ t('books.emptyLibrary') }}
+        </p>
         <RouterLink
           class="mt-3 inline-flex cursor-pointer rounded-lg border border-cyan-500/60 px-3 py-1.5 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-500/10"
           to="/books"

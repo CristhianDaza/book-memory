@@ -15,7 +15,11 @@ function toneClass(type: NotificationType) {
 
 <template>
   <div class="pointer-events-none fixed inset-x-0 top-3 z-[60] flex flex-col items-center gap-2 px-3">
-    <TransitionGroup name="toast" tag="div" class="w-full max-w-md space-y-2">
+    <TransitionGroup
+      name="toast"
+      tag="div"
+      class="w-full max-w-md space-y-2"
+    >
       <div
         v-for="item in items"
         :key="item.id"

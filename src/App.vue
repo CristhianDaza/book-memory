@@ -46,7 +46,10 @@ async function onConfirmLogout() {
   <div class="min-h-screen bg-slate-950 text-slate-100">
     <AppNotifications />
     <main class="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-      <div v-if="showUserControls" class="mb-3 flex items-center justify-end gap-2">
+      <div
+        v-if="showUserControls"
+        class="mb-3 flex items-center justify-end gap-2"
+      >
         <span class="text-xs uppercase tracking-wide text-slate-400">{{ t('common.language') }}</span>
         <button
           type="button"
