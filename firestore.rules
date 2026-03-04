@@ -1,0 +1,228 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidStatus(value) {
+      return value in ['reading', 'finished', 'wishlist'];
+    }
+
+    function isNonNegativeInt(value) {
+      return value is int && value >= 0;
+    }
+
+    function isPositiveIntOrNull(value) {
+      return value == null || (value is int && value > 0);
+    }
+
+    function isStringOrNull(value) {
+      return value == null || value is string;
+    }
+
+    function isValidLibraryBookData(data) {
+      return data.keys().hasOnly([
+        'source',
+        'externalId',
+        'title',
+        'authors',
+        'coverUrl',
+        'totalPages',
+        'favorite',
+        'currentPage',
+        'status',
+        'createdAt',
+        'updatedAt',
+      ])
+      && data.keys().hasAll([
+        'source',
+        'externalId',
+        'title',
+        'authors',
+        'coverUrl',
+        'totalPages',
+        'favorite',
+        'currentPage',
+        'status',
+        'createdAt',
+        'updatedAt',
+      ])
+      && data.source is string
+      && data.externalId is string
+      && data.title is string
+      && data.authors is list
+      && isStringOrNull(data.coverUrl)
+      && isPositiveIntOrNull(data.totalPages)
+      && data.favorite is bool
+      && isNonNegativeInt(data.currentPage)
+      && isValidStatus(data.status)
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp
+      && (data.totalPages == null || data.currentPage <= data.totalPages);
+    }
+
+    function isValidLibraryBookUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'favorite',
+        'currentPage',
+        'totalPages',
+        'status',
+        'updatedAt',
+      ])
+      && request.resource.data.updatedAt is timestamp
+      && (!('favorite' in request.resource.data) || request.resource.data.favorite is bool)
+      && (!('currentPage' in request.resource.data) || isNonNegativeInt(request.resource.data.currentPage))
+      && (!('totalPages' in request.resource.data) || isPositiveIntOrNull(request.resource.data.totalPages))
+      && (!('status' in request.resource.data) || isValidStatus(request.resource.data.status))
+      && (request.resource.data.totalPages == null || request.resource.data.currentPage <= request.resource.data.totalPages);
+    }
+
+    function isValidSessionCreateData(data) {
+      return data.keys().hasOnly([
+        'bookId',
+        'startedAt',
+        'endedAt',
+        'durationSeconds',
+        'startPage',
+        'endPage',
+        'pagesRead',
+        'createdAt',
+      ])
+      && data.keys().hasAll([
+        'bookId',
+        'startedAt',
+        'endedAt',
+        'durationSeconds',
+        'startPage',
+        'endPage',
+        'pagesRead',
+        'createdAt',
+      ])
+      && data.bookId is string
+      && data.startedAt is timestamp
+      && data.endedAt is timestamp
+      && isNonNegativeInt(data.durationSeconds)
+      && isNonNegativeInt(data.startPage)
+      && isNonNegativeInt(data.endPage)
+      && isNonNegativeInt(data.pagesRead)
+      && data.endPage >= data.startPage
+      && data.pagesRead == (data.endPage - data.startPage)
+      && data.createdAt is timestamp;
+    }
+
+    function isValidSessionUpdateData() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'startPage',
+        'endPage',
+        'pagesRead',
+        'durationSeconds',
+        'updatedAt',
+      ])
+      && request.resource.data.updatedAt is timestamp
+      && isNonNegativeInt(request.resource.data.startPage)
+      && isNonNegativeInt(request.resource.data.endPage)
+      && isNonNegativeInt(request.resource.data.pagesRead)
+      && isNonNegativeInt(request.resource.data.durationSeconds)
+      && request.resource.data.endPage >= request.resource.data.startPage
+      && request.resource.data.pagesRead == (request.resource.data.endPage - request.resource.data.startPage);
+    }
+
+    function isValidReadingStateData(data) {
+      return data.keys().hasOnly([
+        'selectedBookId',
+        'sessionBookId',
+        'startPage',
+        'endPage',
+        'elapsedSeconds',
+        'sessionStartedAt',
+        'running',
+        'persistedAt',
+        'updatedAt',
+      ])
+      && data.selectedBookId is string
+      && isStringOrNull(data.sessionBookId)
+      && isNonNegativeInt(data.startPage)
+      && isNonNegativeInt(data.endPage)
+      && data.endPage >= data.startPage
+      && isNonNegativeInt(data.elapsedSeconds)
+      && (data.sessionStartedAt == null || data.sessionStartedAt is timestamp)
+      && data.running is bool
+      && data.persistedAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidStatsGoalsData(data) {
+      return data.keys().hasOnly([
+        'weeklyPagesGoal',
+        'monthlyMinutesGoal',
+        'updatedAt',
+      ])
+      && data.weeklyPagesGoal is int
+      && data.weeklyPagesGoal > 0
+      && data.monthlyMinutesGoal is int
+      && data.monthlyMinutesGoal > 0
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidAppLogData(data) {
+      return data.keys().hasOnly([
+        'kind',
+        'message',
+        'stack',
+        'path',
+        'createdAt',
+      ])
+      && data.kind is string
+      && data.message is string
+      && (data.stack == null || data.stack is string)
+      && (data.path == null || data.path is string)
+      && data.createdAt is timestamp;
+    }
+
+    match /users/{uid} {
+      allow read, write: if false;
+
+      match /library/{bookId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && isValidLibraryBookData(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if isOwner(uid) && isValidLibraryBookUpdate();
+        allow delete: if isOwner(uid);
+      }
+
+      match /sessions/{sessionId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && isValidSessionCreateData(request.resource.data)
+          && request.resource.data.createdAt == request.time;
+        allow update: if isOwner(uid) && isValidSessionUpdateData();
+        allow delete: if isOwner(uid);
+      }
+
+      match /reading_state/{docId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && isValidReadingStateData(request.resource.data);
+        allow delete: if isOwner(uid);
+      }
+
+      match /stats/{docId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && isValidStatsGoalsData(request.resource.data);
+        allow delete: if isOwner(uid);
+      }
+
+      match /app_logs/{logId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isValidAppLogData(request.resource.data);
+        allow update, delete: if false;
+      }
+    }
+  }
+}
