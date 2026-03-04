@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [lint, typecheck, build]
+        task: [lint, typecheck, test:run, build]
 
     steps:
       - name: Checkout
