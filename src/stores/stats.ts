@@ -34,8 +34,13 @@ function startOfWeek(date: Date): Date {
   return target
 }
 
-function countStreakDays(daysDesc: number[]): number {
+function countCurrentStreakDays(daysDesc: number[], todayStart: number): number {
   if (daysDesc.length === 0) return 0
+  const latestDay = daysDesc[0]
+  if (latestDay === undefined) return 0
+  const latestDiff = Math.round((todayStart - latestDay) / 86400000)
+  if (latestDiff > 1) return 0
+
   let streak = 1
   for (let index = 1; index < daysDesc.length; index += 1) {
     const previous = daysDesc[index - 1]
@@ -97,12 +102,17 @@ export const useStatsStore = defineStore('stats', () => {
   })
 
   const activitySeries = computed<StatsActivityPoint[]>(() => {
-    const dayWindow = range.value === '7d' ? 7 : 30
+    const dayWindow = range.value === '7d' ? 7 : range.value === '30d' ? 30 : null
     const todayStart = startOfDay(new Date())
-    const threshold = todayStart - (dayWindow - 1) * 86400000
+    const firstSessionDay =
+      sessionsWithDates.value.length > 0
+        ? Math.min(...sessionsWithDates.value.map((session) => startOfDay(session.startedAtDate)))
+        : todayStart
+    const threshold = dayWindow === null ? firstSessionDay : todayStart - (dayWindow - 1) * 86400000
+    const totalDays = Math.max(1, Math.floor((todayStart - threshold) / 86400000) + 1)
 
     const buckets = new Map<number, StatsActivityPoint>()
-    for (let offset = 0; offset < dayWindow; offset += 1) {
+    for (let offset = 0; offset < totalDays; offset += 1) {
       const dayStart = threshold + offset * 86400000
       buckets.set(dayStart, {
         dayStart,
@@ -154,7 +164,7 @@ export const useStatsStore = defineStore('stats', () => {
       ),
     )
 
-    const currentStreakDays = countStreakDays(uniqueDaysDesc)
+    const currentStreakDays = countCurrentStreakDays(uniqueDaysDesc, startOfDay(now))
     const longestStreakDays = bestStreakDays(uniqueDaysDesc)
 
     return {

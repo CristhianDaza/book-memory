@@ -129,6 +129,24 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function sendPasswordReset(email: string) {
+    clearError()
+    const firebaseAuth = await getFirebaseAuth()
+    if (!firebaseAuth) {
+      errorMessage.value = tAuthError('authErrors.firebaseAuthNotConfigured')
+      return false
+    }
+
+    try {
+      const { sendPasswordResetEmail } = await getAuthSdk()
+      await sendPasswordResetEmail(firebaseAuth, email)
+      return true
+    } catch (error) {
+      errorMessage.value = resolveErrorMessage(error, 'authErrors.passwordResetFailed')
+      return false
+    }
+  }
+
   return {
     user,
     initializing,
@@ -139,6 +157,7 @@ export const useAuthStore = defineStore('auth', () => {
     loginWithGoogle,
     loginWithEmail,
     registerWithEmail,
+    sendPasswordReset,
     logout,
     clearError,
   }

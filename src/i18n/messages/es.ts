@@ -36,6 +36,8 @@ export const es = {
     register: 'Registro',
     login: 'Login',
     continueWithGoogle: 'Continuar con Google',
+    forgotPassword: 'Olvide mi contrasena',
+    passwordResetSent: 'Si el correo existe, se envio un enlace de recuperacion.',
   },
   authErrors: {
     firebaseConfigMissing: 'Firebase no esta configurado. Completa las variables VITE_FIREBASE_*.',
@@ -43,6 +45,7 @@ export const es = {
     googleSignInFailed: 'Fallo el inicio de sesion con Google.',
     emailSignInFailed: 'Fallo el inicio de sesion con correo.',
     emailSignUpFailed: 'Fallo el registro con correo.',
+    passwordResetFailed: 'No se pudo enviar el correo de recuperacion.',
     signOutFailed: 'Fallo el cierre de sesion.',
   },
   modules: {
@@ -178,6 +181,7 @@ export const es = {
     remainingPages: 'Paginas restantes',
     remainingPercent: 'Porcentaje restante',
     unknownRemaining: 'Sin dato',
+    lockedBookHint: 'La sesion activa esta vinculada a: {title}',
     errorNoBook: 'Debes seleccionar un libro para registrar la sesion.',
     errorEndBeforeStart: 'La pagina final no puede ser menor a la inicial.',
     errorNoActive: 'No hay sesion activa para finalizar.',

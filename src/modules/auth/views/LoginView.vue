@@ -16,6 +16,7 @@ const { errorMessage, isAuthenticated, initializing } = storeToRefs(authStore)
 const email = ref('')
 const password = ref('')
 const mode = ref<'login' | 'register'>('login')
+const resetInfoMessage = ref<string | null>(null)
 const currentLocale = computed(() => locale.value as AppLocale)
 const nextLocale = computed<AppLocale>(() => (currentLocale.value === 'es' ? 'en' : 'es'))
 const nextLocaleLabel = computed(() =>
@@ -45,6 +46,17 @@ async function onGoogleSubmit() {
   if (isAuthenticated.value) {
     const redirectTarget = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
     await router.push(redirectTarget)
+  }
+}
+
+async function onResetPassword() {
+  resetInfoMessage.value = null
+  if (!email.value.trim()) {
+    return
+  }
+  const sent = await authStore.sendPasswordReset(email.value.trim())
+  if (sent) {
+    resetInfoMessage.value = t('auth.passwordResetSent')
   }
 }
 </script>
@@ -126,11 +138,27 @@ async function onGoogleSubmit() {
       {{ t('auth.continueWithGoogle') }}
     </button>
 
+    <button
+      type="button"
+      class="mt-3 w-full cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+      :disabled="!email.trim()"
+      @click="onResetPassword"
+    >
+      {{ t('auth.forgotPassword') }}
+    </button>
+
     <p
       v-if="errorMessage"
       class="mt-3 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200"
     >
       {{ errorMessage }}
+    </p>
+
+    <p
+      v-if="resetInfoMessage"
+      class="mt-3 rounded-lg border border-emerald-700/50 bg-emerald-950/40 p-2 text-xs text-emerald-200"
+    >
+      {{ resetInfoMessage }}
     </p>
   </section>
 </template>

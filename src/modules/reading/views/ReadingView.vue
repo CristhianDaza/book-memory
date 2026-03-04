@@ -20,7 +20,7 @@ const notificationsStore = useNotificationsStore()
 
 const { user } = storeToRefs(authStore)
 const { library } = storeToRefs(booksStore)
-const { selectedBookId, startPage, elapsedSeconds, running, hasActiveSession, sessionStartedAt } =
+const { selectedBookId, sessionBookId, startPage, elapsedSeconds, running, hasActiveSession, sessionStartedAt } =
   storeToRefs(readingStore)
 
 const saving = ref(false)
@@ -29,6 +29,10 @@ const showFinishModal = ref(false)
 const finishEndPage = ref<string>('0')
 
 const selectedBook = computed(() => library.value.find((book) => book.id === selectedBookId.value) ?? null)
+const activeSessionBook = computed(() =>
+  sessionBookId.value ? library.value.find((book) => book.id === sessionBookId.value) ?? null : null,
+)
+const effectiveSessionBook = computed(() => activeSessionBook.value ?? selectedBook.value)
 const formattedElapsed = computed(() => {
   const total = elapsedSeconds.value
   const mins = Math.floor(total / 60)
@@ -42,13 +46,13 @@ const finishEndPageNumber = computed(() => {
 })
 
 const remainingPages = computed(() => {
-  if (!selectedBook.value?.totalPages) return null
-  return Math.max(0, selectedBook.value.totalPages - finishEndPageNumber.value)
+  if (!effectiveSessionBook.value?.totalPages) return null
+  return Math.max(0, effectiveSessionBook.value.totalPages - finishEndPageNumber.value)
 })
 
 const remainingPercent = computed(() => {
-  if (!selectedBook.value?.totalPages) return null
-  const total = selectedBook.value.totalPages
+  if (!effectiveSessionBook.value?.totalPages) return null
+  const total = effectiveSessionBook.value.totalPages
   if (total <= 0) return null
   const remaining = Math.max(0, total - finishEndPageNumber.value)
   return Math.max(0, Math.min(100, Math.round((remaining / total) * 100)))
@@ -71,6 +75,7 @@ async function loadContext() {
 }
 
 function onSelectBook(bookId: string) {
+  if (hasActiveSession.value) return
   readingStore.setSelectedBook(bookId)
   const selected = library.value.find((book) => book.id === bookId)
   if (!hasActiveSession.value && selected) {
@@ -106,7 +111,7 @@ function onReset() {
 
 function onOpenFinish() {
   localError.value = null
-  if (!selectedBook.value || !user.value?.uid) {
+  if (!effectiveSessionBook.value || !user.value?.uid) {
     localError.value = t('reading.errorNoBook')
     notificationsStore.error(localError.value)
     return
@@ -116,7 +121,7 @@ function onOpenFinish() {
     notificationsStore.error(localError.value)
     return
   }
-  finishEndPage.value = String(Math.max(startPage.value, selectedBook.value.currentPage))
+  finishEndPage.value = String(Math.max(startPage.value, effectiveSessionBook.value.currentPage))
   showFinishModal.value = true
 }
 
@@ -126,7 +131,7 @@ function onCancelFinish() {
 
 async function onConfirmFinish() {
   localError.value = null
-  if (!selectedBook.value || !user.value?.uid) {
+  if (!effectiveSessionBook.value || !user.value?.uid) {
     localError.value = t('reading.errorNoBook')
     notificationsStore.error(localError.value)
     return
@@ -152,7 +157,7 @@ async function onConfirmFinish() {
     const pagesRead = Math.max(0, end - start)
     readingStore.setEndPage(end)
     await createReadingSession(user.value.uid, {
-      bookId: selectedBook.value.id,
+      bookId: effectiveSessionBook.value.id,
       startedAt: sessionStartedAt.value,
       endedAt: now,
       durationSeconds: elapsedSeconds.value,
@@ -161,11 +166,11 @@ async function onConfirmFinish() {
       pagesRead,
     })
 
-    const totalPages = selectedBook.value.totalPages
+    const totalPages = effectiveSessionBook.value.totalPages
     const status =
       totalPages !== null && end >= totalPages ? ('finished' as const) : ('reading' as const)
 
-    await booksStore.updateBookMetadata(selectedBook.value.id, {
+    await booksStore.updateBookMetadata(effectiveSessionBook.value.id, {
       totalPages,
       currentPage: end,
       status,
@@ -174,7 +179,7 @@ async function onConfirmFinish() {
     readingStore.resetSession()
     showFinishModal.value = false
     notificationsStore.success(t('notifications.readingSessionSaved'))
-    await router.push({ name: 'book-detail', params: { id: selectedBook.value.id } })
+    await router.push({ name: 'book-detail', params: { id: effectiveSessionBook.value.id } })
   } catch (error) {
     localError.value = error instanceof Error ? error.message : t('reading.errorSaveSession')
     notificationsStore.error(localError.value)
@@ -206,6 +211,7 @@ onMounted(async () => {
         <select
           v-model="selectedBookId"
           class="mt-1 w-full cursor-pointer rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
+          :disabled="hasActiveSession"
           @change="onSelectBook(selectedBookId)"
         >
           <option
@@ -216,6 +222,12 @@ onMounted(async () => {
             {{ book.title }}
           </option>
         </select>
+        <p
+          v-if="hasActiveSession && activeSessionBook"
+          class="mt-1 text-[11px] text-slate-400"
+        >
+          {{ t('reading.lockedBookHint', { title: activeSessionBook.title }) }}
+        </p>
       </label>
 
       <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3">

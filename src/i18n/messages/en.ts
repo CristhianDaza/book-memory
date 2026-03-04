@@ -36,6 +36,8 @@ export const en = {
     register: 'Register',
     login: 'Login',
     continueWithGoogle: 'Continue with Google',
+    forgotPassword: 'Forgot password?',
+    passwordResetSent: 'If the email exists, a reset link was sent.',
   },
   authErrors: {
     firebaseConfigMissing: 'Firebase is not configured. Fill the VITE_FIREBASE_* variables.',
@@ -43,6 +45,7 @@ export const en = {
     googleSignInFailed: 'Google sign-in failed.',
     emailSignInFailed: 'Email sign-in failed.',
     emailSignUpFailed: 'Email sign-up failed.',
+    passwordResetFailed: 'Password reset email could not be sent.',
     signOutFailed: 'Sign-out failed.',
   },
   modules: {
@@ -178,6 +181,7 @@ export const en = {
     remainingPages: 'Remaining pages',
     remainingPercent: 'Remaining percent',
     unknownRemaining: 'Unknown',
+    lockedBookHint: 'Active session is locked to: {title}',
     errorNoBook: 'You must select a book to save a session.',
     errorEndBeforeStart: 'End page cannot be lower than start page.',
     errorNoActive: 'No active session to finish.',

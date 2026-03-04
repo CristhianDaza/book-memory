@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 export const useReadingStore = defineStore('reading', () => {
   const selectedBookId = ref<string>('')
+  const sessionBookId = ref<string | null>(null)
   const startPage = ref<number>(0)
   const endPage = ref<number>(0)
   const elapsedSeconds = ref<number>(0)
@@ -27,6 +28,7 @@ export const useReadingStore = defineStore('reading', () => {
   function startTimer() {
     if (!sessionStartedAt.value) {
       sessionStartedAt.value = new Date()
+      sessionBookId.value = selectedBookId.value || null
     }
     if (running.value) return
 
@@ -50,10 +52,12 @@ export const useReadingStore = defineStore('reading', () => {
     endPage.value = 0
     elapsedSeconds.value = 0
     sessionStartedAt.value = null
+    sessionBookId.value = null
   }
 
   return {
     selectedBookId,
+    sessionBookId,
     startPage,
     endPage,
     elapsedSeconds,
