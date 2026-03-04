@@ -9,6 +9,7 @@ import {
   clearOfflineConflicts,
   getOfflineConflicts,
   getOfflineConflictCount,
+  getRetryableOfflineConflictCount,
   getOfflineQueueCount,
   onOfflineQueueChange,
   requeueOfflineConflicts,
@@ -33,6 +34,7 @@ const showLogoutConfirm = ref(false)
 const isOnline = ref(typeof navigator === 'undefined' ? true : navigator.onLine)
 const pendingSyncCount = ref(getOfflineQueueCount())
 const conflictSyncCount = ref(getOfflineConflictCount())
+const retryableConflictCount = ref(getRetryableOfflineConflictCount())
 const latestConflictLabel = ref<string | null>(null)
 const latestConflictReason = ref<string | null>(null)
 const latestConflictStatus = ref<'open' | 'retrying' | null>(null)
@@ -76,6 +78,7 @@ function refreshSyncStatus() {
   isOnline.value = typeof navigator === 'undefined' ? true : navigator.onLine
   pendingSyncCount.value = getOfflineQueueCount()
   conflictSyncCount.value = getOfflineConflictCount()
+  retryableConflictCount.value = getRetryableOfflineConflictCount()
   const conflicts = getOfflineConflicts()
   const latest = conflicts[conflicts.length - 1]
   latestConflictLabel.value = latest ? `${latest.action} · ${latest.uid}` : null
@@ -225,9 +228,10 @@ onBeforeUnmount(() => {
             v-if="conflictSyncCount > 0"
             type="button"
             class="cursor-pointer rounded-lg border border-rose-500/60 px-3 py-1.5 text-xs font-semibold text-rose-100 transition hover:bg-rose-500/20"
+            :disabled="retryableConflictCount === 0"
             @click="onRetryConflicts"
           >
-            {{ t('common.syncRetryConflicts') }}
+            {{ t('common.syncRetryConflicts', { count: retryableConflictCount }) }}
           </button>
           <button
             v-if="conflictSyncCount > 0"

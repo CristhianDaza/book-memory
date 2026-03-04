@@ -12,7 +12,7 @@ export const es = {
     syncRetry: 'Reintentar sincronizacion',
     syncConflict: 'Conflictos de sincronizacion: {count}. Revisa y resuelve manualmente.',
     syncClearConflicts: 'Marcar conflictos revisados',
-    syncRetryConflicts: 'Reintentar conflictos',
+    syncRetryConflicts: 'Reintentar conflictos ({count})',
     syncLatestConflict: 'Ultimo: {label}',
     syncLatestReason: 'Error: {reason}',
     syncRetrying: 'Reintentando...',

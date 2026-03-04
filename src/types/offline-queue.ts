@@ -43,4 +43,5 @@ export interface OfflineConflictItem {
   errorMessage: string
   retryCount: number
   status: 'open' | 'retrying'
+  nextRetryAt: string
 }

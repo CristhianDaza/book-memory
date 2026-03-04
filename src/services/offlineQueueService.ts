@@ -15,6 +15,12 @@ const MAX_QUEUE_ITEMS = 200
 const MAX_CONFLICT_ITEMS = 100
 let replaying = false
 
+function retryDelayMs(retryCount: number): number {
+  const base = 30_000
+  const max = 30 * 60_000
+  return Math.min(max, base * 2 ** Math.max(0, retryCount - 1))
+}
+
 function canUseStorage(): boolean {
   return typeof globalThis !== 'undefined' && 'localStorage' in globalThis
 }
@@ -86,6 +92,8 @@ function appendConflict(item: OfflineQueueItem, error: unknown) {
 
   const previous = conflicts.find((entry) => entry.id === conflictId)
   const filtered = conflicts.filter((entry) => entry.id !== conflictId)
+  const retryCount = (previous?.retryCount ?? 0) + 1
+  const nextRetryAt = new Date(Date.now() + retryDelayMs(retryCount)).toISOString()
   filtered.push({
     id: conflictId,
     action: item.action,
@@ -94,8 +102,9 @@ function appendConflict(item: OfflineQueueItem, error: unknown) {
     createdAt: item.createdAt,
     failedAt: new Date().toISOString(),
     errorMessage: error instanceof Error ? error.message : 'unknown_error',
-    retryCount: (previous?.retryCount ?? 0) + 1,
+    retryCount,
     status: 'open',
+    nextRetryAt,
   })
   writeConflicts(filtered)
 }
@@ -136,6 +145,11 @@ export function getOfflineConflictCount(): number {
   return readConflicts().length
 }
 
+export function getRetryableOfflineConflictCount(): number {
+  const now = Date.now()
+  return readConflicts().filter((entry) => new Date(entry.nextRetryAt).getTime() <= now).length
+}
+
 export function clearOfflineConflicts() {
   writeConflicts([])
 }
@@ -145,7 +159,10 @@ export function requeueOfflineConflicts() {
   if (conflicts.length === 0) return
   const queue = readQueue()
   const queueIds = new Set(queue.map((entry) => entry.id))
-  const restored: OfflineQueueItem[] = conflicts.map((entry) => ({
+  const now = Date.now()
+  const retryable = conflicts.filter((entry) => new Date(entry.nextRetryAt).getTime() <= now)
+  if (retryable.length === 0) return
+  const restored: OfflineQueueItem[] = retryable.map((entry) => ({
     id: entry.id,
     action: entry.action,
     uid: entry.uid,
@@ -154,10 +171,14 @@ export function requeueOfflineConflicts() {
   })).filter((entry) => !queueIds.has(entry.id))
   writeQueue([...queue, ...restored])
   writeConflicts(
-    conflicts.map((entry) => ({
-      ...entry,
-      status: 'retrying',
-    })),
+    conflicts.map((entry) =>
+      retryable.some((candidate) => candidate.id === entry.id)
+        ? {
+            ...entry,
+            status: 'retrying',
+          }
+        : entry,
+    ),
   )
 }
 

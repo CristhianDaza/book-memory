@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   clearOfflineConflicts,
   enqueueOfflineFinishReadingSession,
@@ -7,6 +7,7 @@ import {
   getOfflineConflicts,
   getOfflineConflictCount,
   getOfflineQueueCount,
+  getRetryableOfflineConflictCount,
   requeueOfflineConflicts,
   replayOfflineQueue,
 } from './offlineQueueService'
@@ -48,11 +49,18 @@ function createStorageMock() {
 describe('offlineQueueService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
     vi.stubGlobal('localStorage', createStorageMock())
     vi.stubGlobal('navigator', { onLine: true })
     vi.mocked(createReadingSessionWithId).mockResolvedValue()
     vi.mocked(updateLibraryBookMetadata).mockResolvedValue()
     clearOfflineConflicts()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 
   it('queues save and replays it', async () => {
@@ -191,6 +199,7 @@ describe('offlineQueueService', () => {
     expect(getOfflineConflicts()[0]?.errorMessage).toBe('permission')
     expect(getOfflineConflicts()[0]?.retryCount).toBe(1)
     expect(getOfflineConflicts()[0]?.status).toBe('open')
+    expect(getRetryableOfflineConflictCount()).toBe(0)
   })
 
   it('requeues conflicts back into queue and clears conflict list', async () => {
@@ -211,6 +220,7 @@ describe('offlineQueueService', () => {
     await replayOfflineQueue()
     expect(getOfflineConflictCount()).toBe(1)
 
+    vi.advanceTimersByTime(31_000)
     requeueOfflineConflicts()
     expect(getOfflineConflictCount()).toBe(1)
     expect(getOfflineConflicts()[0]?.status).toBe('retrying')
@@ -241,8 +251,37 @@ describe('offlineQueueService', () => {
     expect(getOfflineConflictCount()).toBe(1)
 
     vi.mocked(createReadingSessionWithId).mockResolvedValueOnce()
+    vi.advanceTimersByTime(31_000)
     requeueOfflineConflicts()
     await replayOfflineQueue()
     expect(getOfflineConflictCount()).toBe(0)
+  })
+
+  it('requeues only conflicts whose retry window has elapsed', async () => {
+    vi.mocked(createReadingSessionWithId).mockRejectedValueOnce(new Error('permission'))
+    enqueueOfflineFinishReadingSession('u1', {
+      transactionId: 'tx-delay',
+      bookId: 'b1',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      endedAt: '2026-01-01T00:10:00.000Z',
+      durationSeconds: 600,
+      startPage: 10,
+      endPage: 20,
+      pagesRead: 10,
+      totalPages: 300,
+      currentPage: 20,
+      status: 'reading',
+    })
+    await replayOfflineQueue()
+    expect(getOfflineConflictCount()).toBe(1)
+    expect(getRetryableOfflineConflictCount()).toBe(0)
+
+    requeueOfflineConflicts()
+    expect(getOfflineQueueCount()).toBe(0)
+
+    vi.advanceTimersByTime(31_000)
+    expect(getRetryableOfflineConflictCount()).toBe(1)
+    requeueOfflineConflicts()
+    expect(getOfflineQueueCount()).toBe(1)
   })
 })
