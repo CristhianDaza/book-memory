@@ -190,6 +190,7 @@ describe('offlineQueueService', () => {
     expect(getOfflineConflicts()[0]?.action).toBe('finish_reading_session')
     expect(getOfflineConflicts()[0]?.errorMessage).toBe('permission')
     expect(getOfflineConflicts()[0]?.retryCount).toBe(1)
+    expect(getOfflineConflicts()[0]?.status).toBe('open')
   })
 
   it('requeues conflicts back into queue and clears conflict list', async () => {
@@ -211,12 +212,37 @@ describe('offlineQueueService', () => {
     expect(getOfflineConflictCount()).toBe(1)
 
     requeueOfflineConflicts()
-    expect(getOfflineConflictCount()).toBe(0)
+    expect(getOfflineConflictCount()).toBe(1)
+    expect(getOfflineConflicts()[0]?.status).toBe('retrying')
     expect(getOfflineQueueCount()).toBe(1)
 
     vi.mocked(createReadingSessionWithId).mockRejectedValueOnce(new Error('permission'))
     await replayOfflineQueue()
     expect(getOfflineConflictCount()).toBe(1)
-    expect(getOfflineConflicts()[0]?.retryCount).toBe(1)
+    expect(getOfflineConflicts()[0]?.retryCount).toBe(2)
+  })
+
+  it('removes conflict when a requeued transaction succeeds', async () => {
+    vi.mocked(createReadingSessionWithId).mockRejectedValueOnce(new Error('permission'))
+    enqueueOfflineFinishReadingSession('u1', {
+      transactionId: 'tx-success-retry',
+      bookId: 'b1',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      endedAt: '2026-01-01T00:10:00.000Z',
+      durationSeconds: 600,
+      startPage: 10,
+      endPage: 20,
+      pagesRead: 10,
+      totalPages: 300,
+      currentPage: 20,
+      status: 'reading',
+    })
+    await replayOfflineQueue()
+    expect(getOfflineConflictCount()).toBe(1)
+
+    vi.mocked(createReadingSessionWithId).mockResolvedValueOnce()
+    requeueOfflineConflicts()
+    await replayOfflineQueue()
+    expect(getOfflineConflictCount()).toBe(0)
   })
 })

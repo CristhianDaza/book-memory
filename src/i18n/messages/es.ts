@@ -15,6 +15,7 @@ export const es = {
     syncRetryConflicts: 'Reintentar conflictos',
     syncLatestConflict: 'Ultimo: {label}',
     syncLatestReason: 'Error: {reason}',
+    syncRetrying: 'Reintentando...',
   },
   home: {
     home: 'Inicio',

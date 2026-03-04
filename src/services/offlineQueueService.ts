@@ -69,14 +69,20 @@ export function getOfflineConflicts(): OfflineConflictItem[] {
   return readConflicts()
 }
 
-function appendConflict(item: OfflineQueueItem, error: unknown) {
-  const conflicts = readConflicts()
-  const conflictId =
+function conflictIdFromItem(item: OfflineQueueItem): string {
+  if (
     item.action === 'finish_reading_session' &&
     item.payload &&
     typeof (item.payload as QueuedFinishSessionPayload).transactionId === 'string'
-      ? `finish:${(item.payload as QueuedFinishSessionPayload).transactionId}`
-      : `${item.action}:${item.id}`
+  ) {
+    return `finish:${(item.payload as QueuedFinishSessionPayload).transactionId}`
+  }
+  return `${item.action}:${item.id}`
+}
+
+function appendConflict(item: OfflineQueueItem, error: unknown) {
+  const conflicts = readConflicts()
+  const conflictId = conflictIdFromItem(item)
 
   const previous = conflicts.find((entry) => entry.id === conflictId)
   const filtered = conflicts.filter((entry) => entry.id !== conflictId)
@@ -89,8 +95,18 @@ function appendConflict(item: OfflineQueueItem, error: unknown) {
     failedAt: new Date().toISOString(),
     errorMessage: error instanceof Error ? error.message : 'unknown_error',
     retryCount: (previous?.retryCount ?? 0) + 1,
+    status: 'open',
   })
   writeConflicts(filtered)
+}
+
+function resolveConflictForItem(item: OfflineQueueItem) {
+  const conflictId = conflictIdFromItem(item)
+  const conflicts = readConflicts()
+  const filtered = conflicts.filter((entry) => entry.id !== conflictId)
+  if (filtered.length !== conflicts.length) {
+    writeConflicts(filtered)
+  }
 }
 
 function compactQueue(items: OfflineQueueItem[]): OfflineQueueItem[] {
@@ -128,15 +144,21 @@ export function requeueOfflineConflicts() {
   const conflicts = readConflicts()
   if (conflicts.length === 0) return
   const queue = readQueue()
+  const queueIds = new Set(queue.map((entry) => entry.id))
   const restored: OfflineQueueItem[] = conflicts.map((entry) => ({
-    id: `${entry.id}-retry-${Date.now()}`,
+    id: entry.id,
     action: entry.action,
     uid: entry.uid,
     payload: entry.payload,
     createdAt: new Date().toISOString(),
-  }))
+  })).filter((entry) => !queueIds.has(entry.id))
   writeQueue([...queue, ...restored])
-  writeConflicts([])
+  writeConflicts(
+    conflicts.map((entry) => ({
+      ...entry,
+      status: 'retrying',
+    })),
+  )
 }
 
 export function onOfflineQueueChange(listener: () => void): () => void {
@@ -227,6 +249,7 @@ export async function replayOfflineQueue() {
             currentPage: payload.currentPage,
             status: payload.status,
           })
+          resolveConflictForItem(item)
         }
       } catch (error) {
         if (item.action === 'finish_reading_session') {
