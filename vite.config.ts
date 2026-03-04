@@ -14,22 +14,59 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/bookmemory-192.svg', 'icons/bookmemory-512.svg'],
+      injectRegister: false,
       workbox: {
-        globIgnores: [
-          'assets/*View-*.js',
-          'assets/books-*.js',
-          'assets/readingSessionService-*.js',
-          'assets/index.esm-*.js',
-        ],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        navigateFallback: '/index.html',
         runtimeCaching: [
           {
-            urlPattern: ({ request, url }) => request.destination === 'script' && url.pathname.startsWith('/assets/'),
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'html-pages',
+              networkTimeoutSeconds: 5,
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 60 * 24 * 7,
+              },
+            },
+          },
+          {
+            urlPattern: ({ request, url }) =>
+              ['script', 'style', 'worker'].includes(request.destination) && url.pathname.startsWith('/assets/'),
             handler: 'StaleWhileRevalidate',
             options: {
-              cacheName: 'assets-js-runtime',
+              cacheName: 'assets-runtime',
               expiration: {
                 maxEntries: 80,
                 maxAgeSeconds: 60 * 60 * 24 * 14,
+              },
+            },
+          },
+          {
+            urlPattern: ({ request }) => request.destination === 'image',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'images-runtime',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+            },
+          },
+          {
+            urlPattern: ({ url, request }) =>
+              request.method === 'GET' &&
+              (url.origin.includes('openlibrary.org') || url.origin.includes('googleapis.com')),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'book-search-api',
+              networkTimeoutSeconds: 4,
+              expiration: {
+                maxEntries: 80,
+                maxAgeSeconds: 60 * 60 * 24,
               },
             },
           },
@@ -55,6 +92,12 @@ export default defineConfig({
             sizes: '512x512',
             type: 'image/svg+xml',
             purpose: 'any',
+          },
+          {
+            src: '/icons/bookmemory-512.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml',
+            purpose: 'maskable',
           },
         ],
       },
