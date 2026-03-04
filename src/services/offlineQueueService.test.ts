@@ -1,11 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  enqueueOfflineFinishReadingSession,
   enqueueOfflineClearReadingState,
   enqueueOfflineSaveReadingState,
   getOfflineQueueCount,
   replayOfflineQueue,
 } from './offlineQueueService'
+import { updateLibraryBookMetadata } from './libraryService'
+import { createReadingSession } from './readingSessionService'
 import { clearReadingState, saveReadingState } from './readingStateService'
+
+vi.mock('./readingSessionService', () => ({
+  createReadingSession: vi.fn(),
+}))
+
+vi.mock('./libraryService', () => ({
+  updateLibraryBookMetadata: vi.fn(),
+}))
 
 vi.mock('./readingStateService', () => ({
   saveReadingState: vi.fn(),
@@ -35,6 +46,8 @@ describe('offlineQueueService', () => {
     vi.clearAllMocks()
     vi.stubGlobal('localStorage', createStorageMock())
     vi.stubGlobal('navigator', { onLine: true })
+    vi.mocked(createReadingSession).mockResolvedValue()
+    vi.mocked(updateLibraryBookMetadata).mockResolvedValue()
   })
 
   it('queues save and replays it', async () => {
@@ -114,5 +127,30 @@ describe('offlineQueueService', () => {
     await replayOfflineQueue()
     expect(clearReadingState).toHaveBeenCalledTimes(1)
     expect(saveReadingState).toHaveBeenCalledTimes(0)
+  })
+
+  it('replays finish reading session transaction', async () => {
+    enqueueOfflineFinishReadingSession('u1', {
+      bookId: 'b1',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      endedAt: '2026-01-01T00:10:00.000Z',
+      durationSeconds: 600,
+      startPage: 10,
+      endPage: 20,
+      pagesRead: 10,
+      totalPages: 300,
+      currentPage: 20,
+      status: 'reading',
+    })
+
+    await replayOfflineQueue()
+
+    expect(createReadingSession).toHaveBeenCalledTimes(1)
+    expect(updateLibraryBookMetadata).toHaveBeenCalledWith('u1', 'b1', {
+      totalPages: 300,
+      currentPage: 20,
+      status: 'reading',
+    })
+    expect(getOfflineQueueCount()).toBe(0)
   })
 })

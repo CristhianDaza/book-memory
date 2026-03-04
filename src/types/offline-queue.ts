@@ -9,13 +9,25 @@ export interface QueuedReadingStatePayload {
   persistedAt: string
 }
 
-export type OfflineQueueAction = 'save_reading_state' | 'clear_reading_state'
+export interface QueuedFinishSessionPayload {
+  bookId: string
+  startedAt: string
+  endedAt: string
+  durationSeconds: number
+  startPage: number
+  endPage: number
+  pagesRead: number
+  totalPages: number | null
+  currentPage: number
+  status: 'reading' | 'finished' | 'wishlist'
+}
+
+export type OfflineQueueAction = 'save_reading_state' | 'clear_reading_state' | 'finish_reading_session'
 
 export interface OfflineQueueItem {
   id: string
   action: OfflineQueueAction
   uid: string
-  payload: QueuedReadingStatePayload | null
+  payload: QueuedReadingStatePayload | QueuedFinishSessionPayload | null
   createdAt: string
 }
-

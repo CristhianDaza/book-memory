@@ -263,5 +263,6 @@ export const en = {
     readingPaused: 'Timer paused.',
     readingReset: 'Session reset.',
     readingSessionSaved: 'Reading session saved.',
+    readingSessionQueuedOffline: 'Offline: session queued for sync.',
   },
 } as const

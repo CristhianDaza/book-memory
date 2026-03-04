@@ -263,5 +263,6 @@ export const es = {
     readingPaused: 'Temporizador pausado.',
     readingReset: 'Sesion reiniciada.',
     readingSessionSaved: 'Sesion guardada correctamente.',
+    readingSessionQueuedOffline: 'Sin conexion: sesion guardada en cola para sincronizar.',
   },
 } as const

@@ -4,6 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import PromptModal from '../../../components/PromptModal.vue'
+import { enqueueOfflineFinishReadingSession } from '../../../services/offlineQueueService'
 import { createReadingSession } from '../../../services/readingSessionService'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
@@ -149,11 +150,11 @@ async function onConfirmFinish() {
     notificationsStore.error(localError.value)
     return
   }
+  const now = new Date()
 
   saving.value = true
   try {
     readingStore.pauseTimer()
-    const now = new Date()
     const pagesRead = Math.max(0, end - start)
     readingStore.setEndPage(end)
     await createReadingSession(user.value.uid, {
@@ -181,6 +182,34 @@ async function onConfirmFinish() {
     notificationsStore.success(t('notifications.readingSessionSaved'))
     await router.push({ name: 'book-detail', params: { id: effectiveSessionBook.value.id } })
   } catch (error) {
+    if (effectiveSessionBook.value && user.value?.uid && sessionStartedAt.value) {
+      const totalPages = effectiveSessionBook.value.totalPages
+      const status =
+        totalPages !== null && end >= totalPages ? ('finished' as const) : ('reading' as const)
+
+      enqueueOfflineFinishReadingSession(user.value.uid, {
+        bookId: effectiveSessionBook.value.id,
+        startedAt: sessionStartedAt.value.toISOString(),
+        endedAt: now.toISOString(),
+        durationSeconds: elapsedSeconds.value,
+        startPage: start,
+        endPage: end,
+        pagesRead: Math.max(0, end - start),
+        totalPages,
+        currentPage: end,
+        status,
+      })
+      await booksStore.updateBookMetadata(effectiveSessionBook.value.id, {
+        totalPages,
+        currentPage: end,
+        status,
+      })
+      readingStore.resetSession()
+      showFinishModal.value = false
+      notificationsStore.success(t('notifications.readingSessionQueuedOffline'))
+      await router.push({ name: 'book-detail', params: { id: effectiveSessionBook.value.id } })
+      return
+    }
     localError.value = error instanceof Error ? error.message : t('reading.errorSaveSession')
     notificationsStore.error(localError.value)
   } finally {

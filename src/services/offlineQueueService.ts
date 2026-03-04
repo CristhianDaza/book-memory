@@ -1,5 +1,11 @@
+import { updateLibraryBookMetadata } from './libraryService'
+import { createReadingSession } from './readingSessionService'
 import { clearReadingState, saveReadingState } from './readingStateService'
-import type { OfflineQueueItem, QueuedReadingStatePayload } from '../types/offline-queue'
+import type {
+  OfflineQueueItem,
+  QueuedFinishSessionPayload,
+  QueuedReadingStatePayload,
+} from '../types/offline-queue'
 
 const STORAGE_KEY = 'book-memory-offline-queue'
 const QUEUE_EVENT = 'book-memory-offline-queue-changed'
@@ -36,14 +42,20 @@ function writeQueue(items: OfflineQueueItem[]) {
 
 function compactQueue(items: OfflineQueueItem[]): OfflineQueueItem[] {
   const lastIndexByUid = new Map<string, number>()
+  const keepIndexes: number[] = []
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index]
     if (!item) continue
-    lastIndexByUid.set(item.uid, index)
+    if (item.action === 'save_reading_state' || item.action === 'clear_reading_state') {
+      lastIndexByUid.set(item.uid, index)
+      continue
+    }
+    keepIndexes.push(index)
   }
-  return Array.from(lastIndexByUid.entries())
-    .sort((a, b) => a[1] - b[1])
-    .map((entry) => items[entry[1]])
+  const stateIndexes = Array.from(lastIndexByUid.values())
+  return [...keepIndexes, ...stateIndexes]
+    .sort((a, b) => a - b)
+    .map((index) => items[index])
     .filter((item): item is OfflineQueueItem => Boolean(item))
 }
 
@@ -84,6 +96,18 @@ export function enqueueOfflineClearReadingState(uid: string) {
   writeQueue(items)
 }
 
+export function enqueueOfflineFinishReadingSession(uid: string, payload: QueuedFinishSessionPayload) {
+  const items = readQueue()
+  items.push({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    action: 'finish_reading_session',
+    uid,
+    payload,
+    createdAt: new Date().toISOString(),
+  })
+  writeQueue(items)
+}
+
 export async function replayOfflineQueue() {
   if (replaying) return
   replaying = true
@@ -110,6 +134,23 @@ export async function replayOfflineQueue() {
         }
         if (item.action === 'clear_reading_state') {
           await clearReadingState(item.uid)
+        }
+        if (item.action === 'finish_reading_session' && item.payload) {
+          const payload = item.payload as QueuedFinishSessionPayload
+          await createReadingSession(item.uid, {
+            bookId: payload.bookId,
+            startedAt: new Date(payload.startedAt),
+            endedAt: new Date(payload.endedAt),
+            durationSeconds: payload.durationSeconds,
+            startPage: payload.startPage,
+            endPage: payload.endPage,
+            pagesRead: payload.pagesRead,
+          })
+          await updateLibraryBookMetadata(item.uid, payload.bookId, {
+            totalPages: payload.totalPages,
+            currentPage: payload.currentPage,
+            status: payload.status,
+          })
         }
       } catch {
         pending.push(item)
