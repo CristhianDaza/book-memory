@@ -15,7 +15,7 @@ vi.mock('pinia', async () => {
 
 const mocks = vi.hoisted(() => {
   const enqueueOfflineFinishReadingSession = vi.fn()
-  const createReadingSession = vi.fn()
+  const createSession = vi.fn()
   const routerPush = vi.fn()
   const ensureLibraryLoaded = vi.fn()
   const updateBookMetadata = vi.fn()
@@ -77,7 +77,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     enqueueOfflineFinishReadingSession,
-    createReadingSession,
+    createSession,
     routerPush,
     ensureLibraryLoaded,
     updateBookMetadata,
@@ -97,8 +97,10 @@ vi.mock('../../../services/offlineQueueService', () => ({
   enqueueOfflineFinishReadingSession: mocks.enqueueOfflineFinishReadingSession,
 }))
 
-vi.mock('../../../services/readingSessionService', () => ({
-  createReadingSession: mocks.createReadingSession,
+vi.mock('../../../stores/sessions', () => ({
+  useSessionsStore: () => ({
+    createSession: mocks.createSession,
+  }),
 }))
 
 vi.mock('../../../stores/auth', () => ({
@@ -178,7 +180,7 @@ describe('ReadingView', () => {
     await confirmButton.trigger('click')
     await flushPromises()
 
-    expect(mocks.createReadingSession).not.toHaveBeenCalled()
+    expect(mocks.createSession).not.toHaveBeenCalled()
     expect(mocks.enqueueOfflineFinishReadingSession).toHaveBeenCalledTimes(1)
     expect(mocks.enqueueOfflineFinishReadingSession).toHaveBeenCalledWith(
       'user-1',

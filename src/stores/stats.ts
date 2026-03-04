@@ -1,7 +1,5 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { fetchLibraryBooks } from '../services/libraryService'
-import { fetchUserSessions, fetchUserSessionsWithinDays } from '../services/readingSessionService'
 import { fetchStatsGoals, saveStatsGoals } from '../services/statsGoalsService'
 import type { ReadingSessionRecord } from '../types/reading'
 import type {
@@ -15,6 +13,8 @@ import type {
   StatsSummary,
 } from '../types/stats'
 import { useAuthStore } from './auth'
+import { useBooksStore } from './books'
+import { useSessionsStore } from './sessions'
 
 function parseDate(value: unknown): Date | null {
   if (!value) return null
@@ -90,6 +90,7 @@ export const useStatsStore = defineStore('stats', () => {
   const activityMetric = ref<StatsActivityMetric>('sessions')
   const weeklyPagesGoal = ref(100)
   const monthlyMinutesGoal = ref(600)
+  const goalsLoadedForUid = ref<string | null>(null)
   let goalsSaveTimer: ReturnType<typeof setTimeout> | null = null
 
   const sessionsWithDates = computed(() =>
@@ -258,7 +259,6 @@ export const useStatsStore = defineStore('stats', () => {
   function setRange(nextRange: StatsRange) {
     if (range.value === nextRange) return
     range.value = nextRange
-    void loadStats()
   }
 
   function setActivityMetric(nextMetric: StatsActivityMetric) {
@@ -287,21 +287,22 @@ export const useStatsStore = defineStore('stats', () => {
     loading.value = true
     errorKey.value = null
     try {
-      const sessionsRequest =
-        range.value === 'all' ? fetchUserSessions(uid) : fetchUserSessionsWithinDays(uid, range.value === '7d' ? 45 : 120)
-      const [loadedSessions, loadedLibrary, loadedGoals] = await Promise.all([
-        sessionsRequest,
-        fetchLibraryBooks(uid),
-        fetchStatsGoals(uid),
-      ])
-      sessions.value = loadedSessions
-      libraryTitles.value = loadedLibrary.reduce<Record<string, string>>((acc, book) => {
+      const booksStore = useBooksStore()
+      const sessionsStore = useSessionsStore()
+      await Promise.all([booksStore.ensureLibraryLoaded(), sessionsStore.ensureSessionsLoaded()])
+      sessions.value = sessionsStore.allSessions
+      libraryTitles.value = booksStore.library.reduce<Record<string, string>>((acc, book) => {
         acc[book.id] = book.title
         return acc
       }, {})
-      if (loadedGoals) {
-        weeklyPagesGoal.value = loadedGoals.weeklyPagesGoal
-        monthlyMinutesGoal.value = loadedGoals.monthlyMinutesGoal
+
+      if (goalsLoadedForUid.value !== uid) {
+        const loadedGoals = await fetchStatsGoals(uid)
+        if (loadedGoals) {
+          weeklyPagesGoal.value = loadedGoals.weeklyPagesGoal
+          monthlyMinutesGoal.value = loadedGoals.monthlyMinutesGoal
+        }
+        goalsLoadedForUid.value = uid
       }
     } catch {
       sessions.value = []

@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { fetchUserSessions } from '../services/readingSessionService'
 import { useAuthStore } from '../stores/auth'
 import { useBooksStore } from '../stores/books'
+import { useSessionsStore } from '../stores/sessions'
 
 const authStore = useAuthStore()
 const booksStore = useBooksStore()
+const sessionsStore = useSessionsStore()
 const { t } = useI18n()
 
 const { user } = storeToRefs(authStore)
 const { library, loadingLibrary, favoriteUpdatingIds } = storeToRefs(booksStore)
-const latestSessionByBook = ref<Record<string, number>>({})
+const { latestSessionMillisByBook } = storeToRefs(sessionsStore)
 const totalBooks = computed(() => library.value.length)
 const favoriteBooks = computed(() => library.value.filter((book) => book.favorite).length)
 const readingBooks = computed(() => library.value.filter((book) => book.status === 'reading').length)
@@ -29,8 +30,8 @@ const continueReadingBook = computed(() => {
   const reading = library.value.filter((book) => book.status === 'reading')
   if (reading.length === 0) return null
   return [...reading].sort((a, b) => {
-    const dateA = latestSessionByBook.value[a.id] ?? 0
-    const dateB = latestSessionByBook.value[b.id] ?? 0
+    const dateA = latestSessionMillisByBook.value[a.id] ?? 0
+    const dateB = latestSessionMillisByBook.value[b.id] ?? 0
     if (dateB !== dateA) return dateB - dateA
     return b.currentPage - a.currentPage
   })[0] ?? null
@@ -38,7 +39,7 @@ const continueReadingBook = computed(() => {
 const lastActivityLabel = computed(() => {
   const book = continueReadingBook.value
   if (!book) return null
-  const millis = latestSessionByBook.value[book.id]
+  const millis = latestSessionMillisByBook.value[book.id]
   if (!millis) return t('home.noRecentSession')
   return new Date(millis).toLocaleDateString()
 })
@@ -54,25 +55,7 @@ async function onToggleFavorite(bookId: string) {
 onMounted(async () => {
   await booksStore.ensureLibraryLoaded()
   if (!user.value?.uid) return
-  try {
-    const sessions = await fetchUserSessions(user.value.uid)
-    const nextMap: Record<string, number> = {}
-    sessions.forEach((session) => {
-      const startedAt = session.startedAt
-      let millis = 0
-      if (startedAt instanceof Date) millis = startedAt.getTime()
-      else if (startedAt && typeof startedAt === 'object' && 'toDate' in startedAt) {
-        millis = (startedAt as { toDate: () => Date }).toDate().getTime()
-      }
-      const previous = nextMap[session.bookId] ?? 0
-      if (previous === 0 || millis > previous) {
-        nextMap[session.bookId] = millis
-      }
-    })
-    latestSessionByBook.value = nextMap
-  } catch {
-    latestSessionByBook.value = {}
-  }
+  await sessionsStore.ensureSessionsLoaded()
 })
 </script>
 

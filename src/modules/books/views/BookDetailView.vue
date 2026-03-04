@@ -4,14 +4,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ConfirmModal from '../../../components/ConfirmModal.vue'
-import {
-  deleteReadingSession,
-  fetchSessionsForBook,
-  updateReadingSession,
-} from '../../../services/readingSessionService'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
+import { useSessionsStore } from '../../../stores/sessions'
 import type { ReadingSessionRecord } from '../../../types/reading'
 
 const { t } = useI18n()
@@ -19,6 +15,7 @@ const route = useRoute()
 const router = useRouter()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
+const sessionsStore = useSessionsStore()
 const notificationsStore = useNotificationsStore()
 
 const { favoriteUpdatingIds, metadataUpdatingIds, deletingIds, syncQueuedMessageKey } = storeToRefs(booksStore)
@@ -111,7 +108,7 @@ async function loadSessions() {
 
   loadingSessions.value = true
   try {
-    sessions.value = await fetchSessionsForBook(user.value.uid, book.value.id)
+    sessions.value = await sessionsStore.ensureBookSessionsLoaded(book.value.id)
     visibleSessionsCount.value = 5
   } catch {
     sessions.value = []
@@ -206,14 +203,14 @@ async function onSaveEditSession(sessionId: string) {
 
   savingSessionEdit.value = true
   try {
-    await updateReadingSession(user.value.uid, sessionId, {
+    await sessionsStore.updateSession(sessionId, {
       startPage: start,
       endPage: end,
       pagesRead: Math.max(0, end - start),
       durationSeconds: minutes * 60,
     })
     editingSessionId.value = null
-    await loadSessions()
+    sessions.value = sessionsStore.getSessionsForBook(book.value.id)
     await booksStore.recalculateBookProgressFromSessions(book.value.id)
     if (booksStore.errorKey) {
       notificationsStore.error(t(booksStore.errorKey))
@@ -241,8 +238,8 @@ async function onConfirmDeleteSession() {
 
   deletingSessionId.value = removingSessionId.value
   try {
-    await deleteReadingSession(user.value.uid, removingSessionId.value)
-    await loadSessions()
+    await sessionsStore.deleteSession(removingSessionId.value)
+    sessions.value = sessionsStore.getSessionsForBook(book.value.id)
     await booksStore.recalculateBookProgressFromSessions(book.value.id)
     if (booksStore.errorKey) {
       notificationsStore.error(t(booksStore.errorKey))
@@ -264,12 +261,12 @@ watch(
     editMode.value = false
     await loadSessions()
   },
+  { immediate: true },
 )
 
 onMounted(async () => {
   await booksStore.ensureLibraryLoaded()
   if (bookId.value) booksStore.selectLibraryBook(bookId.value)
-  await loadSessions()
 })
 </script>
 

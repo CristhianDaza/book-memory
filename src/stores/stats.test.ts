@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAuthStore } from './auth'
+import { useBooksStore } from './books'
+import { useSessionsStore } from './sessions'
 import { useStatsStore } from './stats'
 import { fetchLibraryBooks } from '../services/libraryService'
-import { fetchUserSessions, fetchUserSessionsWithinDays } from '../services/readingSessionService'
+import { fetchUserSessions } from '../services/readingSessionService'
 import { fetchStatsGoals, saveStatsGoals } from '../services/statsGoalsService'
 
 vi.mock('../i18n', () => ({
@@ -20,7 +22,6 @@ vi.mock('../services/libraryService', () => ({
 
 vi.mock('../services/readingSessionService', () => ({
   fetchUserSessions: vi.fn(),
-  fetchUserSessionsWithinDays: vi.fn(),
 }))
 
 vi.mock('../services/statsGoalsService', () => ({
@@ -37,6 +38,8 @@ describe('stats store', () => {
   it('builds top books and computes averages', async () => {
     const auth = useAuthStore()
     auth.user = { uid: 'user-1' } as never
+    const books = useBooksStore()
+    const sessions = useSessionsStore()
     const now = new Date()
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
@@ -66,13 +69,15 @@ describe('stats store', () => {
         status: 'reading',
       },
     ])
-    vi.mocked(fetchUserSessionsWithinDays).mockResolvedValue([
+    vi.mocked(fetchUserSessions).mockResolvedValue([
       { id: 's1', bookId: 'book-1', startedAt: now, pagesRead: 30, durationSeconds: 1800 },
       { id: 's2', bookId: 'book-1', startedAt: yesterday, pagesRead: 20, durationSeconds: 1200 },
       { id: 's3', bookId: 'book-2', startedAt: now, pagesRead: 10, durationSeconds: 600 },
     ] as never)
     vi.mocked(fetchStatsGoals).mockResolvedValue(null)
 
+    await books.ensureLibraryLoaded()
+    await sessions.ensureSessionsLoaded()
     const store = useStatsStore()
     await store.loadStats()
 
@@ -85,14 +90,12 @@ describe('stats store', () => {
   it('updates goals progress and supports all range activity history', async () => {
     const auth = useAuthStore()
     auth.user = { uid: 'user-1' } as never
+    const books = useBooksStore()
+    const sessions = useSessionsStore()
     const now = new Date()
     const fortyDaysAgo = new Date(now.getTime() - 40 * 24 * 60 * 60 * 1000)
 
     vi.mocked(fetchLibraryBooks).mockResolvedValue([])
-    vi.mocked(fetchUserSessionsWithinDays).mockResolvedValue([
-      { id: 's1', bookId: 'x', startedAt: now, pagesRead: 40, durationSeconds: 3600 },
-      { id: 's2', bookId: 'x', startedAt: fortyDaysAgo, pagesRead: 5, durationSeconds: 300 },
-    ] as never)
     vi.mocked(fetchUserSessions).mockResolvedValue([
       { id: 's1', bookId: 'x', startedAt: now, pagesRead: 40, durationSeconds: 3600 },
       { id: 's2', bookId: 'x', startedAt: fortyDaysAgo, pagesRead: 5, durationSeconds: 300 },
@@ -100,6 +103,8 @@ describe('stats store', () => {
     vi.mocked(fetchStatsGoals).mockResolvedValue(null)
     vi.mocked(saveStatsGoals).mockResolvedValue()
 
+    await books.ensureLibraryLoaded()
+    await sessions.ensureSessionsLoaded()
     const store = useStatsStore()
     await store.loadStats()
     store.setWeeklyPagesGoal(20)

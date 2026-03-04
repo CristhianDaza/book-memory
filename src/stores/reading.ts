@@ -33,6 +33,8 @@ export const useReadingStore = defineStore('reading', () => {
   let cloudSyncTimer: ReturnType<typeof setTimeout> | null = null
   let hydratingFromCloud = false
   let onlineListenerInstalled = false
+  const hydratedCloudUid = ref<string | null>(null)
+  let hydratePromise: Promise<void> | null = null
 
   const hasActiveSession = computed(() => sessionStartedAt.value !== null)
 
@@ -137,37 +139,54 @@ export const useReadingStore = defineStore('reading', () => {
     }
   }
 
-  async function hydrateFromCloud() {
+  async function hydrateFromCloud(options?: { force?: boolean }) {
     const authStore = useAuthStore()
     const uid = authStore.user?.uid
     if (!uid) return
-
-    try {
-      hydratingFromCloud = true
-      const cloud = await fetchReadingState(uid)
-      if (!cloud) return
-
-      const localMillis = sessionStartedAt.value?.getTime() ?? 0
-      const cloudMillis = cloud.persistedAt.getTime()
-      if (localMillis > 0 && localMillis >= cloudMillis) return
-
-      selectedBookId.value = cloud.selectedBookId
-      sessionBookId.value = cloud.sessionBookId
-      startPage.value = Math.max(0, Math.floor(cloud.startPage))
-      endPage.value = Math.max(0, Math.floor(cloud.endPage))
-      elapsedSeconds.value = Math.max(0, Math.floor(cloud.elapsedSeconds))
-      sessionStartedAt.value = cloud.sessionStartedAt
-      running.value = cloud.running && cloud.sessionStartedAt !== null
-
-      if (running.value) {
-        const elapsedWhileAway = Math.floor((Date.now() - cloud.persistedAt.getTime()) / 1000)
-        elapsedSeconds.value += Math.max(0, elapsedWhileAway)
-        startTicker()
-      }
-      persistState()
-    } finally {
-      hydratingFromCloud = false
+    const force = options?.force === true
+    if (!force && hydratedCloudUid.value === uid) return
+    if (hydratePromise) {
+      await hydratePromise
+      return
     }
+
+    hydratePromise = (async () => {
+      try {
+        hydratingFromCloud = true
+        const cloud = await fetchReadingState(uid)
+        if (!cloud) {
+          hydratedCloudUid.value = uid
+          return
+        }
+
+        const localMillis = sessionStartedAt.value?.getTime() ?? 0
+        const cloudMillis = cloud.persistedAt.getTime()
+        if (localMillis > 0 && localMillis >= cloudMillis) {
+          hydratedCloudUid.value = uid
+          return
+        }
+
+        selectedBookId.value = cloud.selectedBookId
+        sessionBookId.value = cloud.sessionBookId
+        startPage.value = Math.max(0, Math.floor(cloud.startPage))
+        endPage.value = Math.max(0, Math.floor(cloud.endPage))
+        elapsedSeconds.value = Math.max(0, Math.floor(cloud.elapsedSeconds))
+        sessionStartedAt.value = cloud.sessionStartedAt
+        running.value = cloud.running && cloud.sessionStartedAt !== null
+
+        if (running.value) {
+          const elapsedWhileAway = Math.floor((Date.now() - cloud.persistedAt.getTime()) / 1000)
+          elapsedSeconds.value += Math.max(0, elapsedWhileAway)
+          startTicker()
+        }
+        persistState()
+        hydratedCloudUid.value = uid
+      } finally {
+        hydratingFromCloud = false
+        hydratePromise = null
+      }
+    })()
+    await hydratePromise
   }
 
   function setSelectedBook(bookId: string) {

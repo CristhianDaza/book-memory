@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { isSearchBooksError, searchBooks } from '../services/bookSearchService'
 import type { LibrarySortMode, LibraryStatusFilter, SearchLanguageMode } from '../types/books-store'
-import { deleteSessionsForBook, fetchSessionsForBook } from '../services/readingSessionService'
+import { deleteSessionsForBook } from '../services/readingSessionService'
 import {
   addBookToLibrary,
   deleteLibraryBook,
@@ -19,8 +19,10 @@ import {
 import type { BookSearchResult, LibraryBook } from '../types/books'
 import type { AppLocale } from '../types/i18n'
 import { useAuthStore } from './auth'
+import { useSessionsStore } from './sessions'
 
 export const useBooksStore = defineStore('books', () => {
+  const LIBRARY_CACHE_MAX_AGE_MS = 2 * 60_000
   const query = ref('')
   const searchResults = ref<BookSearchResult[]>([])
   const library = ref<LibraryBook[]>([])
@@ -42,6 +44,9 @@ export const useBooksStore = defineStore('books', () => {
   const errorKey = ref<string | null>(null)
   const errorDetails = ref<string | null>(null)
   const syncQueuedMessageKey = ref<string | null>(null)
+  const libraryLoadedForUid = ref<string | null>(null)
+  const libraryLoadedAt = ref<number>(0)
+  let libraryLoadPromise: Promise<void> | null = null
 
   const libraryIds = computed(() => new Set(library.value.map((book) => book.id)))
   const selectedBook = computed(() =>
@@ -177,31 +182,52 @@ export const useBooksStore = defineStore('books', () => {
     searchLanguageMode.value = mode
   }
 
-  async function loadLibrary() {
-    clearError()
+  async function loadLibrary(options?: { force?: boolean; maxAgeMs?: number }) {
     const authStore = useAuthStore()
-    if (!authStore.user?.uid) {
+    const uid = authStore.user?.uid
+    if (!uid) {
       library.value = []
+      libraryLoadedForUid.value = null
+      libraryLoadedAt.value = 0
+      libraryLoadPromise = null
       return
     }
 
-    loadingLibrary.value = true
-    try {
-      library.value = await fetchLibraryBooks(authStore.user.uid)
-      if (!selectedLibraryBookId.value) {
-        const firstBook = library.value[0]
-        selectedLibraryBookId.value = firstBook ? firstBook.id : null
-      }
-    } catch (error) {
-      errorKey.value = 'books.loadLibraryError'
-      errorDetails.value = error instanceof Error ? error.message : null
-    } finally {
-      loadingLibrary.value = false
+    const force = options?.force === true
+    const maxAgeMs = options?.maxAgeMs ?? LIBRARY_CACHE_MAX_AGE_MS
+    const sameUid = libraryLoadedForUid.value === uid
+    const hasData = library.value.length > 0
+    const cacheFresh = Date.now() - libraryLoadedAt.value <= maxAgeMs
+    if (!force && sameUid && hasData && cacheFresh) return
+
+    if (libraryLoadPromise) {
+      await libraryLoadPromise
+      return
     }
+
+    clearError()
+    loadingLibrary.value = true
+    libraryLoadPromise = (async () => {
+      try {
+        library.value = await fetchLibraryBooks(uid)
+        libraryLoadedForUid.value = uid
+        libraryLoadedAt.value = Date.now()
+        if (!selectedLibraryBookId.value) {
+          const firstBook = library.value[0]
+          selectedLibraryBookId.value = firstBook ? firstBook.id : null
+        }
+      } catch (error) {
+        errorKey.value = 'books.loadLibraryError'
+        errorDetails.value = error instanceof Error ? error.message : null
+      } finally {
+        loadingLibrary.value = false
+        libraryLoadPromise = null
+      }
+    })()
+    await libraryLoadPromise
   }
 
   async function ensureLibraryLoaded() {
-    if (library.value.length > 0 || loadingLibrary.value) return
     await loadLibrary()
   }
 
@@ -221,11 +247,15 @@ export const useBooksStore = defineStore('books', () => {
     try {
       const savedBook = await addBookToLibrary(authStore.user.uid, book)
       library.value = [savedBook, ...library.value.filter((item) => item.id !== savedBook.id)]
+      libraryLoadedForUid.value = authStore.user.uid
+      libraryLoadedAt.value = Date.now()
       selectedLibraryBookId.value = savedBook.id
     } catch (error) {
       if (isOfflineQueueCandidate(error)) {
         const optimisticBook = toOptimisticLibraryBook(book)
         library.value = [optimisticBook, ...library.value.filter((item) => item.id !== optimisticBook.id)]
+        libraryLoadedForUid.value = authStore.user.uid
+        libraryLoadedAt.value = Date.now()
         selectedLibraryBookId.value = optimisticBook.id
         enqueueOfflineLibraryAddBook(authStore.user.uid, {
           source: book.source,
@@ -274,6 +304,7 @@ export const useBooksStore = defineStore('books', () => {
     library.value = library.value.map((book) =>
       book.id === bookId ? { ...book, favorite: nextFavorite } : book,
     )
+    libraryLoadedAt.value = Date.now()
 
     try {
       await updateLibraryBookFavorite(uid, bookId, nextFavorite)
@@ -288,6 +319,7 @@ export const useBooksStore = defineStore('books', () => {
         library.value = library.value.map((book) =>
           book.id === bookId ? { ...book, favorite: !nextFavorite } : book,
         )
+        libraryLoadedAt.value = Date.now()
         errorKey.value = 'books.favoriteError'
         errorDetails.value = error instanceof Error ? error.message : null
       }
@@ -309,18 +341,22 @@ export const useBooksStore = defineStore('books', () => {
     const previousLibrary = [...library.value]
     deletingIds.value = [...deletingIds.value, bookId]
     library.value = library.value.filter((book) => book.id !== bookId)
+    libraryLoadedAt.value = Date.now()
     if (selectedLibraryBookId.value === bookId) {
       selectedLibraryBookId.value = library.value[0]?.id ?? null
     }
     try {
       await deleteSessionsForBook(uid, bookId)
       await deleteLibraryBook(uid, bookId)
+      const sessionsStore = useSessionsStore()
+      sessionsStore.removeSessionsForBookFromCache(bookId)
     } catch (error) {
       if (isOfflineQueueCandidate(error)) {
         enqueueOfflineLibraryDeleteBook(uid, { bookId })
         syncQueuedMessageKey.value = 'notifications.bookRemovedQueuedOffline'
       } else {
         library.value = previousLibrary
+        libraryLoadedAt.value = Date.now()
         if (selectedLibraryBookId.value === null) {
           selectedLibraryBookId.value = previousLibrary[0]?.id ?? null
         }
@@ -353,6 +389,7 @@ export const useBooksStore = defineStore('books', () => {
     library.value = library.value.map((book) =>
       book.id === bookId ? { ...book, ...payload } : book,
     )
+    libraryLoadedAt.value = Date.now()
 
     try {
       await updateLibraryBookMetadata(uid, bookId, payload)
@@ -376,6 +413,7 @@ export const useBooksStore = defineStore('books', () => {
               }
             : book,
         )
+        libraryLoadedAt.value = Date.now()
         errorKey.value = 'books.updateBookError'
         errorDetails.value = error instanceof Error ? error.message : null
       }
@@ -395,7 +433,9 @@ export const useBooksStore = defineStore('books', () => {
     }
 
     try {
-      const sessions = await fetchSessionsForBook(uid, bookId)
+      const sessionsStore = useSessionsStore()
+      await sessionsStore.ensureBookSessionsLoaded(bookId)
+      const sessions = sessionsStore.getSessionsForBook(bookId)
       const firstSession = sessions[0]
       const latestEndPage = firstSession ? Math.max(0, firstSession.endPage ?? 0) : 0
       const nextStatus =

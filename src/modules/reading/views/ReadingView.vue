@@ -5,11 +5,11 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import PromptModal from '../../../components/PromptModal.vue'
 import { enqueueOfflineFinishReadingSession } from '../../../services/offlineQueueService'
-import { createReadingSession } from '../../../services/readingSessionService'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
 import { useReadingStore } from '../../../stores/reading'
+import { useSessionsStore } from '../../../stores/sessions'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -17,6 +17,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const booksStore = useBooksStore()
 const readingStore = useReadingStore()
+const sessionsStore = useSessionsStore()
 const notificationsStore = useNotificationsStore()
 
 const { user } = storeToRefs(authStore)
@@ -258,7 +259,7 @@ async function onConfirmFinish() {
     const pagesRead = Math.max(0, end - start)
     readingStore.setEndPage(end)
     await withTimeout(
-      createReadingSession(uid, {
+      sessionsStore.createSession({
         bookId,
         startedAt: new Date(startedAtIso),
         endedAt: now,
