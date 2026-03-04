@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { enqueueOfflineClearReadingState, enqueueOfflineSaveReadingState } from '../services/offlineQueueService'
 import { clearReadingState, fetchReadingState, saveReadingState } from '../services/readingStateService'
 import type { PersistedReadingState } from '../types/reading-state'
 import { useAuthStore } from './auth'
@@ -46,16 +47,20 @@ export const useReadingStore = defineStore('reading', () => {
     const uid = authStore.user?.uid
     if (!uid || hydratingFromCloud) return
 
-    await saveReadingState(uid, {
-      selectedBookId: payload.selectedBookId,
-      sessionBookId: payload.sessionBookId,
-      startPage: payload.startPage,
-      endPage: payload.endPage,
-      elapsedSeconds: payload.elapsedSeconds,
-      sessionStartedAt: payload.sessionStartedAt ? new Date(payload.sessionStartedAt) : null,
-      running: payload.running,
-      persistedAt: payload.persistedAt ? new Date(payload.persistedAt) : new Date(),
-    })
+    try {
+      await saveReadingState(uid, {
+        selectedBookId: payload.selectedBookId,
+        sessionBookId: payload.sessionBookId,
+        startPage: payload.startPage,
+        endPage: payload.endPage,
+        elapsedSeconds: payload.elapsedSeconds,
+        sessionStartedAt: payload.sessionStartedAt ? new Date(payload.sessionStartedAt) : null,
+        running: payload.running,
+        persistedAt: payload.persistedAt ? new Date(payload.persistedAt) : new Date(),
+      })
+    } catch {
+      enqueueOfflineSaveReadingState(uid, payload)
+    }
   }
 
   function queueCloudSync(payload: PersistedReadingState) {
@@ -183,7 +188,11 @@ export const useReadingStore = defineStore('reading', () => {
     persistState()
     const authStore = useAuthStore()
     const uid = authStore.user?.uid
-    if (uid) void clearReadingState(uid)
+    if (uid) {
+      void clearReadingState(uid).catch(() => {
+        enqueueOfflineClearReadingState(uid)
+      })
+    }
   }
 
   restoreState()
