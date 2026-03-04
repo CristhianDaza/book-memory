@@ -10,6 +10,7 @@ export interface QueuedReadingStatePayload {
 }
 
 export interface QueuedFinishSessionPayload {
+  transactionId: string
   bookId: string
   startedAt: string
   endedAt: string

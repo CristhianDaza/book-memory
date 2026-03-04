@@ -102,6 +102,30 @@ export async function createReadingSession(uid: string, payload: CreateReadingSe
   })
 }
 
+export async function createReadingSessionWithId(
+  uid: string,
+  sessionId: string,
+  payload: CreateReadingSessionInput,
+): Promise<void> {
+  const db = await ensureFirestore()
+  const { Timestamp, doc, serverTimestamp, setDoc } = await getFirestoreSdk()
+  const ref = doc(db, 'users', uid, 'sessions', sessionId)
+  await setDoc(
+    ref,
+    {
+      bookId: payload.bookId,
+      startedAt: Timestamp.fromDate(payload.startedAt),
+      endedAt: Timestamp.fromDate(payload.endedAt),
+      durationSeconds: payload.durationSeconds,
+      startPage: payload.startPage,
+      endPage: payload.endPage,
+      pagesRead: payload.pagesRead,
+      createdAt: serverTimestamp(),
+    },
+    { merge: true },
+  )
+}
+
 export async function updateReadingSession(
   uid: string,
   sessionId: string,

@@ -1,5 +1,5 @@
 import { updateLibraryBookMetadata } from './libraryService'
-import { createReadingSession } from './readingSessionService'
+import { createReadingSessionWithId } from './readingSessionService'
 import { clearReadingState, saveReadingState } from './readingStateService'
 import type {
   OfflineQueueItem,
@@ -137,7 +137,7 @@ export async function replayOfflineQueue() {
         }
         if (item.action === 'finish_reading_session' && item.payload) {
           const payload = item.payload as QueuedFinishSessionPayload
-          await createReadingSession(item.uid, {
+          await createReadingSessionWithId(item.uid, `offline-${payload.transactionId}`, {
             bookId: payload.bookId,
             startedAt: new Date(payload.startedAt),
             endedAt: new Date(payload.endedAt),

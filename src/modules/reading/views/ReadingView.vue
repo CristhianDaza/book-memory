@@ -130,6 +130,13 @@ function onCancelFinish() {
   showFinishModal.value = false
 }
 
+function createTransactionId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 async function onConfirmFinish() {
   localError.value = null
   if (!effectiveSessionBook.value || !user.value?.uid) {
@@ -188,6 +195,7 @@ async function onConfirmFinish() {
         totalPages !== null && end >= totalPages ? ('finished' as const) : ('reading' as const)
 
       enqueueOfflineFinishReadingSession(user.value.uid, {
+        transactionId: createTransactionId(),
         bookId: effectiveSessionBook.value.id,
         startedAt: sessionStartedAt.value.toISOString(),
         endedAt: now.toISOString(),
