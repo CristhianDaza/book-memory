@@ -204,12 +204,10 @@ function finishSessionQueuedOffline(
     status,
   })
 
-  // Close UI first so offline save feels immediate and deterministic.
   readingStore.resetSession()
   showFinishModal.value = false
   notificationsStore.success(t('notifications.readingSessionQueuedOffline'))
 
-  // Best-effort optimistic metadata update; queue flow is already persisted above.
   void booksStore
     .updateBookMetadata(bookId, {
       totalPages,

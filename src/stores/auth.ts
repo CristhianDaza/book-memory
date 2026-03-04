@@ -74,7 +74,6 @@ export const useAuthStore = defineStore('auth', () => {
         }
 
         timeout = setTimeout(() => {
-          // Do not force sign-out on slow bootstrap; keep listener alive.
           completeInit()
         }, AUTH_INIT_TIMEOUT_MS)
 
