@@ -69,7 +69,7 @@ export function getOfflineConflicts(): OfflineConflictItem[] {
   return readConflicts()
 }
 
-function appendConflict(item: OfflineQueueItem) {
+function appendConflict(item: OfflineQueueItem, error: unknown) {
   const conflicts = readConflicts()
   const conflictId =
     item.action === 'finish_reading_session' &&
@@ -78,6 +78,7 @@ function appendConflict(item: OfflineQueueItem) {
       ? `finish:${(item.payload as QueuedFinishSessionPayload).transactionId}`
       : `${item.action}:${item.id}`
 
+  const previous = conflicts.find((entry) => entry.id === conflictId)
   const filtered = conflicts.filter((entry) => entry.id !== conflictId)
   filtered.push({
     id: conflictId,
@@ -86,6 +87,8 @@ function appendConflict(item: OfflineQueueItem) {
     payload: item.payload,
     createdAt: item.createdAt,
     failedAt: new Date().toISOString(),
+    errorMessage: error instanceof Error ? error.message : 'unknown_error',
+    retryCount: (previous?.retryCount ?? 0) + 1,
   })
   writeConflicts(filtered)
 }
@@ -225,9 +228,9 @@ export async function replayOfflineQueue() {
             status: payload.status,
           })
         }
-      } catch {
+      } catch (error) {
         if (item.action === 'finish_reading_session') {
-          appendConflict(item)
+          appendConflict(item, error)
           continue
         }
         pending.push(item)

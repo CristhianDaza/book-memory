@@ -40,4 +40,6 @@ export interface OfflineConflictItem {
   payload: QueuedReadingStatePayload | QueuedFinishSessionPayload | null
   createdAt: string
   failedAt: string
+  errorMessage: string
+  retryCount: number
 }

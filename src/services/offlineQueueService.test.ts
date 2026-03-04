@@ -188,6 +188,8 @@ describe('offlineQueueService', () => {
     expect(getOfflineQueueCount()).toBe(0)
     expect(getOfflineConflictCount()).toBe(1)
     expect(getOfflineConflicts()[0]?.action).toBe('finish_reading_session')
+    expect(getOfflineConflicts()[0]?.errorMessage).toBe('permission')
+    expect(getOfflineConflicts()[0]?.retryCount).toBe(1)
   })
 
   it('requeues conflicts back into queue and clears conflict list', async () => {
@@ -211,5 +213,10 @@ describe('offlineQueueService', () => {
     requeueOfflineConflicts()
     expect(getOfflineConflictCount()).toBe(0)
     expect(getOfflineQueueCount()).toBe(1)
+
+    vi.mocked(createReadingSessionWithId).mockRejectedValueOnce(new Error('permission'))
+    await replayOfflineQueue()
+    expect(getOfflineConflictCount()).toBe(1)
+    expect(getOfflineConflicts()[0]?.retryCount).toBe(1)
   })
 })

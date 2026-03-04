@@ -14,6 +14,7 @@ export const en = {
     syncClearConflicts: 'Mark conflicts as reviewed',
     syncRetryConflicts: 'Retry conflicts',
     syncLatestConflict: 'Latest: {label}',
+    syncLatestReason: 'Error: {reason}',
   },
   home: {
     home: 'Home',

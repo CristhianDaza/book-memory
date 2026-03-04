@@ -34,6 +34,7 @@ const isOnline = ref(typeof navigator === 'undefined' ? true : navigator.onLine)
 const pendingSyncCount = ref(getOfflineQueueCount())
 const conflictSyncCount = ref(getOfflineConflictCount())
 const latestConflictLabel = ref<string | null>(null)
+const latestConflictReason = ref<string | null>(null)
 let removeQueueListener: (() => void) | null = null
 
 const showSyncBanner = computed(
@@ -77,6 +78,7 @@ function refreshSyncStatus() {
   const conflicts = getOfflineConflicts()
   const latest = conflicts[conflicts.length - 1]
   latestConflictLabel.value = latest ? `${latest.action} · ${latest.uid}` : null
+  latestConflictReason.value = latest?.errorMessage ?? null
 }
 
 async function onRetrySync() {
@@ -194,6 +196,12 @@ onBeforeUnmount(() => {
             class="ml-1 text-[11px] text-rose-300/90"
           >
             {{ t('common.syncLatestConflict', { label: latestConflictLabel }) }}
+          </span>
+          <span
+            v-if="conflictSyncCount > 0 && latestConflictReason"
+            class="ml-1 text-[11px] text-rose-300/90"
+          >
+            {{ t('common.syncLatestReason', { reason: latestConflictReason }) }}
           </span>
         </p>
         <div class="flex gap-2">
