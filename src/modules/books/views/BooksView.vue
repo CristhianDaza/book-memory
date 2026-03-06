@@ -6,6 +6,7 @@ import type { BookSearchResult } from '../../../types/books'
 import type { AppLocale } from '../../../types/i18n'
 import type { LibraryStatusFilter, SearchLanguageMode } from '../../../types/books-store'
 import PromptModal from '../../../components/PromptModal.vue'
+import { withBodyScrollLock } from '../../../composables/useBodyScrollLock'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
@@ -233,6 +234,8 @@ watch(showAddModal, async (isOpen) => {
   await nextTick()
   searchInputRef.value?.focus()
 })
+
+withBodyScrollLock(showAddModal)
 </script>
 
 <template>

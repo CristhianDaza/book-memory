@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { PromptModalEmits, PromptModalProps } from '../types/components'
+import { withBodyScrollLock } from '../composables/useBodyScrollLock'
 
-withDefaults(defineProps<PromptModalProps>(), {
+const props = withDefaults(defineProps<PromptModalProps>(), {
   message: '',
   inputLabel: '',
   inputPlaceholder: '',
@@ -23,6 +25,8 @@ function onConfirm() {
 function onUpdateValue(value: string) {
   emit('update:value', value)
 }
+
+withBodyScrollLock(computed(() => props.open))
 </script>
 
 <template>
