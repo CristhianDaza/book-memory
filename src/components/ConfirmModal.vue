@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { ConfirmModalEmits, ConfirmModalProps } from '../types/components'
+import { withBodyScrollLock } from '../composables/useBodyScrollLock'
 
-withDefaults(defineProps<ConfirmModalProps>(), {
+const props = withDefaults(defineProps<ConfirmModalProps>(), {
   message: '',
   loading: false,
   danger: false,
@@ -16,6 +18,8 @@ function onCancel() {
 function onConfirm() {
   emit('confirm')
 }
+
+withBodyScrollLock(computed(() => props.open))
 </script>
 
 <template>
