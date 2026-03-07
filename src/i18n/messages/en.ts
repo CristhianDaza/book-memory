@@ -55,7 +55,8 @@ export const en = {
   auth: {
     section: 'Authentication',
     title: 'Welcome to Book Memory',
-    subtitle: 'Sign in to track your books, sessions, and streaks.',
+    subtitleLogin: 'Sign in to track your books, sessions, and streaks.',
+    subtitleRegister: 'Create your account to start saving books and reading progress.',
     email: 'Email',
     password: 'Password',
     signInWithEmail: 'Sign in with email',
@@ -64,6 +65,7 @@ export const en = {
     login: 'Login',
     continueWithGoogle: 'Continue with Google',
     forgotPassword: 'Forgot password?',
+    passwordResetNeedsEmail: 'Enter your email to send the password reset link.',
     passwordResetSent: 'If the email exists, a reset link was sent.',
   },
   authErrors: {

@@ -18,6 +18,9 @@ const password = ref('')
 const mode = ref<'login' | 'register'>('login')
 const resetInfoMessage = ref<string | null>(null)
 const redirecting = ref(false)
+const modeSubtitle = computed(() =>
+  mode.value === 'login' ? t('auth.subtitleLogin') : t('auth.subtitleRegister'),
+)
 const currentLocale = computed(() => locale.value as AppLocale)
 const nextLocale = computed<AppLocale>(() => (currentLocale.value === 'es' ? 'en' : 'es'))
 const nextLocaleLabel = computed(() =>
@@ -63,12 +66,19 @@ async function onGoogleSubmit() {
 async function onResetPassword() {
   resetInfoMessage.value = null
   if (!email.value.trim()) {
+    resetInfoMessage.value = t('auth.passwordResetNeedsEmail')
     return
   }
   const sent = await authStore.sendPasswordReset(email.value.trim())
   if (sent) {
     resetInfoMessage.value = t('auth.passwordResetSent')
   }
+}
+
+function onToggleMode() {
+  mode.value = mode.value === 'login' ? 'register' : 'login'
+  resetInfoMessage.value = null
+  authStore.clearError()
 }
 </script>
 
@@ -93,7 +103,7 @@ async function onResetPassword() {
       {{ t('auth.title') }}
     </h1>
     <p class="mt-2 text-sm text-slate-300">
-      {{ t('auth.subtitle') }}
+      {{ modeSubtitle }}
     </p>
 
     <form
@@ -118,7 +128,7 @@ async function onResetPassword() {
           type="password"
           required
           minlength="6"
-          autocomplete="current-password"
+          :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
           class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-cyan-400 transition focus:ring-2"
         >
       </label>
@@ -133,7 +143,7 @@ async function onResetPassword() {
         <button
           type="button"
           class="cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
-          @click="mode = mode === 'login' ? 'register' : 'login'"
+          @click="onToggleMode"
         >
           {{ mode === 'login' ? t('auth.register') : t('auth.login') }}
         </button>
@@ -150,9 +160,9 @@ async function onResetPassword() {
     </button>
 
     <button
+      v-if="mode === 'login'"
       type="button"
       class="mt-3 w-full cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-      :disabled="!email.trim()"
       @click="onResetPassword"
     >
       {{ t('auth.forgotPassword') }}
