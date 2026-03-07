@@ -55,7 +55,8 @@ export const es = {
   auth: {
     section: 'Autenticacion',
     title: 'Bienvenido a Book Memory',
-    subtitle: 'Inicia sesion para registrar libros, sesiones y rachas.',
+    subtitleLogin: 'Inicia sesion para registrar libros, sesiones y rachas.',
+    subtitleRegister: 'Crea tu cuenta para empezar a guardar libros y progreso de lectura.',
     email: 'Correo',
     password: 'Contrasena',
     signInWithEmail: 'Entrar con correo',
@@ -64,6 +65,7 @@ export const es = {
     login: 'Login',
     continueWithGoogle: 'Continuar con Google',
     forgotPassword: 'Olvide mi contrasena',
+    passwordResetNeedsEmail: 'Ingresa tu correo para enviar el enlace de recuperacion.',
     passwordResetSent: 'Si el correo existe, se envio un enlace de recuperacion.',
   },
   authErrors: {
