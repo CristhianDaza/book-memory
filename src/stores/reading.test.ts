@@ -81,6 +81,20 @@ describe('reading store', () => {
     expect(store.elapsedSeconds).toBe(2)
   })
 
+  it('catches up elapsed time after app returns from background', () => {
+    vi.setSystemTime(new Date('2026-03-01T10:00:00.000Z'))
+    const store = useReadingStore()
+
+    store.startTimer()
+    vi.advanceTimersByTime(11000)
+    expect(store.elapsedSeconds).toBe(11)
+
+    vi.setSystemTime(new Date('2026-03-01T11:00:11.000Z'))
+    window.dispatchEvent(new Event('focus'))
+
+    expect(store.elapsedSeconds).toBe(3611)
+  })
+
   it('resets session values', () => {
     const store = useReadingStore()
 

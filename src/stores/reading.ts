@@ -37,6 +37,7 @@ export const useReadingStore = defineStore('reading', () => {
   let hydratePromise: Promise<void> | null = null
 
   const hasActiveSession = computed(() => sessionStartedAt.value !== null)
+  let lastTimerTimestampMs: number | null = null
 
   function buildPersistedPayload(): PersistedReadingState {
     return {
@@ -97,17 +98,42 @@ export const useReadingStore = defineStore('reading', () => {
     if (onlineListenerInstalled || typeof window === 'undefined') return
     onlineListenerInstalled = true
     window.addEventListener('online', () => {
+      syncElapsedWithNow()
       const payload = buildPersistedPayload()
       queueCloudSync(payload)
       void replayOfflineQueue()
     })
   }
 
+  function syncElapsedWithNow() {
+    if (!running.value || lastTimerTimestampMs === null) return
+    const now = Date.now()
+    const elapsedSinceLastTick = Math.floor((now - lastTimerTimestampMs) / 1000)
+    if (elapsedSinceLastTick <= 0) return
+    elapsedSeconds.value += elapsedSinceLastTick
+    lastTimerTimestampMs += elapsedSinceLastTick * 1000
+    persistState()
+  }
+
+  function installForegroundSyncBridge() {
+    if (typeof window === 'undefined') return
+
+    const syncOnReturnToForeground = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      syncElapsedWithNow()
+    }
+
+    window.addEventListener('focus', syncOnReturnToForeground)
+    window.addEventListener('pageshow', syncOnReturnToForeground)
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', syncOnReturnToForeground)
+    }
+  }
+
   function startTicker() {
     if (timer) return
     timer = setInterval(() => {
-      elapsedSeconds.value += 1
-      persistState()
+      syncElapsedWithNow()
     }, 1000)
   }
 
@@ -132,6 +158,7 @@ export const useReadingStore = defineStore('reading', () => {
       }
 
       if (running.value && sessionStartedAt.value) {
+        lastTimerTimestampMs = Date.now()
         startTicker()
       }
     } catch {
@@ -177,6 +204,7 @@ export const useReadingStore = defineStore('reading', () => {
         if (running.value) {
           const elapsedWhileAway = Math.floor((Date.now() - cloud.persistedAt.getTime()) / 1000)
           elapsedSeconds.value += Math.max(0, elapsedWhileAway)
+          lastTimerTimestampMs = Date.now()
           startTicker()
         }
         persistState()
@@ -212,6 +240,7 @@ export const useReadingStore = defineStore('reading', () => {
     if (running.value) return
 
     running.value = true
+    lastTimerTimestampMs = Date.now()
     startTicker()
     persistState()
   }
@@ -222,6 +251,7 @@ export const useReadingStore = defineStore('reading', () => {
       clearInterval(timer)
       timer = null
     }
+    lastTimerTimestampMs = null
     persistState()
   }
 
@@ -244,6 +274,7 @@ export const useReadingStore = defineStore('reading', () => {
 
   restoreState()
   installOnlineSyncBridge()
+  installForegroundSyncBridge()
 
   return {
     selectedBookId,
