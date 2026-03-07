@@ -437,8 +437,8 @@ onBeforeUnmount(() => {
       <RouterView />
     </main>
     <footer class="border-t border-slate-800 bg-slate-950/70">
-      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 overflow-x-auto px-4 py-4 text-xs text-slate-400 whitespace-nowrap sm:px-6 lg:px-8">
-        <p>
+      <div class="mx-auto flex max-w-5xl flex-col items-start gap-2 px-4 py-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 lg:px-8">
+        <p class="leading-relaxed break-words">
           © {{ currentYear }} BookMemory. Designed &amp; Developed by
           <a
             href="https://cris-dev.com"
@@ -450,7 +450,7 @@ onBeforeUnmount(() => {
           </a>.
           All rights reserved.
         </p>
-        <p>{{ appVersion }}</p>
+        <p class="shrink-0">{{ appVersion }}</p>
       </div>
     </footer>
 
