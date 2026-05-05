@@ -317,7 +317,7 @@ onMounted(async () => {
                 <p class="bm-stat-label">{{ t('books.progress') }}</p>
                 <p class="bm-stat-value">
                   {{ book.currentPage }}
-                  <span class="text-base font-semibold text-[var(--app-text-muted)]">
+                  <span class="text-base font-semibold text-(--app-text-muted)">
                     / {{ book.totalPages ?? t('books.unknownPages') }}
                   </span>
                 </p>

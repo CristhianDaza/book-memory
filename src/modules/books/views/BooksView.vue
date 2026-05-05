@@ -267,7 +267,7 @@ withBodyScrollLock(showAddModal)
     <SurfaceCard>
       <p
         v-if="mappedError"
-        class="mb-3 rounded-lg border border-[var(--app-danger)] bg-[var(--app-danger-soft)] p-2 text-xs text-[var(--app-danger)]"
+        class="mb-3 rounded-lg border border-(--app-danger) bg-(--app-danger-soft) p-2 text-xs text-(--app-danger)"
       >
         {{ mappedError }}
       </p>
@@ -278,7 +278,7 @@ withBodyScrollLock(showAddModal)
             <input
               v-model="showOnlyFavorites"
               type="checkbox"
-              class="h-4 w-4 cursor-pointer accent-[var(--app-primary)]"
+              class="h-4 w-4 cursor-pointer accent-(--app-primary)"
             >
             {{ t('books.onlyFavorites') }}
           </label>
@@ -302,7 +302,7 @@ withBodyScrollLock(showAddModal)
           <label class="relative block w-full sm:w-64">
             <Search
               :size="15"
-              class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--app-text-soft)]"
+              class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-(--app-text-soft)"
               aria-hidden="true"
             />
             <input
@@ -335,10 +335,10 @@ withBodyScrollLock(showAddModal)
           :key="item"
           class="bm-book-card animate-pulse"
         >
-          <div class="aspect-[2/3] w-full bg-[var(--app-surface-muted)]" />
+          <div class="aspect-2/3 w-full bg-(--app-surface-muted)" />
           <div class="space-y-2 p-3">
-            <div class="h-4 w-5/6 rounded bg-[var(--app-border)]" />
-            <div class="h-3 w-2/3 rounded bg-[var(--app-border)]" />
+            <div class="h-4 w-5/6 rounded bg-(--app-border)" />
+            <div class="h-3 w-2/3 rounded bg-(--app-border)" />
           </div>
         </article>
       </div>
@@ -365,18 +365,18 @@ withBodyScrollLock(showAddModal)
               >
               <div
                 v-else
-                class="flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-[var(--app-text-soft)]"
+                class="flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-(--app-text-soft)"
               >
                 {{ t('books.noCover') }}
               </div>
 
               <button
                 type="button"
-                class="absolute right-2 top-2 cursor-pointer rounded-full border bg-[var(--app-surface)] p-1.5 shadow transition disabled:cursor-not-allowed disabled:opacity-60"
+                class="absolute right-2 top-2 cursor-pointer rounded-full border bg-(--app-surface) p-1.5 shadow transition disabled:cursor-not-allowed disabled:opacity-60"
                 :class="
                   item.favorite
-                    ? 'border-[var(--app-danger)] text-[var(--app-danger)]'
-                    : 'border-[var(--app-border)] text-[var(--app-text-muted)] hover:text-[var(--app-danger)]'
+                    ? 'border-(--app-danger) text-(--app-danger)'
+                    : 'border-(--app-border) text-(--app-text-muted) hover:text-(--app-danger)'
                 "
                 :disabled="isFavoriteUpdating(item.id)"
                 @click.prevent.stop="onToggleFavorite(item.id)"
@@ -390,7 +390,7 @@ withBodyScrollLock(showAddModal)
             </div>
 
             <div class="space-y-1 p-3">
-              <p class="line-clamp-2 min-h-[2.5rem] font-serif text-sm font-semibold text-[var(--app-text)]">
+              <p class="line-clamp-2 min-h-10 font-serif text-sm font-semibold text-(--app-text)">
                 {{ item.title }}
               </p>
               <p class="bm-muted line-clamp-1 text-[11px]">
@@ -456,7 +456,7 @@ withBodyScrollLock(showAddModal)
         </div>
 
         <div
-          class="mt-4 inline-flex w-fit rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-1"
+          class="mt-4 inline-flex w-fit rounded-lg border border-(--app-border) bg-(--app-surface-muted) p-1"
           role="tablist"
           :aria-label="t('books.openAddModal')"
         >
@@ -467,8 +467,8 @@ withBodyScrollLock(showAddModal)
             :aria-selected="addMode === 'search'"
             :class="
               addMode === 'search'
-                ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
-                : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
+                ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+                : 'text-(--app-text-muted) hover:bg-(--app-surface)'
             "
             @click="onChangeAddMode('search')"
           >
@@ -481,8 +481,8 @@ withBodyScrollLock(showAddModal)
             :aria-selected="addMode === 'manual'"
             :class="
               addMode === 'manual'
-                ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
-                : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
+                ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+                : 'text-(--app-text-muted) hover:bg-(--app-surface)'
             "
             @click="onChangeAddMode('manual')"
           >
@@ -497,14 +497,14 @@ withBodyScrollLock(showAddModal)
             @submit.prevent="onSearchSubmit"
           >
             <label class="bm-label block">{{ t('books.searchLabel') }}</label>
-            <div class="inline-flex rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-1">
+            <div class="inline-flex rounded-lg border border-(--app-border) bg-(--app-surface-muted) p-1">
               <button
                 type="button"
                 class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
                 :class="
                   searchLanguageMode === 'active'
-                    ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
-                    : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
+                    ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+                    : 'text-(--app-text-muted) hover:bg-(--app-surface)'
                 "
                 @click="onChangeSearchLanguageMode('active')"
               >
@@ -515,8 +515,8 @@ withBodyScrollLock(showAddModal)
                 class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
                 :class="
                   searchLanguageMode === 'all'
-                    ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
-                    : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
+                    ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+                    : 'text-(--app-text-muted) hover:bg-(--app-surface)'
                 "
                 @click="onChangeSearchLanguageMode('all')"
               >
@@ -626,13 +626,13 @@ withBodyScrollLock(showAddModal)
               class="bm-card animate-pulse"
             >
               <div class="flex gap-3">
-                <div class="h-24 w-16 rounded-md bg-[var(--app-surface-muted)]" />
+                <div class="h-24 w-16 rounded-md bg-(--app-surface-muted)" />
                 <div class="flex-1 space-y-2">
-                  <div class="h-4 w-2/3 rounded bg-[var(--app-border)]" />
-                  <div class="h-3 w-1/2 rounded bg-[var(--app-border)]" />
-                  <div class="h-3 w-1/3 rounded bg-[var(--app-border)]" />
+                  <div class="h-4 w-2/3 rounded bg-(--app-border)" />
+                  <div class="h-3 w-1/2 rounded bg-(--app-border)" />
+                  <div class="h-3 w-1/3 rounded bg-(--app-border)" />
                 </div>
-                <div class="h-8 w-20 rounded bg-[var(--app-border)]" />
+                <div class="h-8 w-20 rounded bg-(--app-border)" />
               </div>
             </article>
           </div>
@@ -680,27 +680,27 @@ withBodyScrollLock(showAddModal)
                   v-if="book.coverUrl"
                   :src="book.coverUrl"
                   :alt="book.title"
-                  class="h-24 w-16 rounded-md border border-[var(--app-border)] object-cover shadow"
+                  class="h-24 w-16 rounded-md border border-(--app-border) object-cover shadow"
                 >
                 <div
                   v-else
-                  class="flex h-24 w-16 items-center justify-center rounded-md border border-[var(--app-border)] bg-[var(--app-surface-muted)] text-[10px] text-[var(--app-text-soft)]"
+                  class="flex h-24 w-16 items-center justify-center rounded-md border border-(--app-border) bg-(--app-surface-muted) text-[10px] text-(--app-text-soft)"
                 >
                   {{ t('books.noCover') }}
                 </div>
 
                 <div class="min-w-0 flex-1">
-                  <p class="line-clamp-2 font-serif text-base font-semibold text-[var(--app-text)]">
+                  <p class="line-clamp-2 font-serif text-base font-semibold text-(--app-text)">
                     {{ book.title }}
                   </p>
                   <p class="bm-muted text-xs">
                     {{ t('books.by') }} {{ book.authors.join(', ') || t('books.unknownAuthor') }}
                   </p>
                   <div class="bm-muted mt-1 flex flex-wrap gap-2 text-[11px]">
-                    <span class="rounded bg-[var(--app-surface-muted)] px-2 py-0.5">
+                    <span class="rounded bg-(--app-surface-muted) px-2 py-0.5">
                       {{ t('books.source') }}: {{ book.source }}
                     </span>
-                    <span class="rounded bg-[var(--app-surface-muted)] px-2 py-0.5">
+                    <span class="rounded bg-(--app-surface-muted) px-2 py-0.5">
                       {{ t('books.pages') }}:
                       {{ book.totalPages ?? t('books.unknownPages') }}
                     </span>
