@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, type Component } from 'vue'
 import {
-  BookOpen,
   ChevronDown,
   Download,
   Globe2,
@@ -51,7 +50,7 @@ defineEmits<{
 }>()
 
 const { t, locale } = useI18n()
-const { themeMode, setThemeMode } = useTheme()
+const { themeMode, resolvedTheme, setThemeMode } = useTheme()
 
 const nextThemeMode = computed<ThemeMode>(() => {
   if (themeMode.value === 'system') return 'light'
@@ -75,6 +74,8 @@ const currentLanguageLabel = computed(() =>
   locale.value === 'es' ? t('common.spanishFull') : t('common.englishFull'),
 )
 
+const brandIconSrc = computed(() => `/icons/bookmemory-${resolvedTheme.value}-192.png`)
+
 function onToggleTheme() {
   setThemeMode(nextThemeMode.value)
 }
@@ -89,8 +90,12 @@ function onToggleTheme() {
           class="bm-brand"
         >
           <span class="bm-brand-mark">
-            <BookOpen
-              :size="21"
+            <img
+              class="bm-brand-icon"
+              :src="brandIconSrc"
+              alt=""
+              width="44"
+              height="44"
               aria-hidden="true"
             />
           </span>
@@ -120,8 +125,12 @@ function onToggleTheme() {
             class="bm-brand"
           >
             <span class="bm-brand-mark">
-              <BookOpen
-                :size="22"
+              <img
+                class="bm-brand-icon"
+                :src="brandIconSrc"
+                alt=""
+                width="44"
+                height="44"
                 aria-hidden="true"
               />
             </span>

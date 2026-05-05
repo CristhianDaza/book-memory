@@ -205,13 +205,20 @@ a {
 
 .bm-brand-mark {
   display: inline-grid;
+  flex: 0 0 auto;
   height: 2.75rem;
   width: 2.75rem;
   place-items: center;
   border-radius: 0.9rem;
-  background: var(--app-primary);
-  color: var(--app-primary-contrast);
-  box-shadow: var(--app-shadow-soft);
+  background: transparent;
+  overflow: hidden;
+}
+
+.bm-brand-icon {
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
 }
 
 .bm-brand-title {
@@ -729,7 +736,11 @@ a {
 
 @media (max-width: 900px) {
   .bm-shell {
-    display: block;
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .bm-sidebar {
@@ -743,14 +754,18 @@ a {
 
   .bm-bottom-nav {
     display: grid;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
   }
 
   .bm-main {
-    padding: 1rem 1rem 5.25rem;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1rem 1rem calc(5.25rem + env(safe-area-inset-bottom));
   }
 
   .bm-footer-with-bottom-nav {
-    padding-bottom: 5rem;
+    display: none;
   }
 
   .bm-page-header {
