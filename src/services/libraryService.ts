@@ -53,7 +53,7 @@ export async function addBookToLibrary(uid: string, book: BookSearchResult): Pro
     totalPages: book.totalPages,
     favorite: false,
     currentPage: 0,
-    status: 'reading',
+    status: 'wishlist',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }

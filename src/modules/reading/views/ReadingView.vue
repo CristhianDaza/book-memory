@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
+import { Pause, Play, RotateCcw, TimerReset } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import PromptModal from '../../../components/PromptModal.vue'
@@ -306,103 +307,110 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
-    <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">
-      {{ t('modules.readingLabel') }}
-    </p>
-    <h1 class="mt-2 text-2xl font-semibold text-white">
-      {{ t('reading.title') }}
-    </h1>
-    <p class="mt-2 text-sm text-slate-300">
-      {{ t('reading.subtitle') }}
-    </p>
+  <section class="bm-panel">
+    <p class="bm-eyebrow">{{ t('modules.readingLabel') }}</p>
+    <h1 class="bm-title mt-2">{{ t('reading.title') }}</h1>
+    <p class="bm-muted mt-2 text-sm">{{ t('reading.subtitle') }}</p>
 
-    <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <label class="text-xs text-slate-300">
-        {{ t('reading.selectBook') }}
-        <select
-          v-model="selectedBookId"
-          class="mt-1 w-full cursor-pointer rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
-          :disabled="hasActiveSession"
-          @change="onSelectBook(selectedBookId)"
-        >
-          <option
-            v-for="book in library"
-            :key="book.id"
-            :value="book.id"
+    <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_20rem]">
+      <div class="space-y-3">
+        <label class="bm-label">
+          {{ t('reading.selectBook') }}
+          <select
+            v-model="selectedBookId"
+            class="bm-select mt-1 text-sm"
+            :disabled="hasActiveSession"
+            @change="onSelectBook(selectedBookId)"
           >
-            {{ book.title }}
-          </option>
-        </select>
-        <p
-          v-if="hasActiveSession && activeSessionBook"
-          class="mt-1 text-[11px] text-slate-400"
-        >
-          {{ t('reading.lockedBookHint', { title: activeSessionBook.title }) }}
-        </p>
-      </label>
+            <option
+              v-for="book in library"
+              :key="book.id"
+              :value="book.id"
+            >
+              {{ book.title }}
+            </option>
+          </select>
+          <span
+            v-if="hasActiveSession && activeSessionBook"
+            class="bm-soft mt-1 text-[11px]"
+          >
+            {{ t('reading.lockedBookHint', { title: activeSessionBook.title }) }}
+          </span>
+        </label>
 
-      <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-        <p class="text-xs uppercase tracking-wide text-slate-400">
-          {{ t('reading.timer') }}
-        </p>
-        <p class="mt-1 font-mono text-2xl font-semibold text-cyan-300">
-          {{ formattedElapsed }}
-        </p>
+        <label class="bm-label">
+          {{ t('reading.startPage') }}
+          <input
+            :value="startPage"
+            type="number"
+            min="0"
+            class="bm-input mt-1 text-sm"
+            @input="readingStore.setStartPage(Number(($event.target as HTMLInputElement).value))"
+          >
+        </label>
       </div>
-    </div>
 
-    <div class="mt-3 grid grid-cols-1 gap-3">
-      <label class="text-xs text-slate-300">
-        {{ t('reading.startPage') }}
-        <input
-          :value="startPage"
-          type="number"
-          min="0"
-          class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
-          @input="readingStore.setStartPage(Number(($event.target as HTMLInputElement).value))"
-        >
-      </label>
+      <div class="bm-subtle-panel flex min-h-56 flex-col items-center justify-center text-center">
+        <TimerReset
+          :size="34"
+          class="text-(--app-primary-strong)"
+          aria-hidden="true"
+        />
+        <p class="bm-eyebrow mt-3">{{ t('reading.timer') }}</p>
+        <p class="mt-2 font-mono text-5xl font-black text-(--app-text)">{{ formattedElapsed }}</p>
+      </div>
     </div>
 
     <p
       v-if="localError"
-      class="mt-3 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200"
+      class="mt-3 rounded-lg border border-(--app-danger) bg-(--app-danger-soft) p-2 text-xs text-(--app-danger)"
     >
       {{ localError }}
     </p>
 
-    <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div class="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
       <button
         type="button"
-        class="cursor-pointer rounded-xl bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+        class="bm-button bm-button-primary"
         :disabled="running"
         @click="onStart"
       >
+        <Play
+          :size="17"
+          aria-hidden="true"
+        />
         {{ hasActiveSession ? t('reading.resume') : t('reading.start') }}
       </button>
 
       <button
         type="button"
-        class="cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+        class="bm-button"
         :disabled="!running"
         @click="onPause"
       >
+        <Pause
+          :size="17"
+          aria-hidden="true"
+        />
         {{ t('reading.pause') }}
       </button>
 
       <button
         type="button"
-        class="cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+        class="bm-button"
         :disabled="!hasActiveSession || saving"
         @click="onReset"
       >
+        <RotateCcw
+          :size="17"
+          aria-hidden="true"
+        />
         {{ t('reading.reset') }}
       </button>
 
       <button
         type="button"
-        class="cursor-pointer rounded-xl border border-emerald-500/60 px-3 py-2 text-sm font-medium text-emerald-200 transition hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+        class="bm-button bm-button-success"
         :disabled="!hasActiveSession || saving"
         @click="onOpenFinish"
       >
@@ -426,7 +434,7 @@ onMounted(async () => {
       @update:value="finishEndPage = $event"
     >
       <template #details>
-        <div class="mt-3 rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-sm text-slate-300">
+        <div class="bm-subtle-panel mt-3 text-sm">
           <p>
             {{ t('reading.remainingPages') }}:
             {{ remainingPages === null ? t('reading.unknownRemaining') : remainingPages }}

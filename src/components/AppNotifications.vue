@@ -7,14 +7,14 @@ const notificationsStore = useNotificationsStore()
 const { items } = storeToRefs(notificationsStore)
 
 function toneClass(type: NotificationType) {
-  if (type === 'success') return 'border-emerald-500/60 bg-emerald-950/80 text-emerald-100'
-  if (type === 'error') return 'border-rose-500/60 bg-rose-950/80 text-rose-100'
-  return 'border-cyan-500/60 bg-cyan-950/80 text-cyan-100'
+  if (type === 'success') return 'border-[var(--app-success)] bg-[var(--app-success-soft)] text-[var(--app-success)]'
+  if (type === 'error') return 'border-[var(--app-danger)] bg-[var(--app-danger-soft)] text-[var(--app-danger)]'
+  return 'border-[var(--app-primary)] bg-[var(--app-primary-soft)] text-[var(--app-primary-strong)]'
 }
 </script>
 
 <template>
-  <div class="pointer-events-none fixed inset-x-0 top-3 z-[60] flex flex-col items-center gap-2 px-3">
+  <div class="pointer-events-none fixed inset-x-0 top-3 z-60 flex flex-col items-center gap-2 px-3">
     <TransitionGroup
       name="toast"
       tag="div"
@@ -30,7 +30,7 @@ function toneClass(type: NotificationType) {
           <p>{{ item.message }}</p>
           <button
             type="button"
-            class="cursor-pointer rounded-md border border-current/30 px-1.5 py-0.5 text-xs transition hover:bg-black/20"
+            class="cursor-pointer rounded-md border border-current/30 px-1.5 py-0.5 text-xs transition hover:bg-black/10"
             @click="notificationsStore.dismiss(item.id)"
           >
             ×

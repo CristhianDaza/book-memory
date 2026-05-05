@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { Heart, Plus, Search, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import type { BookSearchResult } from '../../../types/books'
 import type { AppLocale } from '../../../types/i18n'
 import type { LibraryStatusFilter, SearchLanguageMode } from '../../../types/books-store'
+import EmptyState from '../../../components/ui/EmptyState.vue'
+import PageHeader from '../../../components/ui/PageHeader.vue'
 import PromptModal from '../../../components/PromptModal.vue'
+import SurfaceCard from '../../../components/ui/SurfaceCard.vue'
 import { withBodyScrollLock } from '../../../composables/useBodyScrollLock'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
@@ -239,54 +243,51 @@ withBodyScrollLock(showAddModal)
 </script>
 
 <template>
-  <div class="space-y-4">
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
-      <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">
-        {{ t('modules.booksLabel') }}
-      </p>
-
-      <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 class="text-2xl font-semibold text-white">
-            {{ t('books.libraryTitle') }}
-          </h1>
-          <p class="mt-2 text-sm text-slate-300">
-            {{ t('books.librarySubtitle') }}
-          </p>
-        </div>
-
+  <div class="bm-page">
+    <PageHeader
+      :eyebrow="t('modules.booksLabel')"
+      :title="t('books.libraryTitle')"
+      :subtitle="t('books.librarySubtitle')"
+    >
+      <template #actions>
         <button
           type="button"
-          class="cursor-pointer rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+          class="bm-button bm-button-primary"
           @click="openAddModal"
         >
-          + {{ t('books.openAddModal') }}
+          <Plus
+            :size="17"
+            aria-hidden="true"
+          />
+          {{ t('books.openAddModal') }}
         </button>
-      </div>
+      </template>
+    </PageHeader>
 
+    <SurfaceCard>
       <p
         v-if="mappedError"
-        class="mt-3 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200"
+        class="mb-3 rounded-lg border border-(--app-danger) bg-(--app-danger-soft) p-2 text-xs text-(--app-danger)"
       >
         {{ mappedError }}
       </p>
 
-      <div class="mt-4 flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="bm-toolbar">
         <div class="flex flex-wrap items-center gap-3">
-          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+          <label class="bm-label flex cursor-pointer items-center gap-2 text-sm">
             <input
               v-model="showOnlyFavorites"
               type="checkbox"
-              class="h-4 w-4 cursor-pointer rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
+              class="h-4 w-4 cursor-pointer accent-(--app-primary)"
             >
             {{ t('books.onlyFavorites') }}
           </label>
 
-          <label class="flex items-center gap-2 text-sm text-slate-300">
+          <label class="bm-label flex items-center gap-2 text-sm">
             <span>{{ t('books.filterStatus') }}</span>
             <select
               :value="libraryStatusFilter"
-              class="cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-cyan-400"
+              class="bm-select w-auto py-1 text-sm"
               @change="onChangeLibraryStatusFilter(($event.target as HTMLSelectElement).value as LibraryStatusFilter)"
             >
               <option value="all">{{ t('books.status_all') }}</option>
@@ -298,17 +299,24 @@ withBodyScrollLock(showAddModal)
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-          <input
-            v-model="librarySearchQuery"
-            type="text"
-            :placeholder="t('books.librarySearchPlaceholder')"
-            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-cyan-400 sm:w-56"
-          >
-          <label class="flex items-center gap-2 text-sm text-slate-300">
+          <label class="relative block w-full sm:w-64">
+            <Search
+              :size="15"
+              class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-(--app-text-soft)"
+              aria-hidden="true"
+            />
+            <input
+              v-model="librarySearchQuery"
+              type="text"
+              :placeholder="t('books.librarySearchPlaceholder')"
+              class="bm-input py-1 pl-9 text-sm"
+            >
+          </label>
+          <label class="bm-label flex items-center gap-2 text-sm">
             <span>{{ t('books.sortBy') }}</span>
             <select
               v-model="librarySortMode"
-              class="cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-cyan-400"
+              class="bm-select w-auto py-1 text-sm"
             >
               <option value="favorite_first">{{ t('books.sortFavoriteFirst') }}</option>
               <option value="recent">{{ t('books.sortRecent') }}</option>
@@ -320,35 +328,35 @@ withBodyScrollLock(showAddModal)
 
       <div
         v-if="loadingLibrary"
-        class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5"
+        class="bm-book-grid mt-4"
       >
         <article
           v-for="item in librarySkeletonKeys"
           :key="item"
-          class="animate-pulse overflow-hidden rounded-xl border border-slate-800 bg-slate-950/70"
+          class="bm-book-card animate-pulse"
         >
-          <div class="aspect-[2/3] w-full bg-slate-800" />
+          <div class="aspect-2/3 w-full bg-(--app-surface-muted)" />
           <div class="space-y-2 p-3">
-            <div class="h-4 w-5/6 rounded bg-slate-800" />
-            <div class="h-3 w-2/3 rounded bg-slate-800" />
+            <div class="h-4 w-5/6 rounded bg-(--app-border)" />
+            <div class="h-3 w-2/3 rounded bg-(--app-border)" />
           </div>
         </article>
       </div>
 
       <div
         v-else
-        class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5"
+        class="bm-book-grid mt-4"
       >
         <article
           v-for="item in filteredSortedLibrary"
           :key="item.id"
-          class="group overflow-hidden rounded-xl border border-slate-800 bg-slate-950/70 transition hover:border-cyan-400"
+          class="bm-book-card"
         >
           <RouterLink
             class="block"
             :to="{ name: 'book-detail', params: { id: item.id } }"
           >
-            <div class="relative aspect-[2/3] w-full bg-slate-900">
+            <div class="bm-book-cover">
               <img
                 v-if="item.coverUrl"
                 :src="item.coverUrl"
@@ -357,31 +365,35 @@ withBodyScrollLock(showAddModal)
               >
               <div
                 v-else
-                class="flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-slate-400"
+                class="flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-(--app-text-soft)"
               >
                 {{ t('books.noCover') }}
               </div>
 
               <button
                 type="button"
-                class="absolute right-2 top-2 cursor-pointer rounded-full border bg-slate-950/80 p-1.5 transition disabled:cursor-not-allowed disabled:opacity-60"
+                class="absolute right-2 top-2 cursor-pointer rounded-full border bg-(--app-surface) p-1.5 shadow transition disabled:cursor-not-allowed disabled:opacity-60"
                 :class="
                   item.favorite
-                    ? 'border-rose-500/80 text-rose-400 hover:bg-rose-500/20'
-                    : 'border-slate-600 text-slate-200 hover:border-rose-400 hover:text-rose-300'
+                    ? 'border-(--app-danger) text-(--app-danger)'
+                    : 'border-(--app-border) text-(--app-text-muted) hover:text-(--app-danger)'
                 "
                 :disabled="isFavoriteUpdating(item.id)"
                 @click.prevent.stop="onToggleFavorite(item.id)"
               >
-                <span class="text-sm leading-none">{{ item.favorite ? '♥' : '♡' }}</span>
+                <Heart
+                  :size="16"
+                  :fill="item.favorite ? 'currentColor' : 'none'"
+                  aria-hidden="true"
+                />
               </button>
             </div>
 
             <div class="space-y-1 p-3">
-              <p class="line-clamp-2 min-h-[2.5rem] font-serif text-sm font-semibold tracking-wide text-slate-100">
+              <p class="line-clamp-2 min-h-10 font-serif text-sm font-semibold text-(--app-text)">
                 {{ item.title }}
               </p>
-              <p class="line-clamp-1 text-[11px] text-slate-400">
+              <p class="bm-muted line-clamp-1 text-[11px]">
                 {{ t('books.by') }} {{ item.authors.join(', ') || t('books.unknownAuthor') }}
               </p>
             </div>
@@ -389,45 +401,62 @@ withBodyScrollLock(showAddModal)
         </article>
       </div>
 
-      <p
+      <EmptyState
         v-if="!loadingLibrary && filteredSortedLibrary.length === 0"
-        class="mt-3 text-sm text-slate-400"
+        class="mt-4"
+        :title="t('books.emptyLibrary')"
+        :description="t('books.librarySubtitle')"
       >
-        {{ t('books.emptyLibrary') }}
-      </p>
-    </section>
+        <button
+          type="button"
+          class="bm-button bm-button-primary"
+          @click="openAddModal"
+        >
+          <Plus
+            :size="17"
+            aria-hidden="true"
+          />
+          {{ t('books.openAddModal') }}
+        </button>
+      </EmptyState>
+    </SurfaceCard>
 
     <div
       v-if="showAddModal"
-      class="fixed inset-0 z-40 flex items-end bg-slate-950/80 p-3 sm:items-center sm:justify-center"
+      class="bm-modal-backdrop z-40"
     >
       <section
-        class="flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-2xl sm:p-6"
+        class="bm-modal-sheet flex max-w-2xl flex-col p-4 sm:p-6"
         @keydown.esc="closeAddModal"
       >
         <div class="flex items-center justify-between gap-3">
           <div>
-            <h2 class="text-xl font-semibold text-white">
+            <h2 class="bm-section-title">
               {{ t('books.title') }}
             </h2>
-            <p class="mt-1 text-sm text-slate-300">
+            <p class="bm-muted mt-1 text-sm">
               {{ t('books.subtitle') }}
             </p>
-            <p class="mt-1 text-xs text-slate-500">
+            <p class="bm-soft mt-1 text-xs">
               {{ t('books.modalCloseHint') }}
             </p>
           </div>
           <button
             type="button"
-            class="cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-sm text-slate-200 transition hover:bg-slate-800"
+            class="bm-icon-button"
+            :aria-label="t('common.cancel')"
+            :title="t('common.cancel')"
             @click="closeAddModal"
           >
-            ✕
+            <X
+              :size="18"
+              aria-hidden="true"
+            />
           </button>
         </div>
 
         <div
-          class="mt-4 inline-flex w-fit rounded-lg border border-slate-800 bg-slate-950/60 p-1"
+          class="mt-4 inline-flex w-fit rounded-lg border border-(--app-border) bg-(--app-surface-muted) p-1"
           role="tablist"
           :aria-label="t('books.openAddModal')"
         >
@@ -438,8 +467,8 @@ withBodyScrollLock(showAddModal)
             :aria-selected="addMode === 'search'"
             :class="
               addMode === 'search'
-                ? 'bg-cyan-500 text-slate-950'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+                ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+                : 'text-(--app-text-muted) hover:bg-(--app-surface)'
             "
             @click="onChangeAddMode('search')"
           >
@@ -452,8 +481,8 @@ withBodyScrollLock(showAddModal)
             :aria-selected="addMode === 'manual'"
             :class="
               addMode === 'manual'
-                ? 'bg-cyan-500 text-slate-950'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+                ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+                : 'text-(--app-text-muted) hover:bg-(--app-surface)'
             "
             @click="onChangeAddMode('manual')"
           >
@@ -467,15 +496,15 @@ withBodyScrollLock(showAddModal)
             class="space-y-2"
             @submit.prevent="onSearchSubmit"
           >
-            <label class="block text-xs uppercase tracking-wide text-slate-400">{{ t('books.searchLabel') }}</label>
-            <div class="inline-flex rounded-lg border border-slate-800 bg-slate-950/60 p-1">
+            <label class="bm-label block">{{ t('books.searchLabel') }}</label>
+            <div class="inline-flex rounded-lg border border-(--app-border) bg-(--app-surface-muted) p-1">
               <button
                 type="button"
                 class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
                 :class="
                   searchLanguageMode === 'active'
-                    ? 'bg-cyan-500 text-slate-950'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+                    ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+                    : 'text-(--app-text-muted) hover:bg-(--app-surface)'
                 "
                 @click="onChangeSearchLanguageMode('active')"
               >
@@ -486,8 +515,8 @@ withBodyScrollLock(showAddModal)
                 class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
                 :class="
                   searchLanguageMode === 'all'
-                    ? 'bg-cyan-500 text-slate-950'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+                    ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+                    : 'text-(--app-text-muted) hover:bg-(--app-surface)'
                 "
                 @click="onChangeSearchLanguageMode('all')"
               >
@@ -500,18 +529,18 @@ withBodyScrollLock(showAddModal)
                 v-model="queryInput"
                 type="text"
                 :placeholder="t('books.searchPlaceholder')"
-                class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-cyan-400 transition focus:ring-2"
+                class="bm-input text-sm"
               >
               <button
                 type="submit"
-                class="cursor-pointer rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+                class="bm-button bm-button-primary"
                 :disabled="searching"
               >
                 {{ searching ? t('books.searchLoading') : t('books.searchAction') }}
               </button>
               <button
                 type="button"
-                class="cursor-pointer rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                class="bm-button"
                 :disabled="!queryInput.trim() && searchResults.length === 0"
                 @click="onClearSearch"
               >
@@ -522,53 +551,53 @@ withBodyScrollLock(showAddModal)
 
           <section
             v-if="addMode === 'manual'"
-            class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+            class="bm-subtle-panel"
           >
-            <p class="text-xs uppercase tracking-wide text-slate-400">
+            <p class="bm-eyebrow">
               {{ t('books.manualAddTitle') }}
             </p>
             <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <label class="text-xs text-slate-300 sm:col-span-2">
+              <label class="bm-label sm:col-span-2">
                 {{ t('books.manualBookTitle') }}
                 <input
                   v-model="manualTitle"
                   type="text"
                   :placeholder="t('books.manualBookTitlePlaceholder')"
-                  class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
+                  class="bm-input mt-1 py-1.5 text-sm"
                 >
               </label>
-              <label class="text-xs text-slate-300">
+              <label class="bm-label">
                 {{ t('books.manualAuthors') }}
                 <input
                   v-model="manualAuthors"
                   type="text"
                   :placeholder="t('books.manualAuthorsPlaceholder')"
-                  class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
+                  class="bm-input mt-1 py-1.5 text-sm"
                 >
               </label>
-              <label class="text-xs text-slate-300">
+              <label class="bm-label">
                 {{ t('books.manualPages') }}
                 <input
                   v-model="manualPages"
                   type="number"
                   min="1"
                   :placeholder="t('books.manualPagesPlaceholder')"
-                  class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
+                  class="bm-input mt-1 py-1.5 text-sm"
                 >
               </label>
-              <label class="text-xs text-slate-300 sm:col-span-2">
+              <label class="bm-label sm:col-span-2">
                 {{ t('books.manualCoverUrl') }}
                 <input
                   v-model="manualCoverUrl"
                   type="url"
                   :placeholder="t('books.manualCoverUrlPlaceholder')"
-                  class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2"
+                  class="bm-input mt-1 py-1.5 text-sm"
                 >
               </label>
             </div>
             <button
               type="button"
-              class="mt-3 cursor-pointer rounded-lg border border-emerald-500/60 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/10"
+              class="bm-button bm-button-success mt-3 text-xs"
               @click="onAddManualBook"
             >
               {{ t('books.manualAddAction') }}
@@ -577,12 +606,12 @@ withBodyScrollLock(showAddModal)
 
           <div
             v-if="addMode === 'search' && !hasSearchExecuted && !searching"
-            class="rounded-xl border border-slate-800 bg-slate-950/60 p-4"
+            class="bm-empty"
           >
-            <p class="text-sm font-medium text-slate-200">
+            <p class="bm-section-title">
               {{ t('books.searchIdleTitle') }}
             </p>
-            <p class="mt-1 text-xs text-slate-400">
+            <p class="bm-muted mt-1 text-xs">
               {{ t('books.searchIdleSubtitle') }}
             </p>
           </div>
@@ -594,34 +623,34 @@ withBodyScrollLock(showAddModal)
             <article
               v-for="item in skeletonKeys"
               :key="item"
-              class="animate-pulse rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+              class="bm-card animate-pulse"
             >
               <div class="flex gap-3">
-                <div class="h-24 w-16 rounded-md bg-slate-800" />
+                <div class="h-24 w-16 rounded-md bg-(--app-surface-muted)" />
                 <div class="flex-1 space-y-2">
-                  <div class="h-4 w-2/3 rounded bg-slate-800" />
-                  <div class="h-3 w-1/2 rounded bg-slate-800" />
-                  <div class="h-3 w-1/3 rounded bg-slate-800" />
+                  <div class="h-4 w-2/3 rounded bg-(--app-border)" />
+                  <div class="h-3 w-1/2 rounded bg-(--app-border)" />
+                  <div class="h-3 w-1/3 rounded bg-(--app-border)" />
                 </div>
-                <div class="h-8 w-20 rounded bg-slate-800" />
+                <div class="h-8 w-20 rounded bg-(--app-border)" />
               </div>
             </article>
           </div>
 
           <div
             v-else-if="addMode === 'search' && searchResults.length === 0"
-            class="rounded-xl border border-slate-800 bg-slate-950/60 p-4"
+            class="bm-empty"
           >
-            <p class="text-sm font-medium text-slate-200">
+            <p class="bm-section-title">
               {{ t('books.searchEmptyTitle') }}
             </p>
-            <p class="mt-1 text-xs text-slate-400">
+            <p class="bm-muted mt-1 text-xs">
               {{ t('books.searchEmptySubtitle') }}
             </p>
             <div class="mt-3 flex gap-2">
               <button
                 type="button"
-                class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-slate-800"
+                class="bm-button text-xs"
                 @click="onClearSearch"
               >
                 {{ t('books.searchEmptyAction') }}
@@ -629,7 +658,7 @@ withBodyScrollLock(showAddModal)
               <button
                 v-if="searchLanguageMode === 'active'"
                 type="button"
-                class="cursor-pointer rounded-lg border border-cyan-500/60 px-3 py-1.5 text-xs text-cyan-200 transition hover:bg-cyan-500/10"
+                class="bm-button bm-button-primary text-xs"
                 @click="onChangeSearchLanguageMode('all')"
               >
                 {{ t('books.searchTryAllLanguages') }}
@@ -644,34 +673,34 @@ withBodyScrollLock(showAddModal)
             <article
               v-for="book in searchResults"
               :key="book.id"
-              class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+              class="bm-card"
             >
               <div class="flex gap-3">
                 <img
                   v-if="book.coverUrl"
                   :src="book.coverUrl"
                   :alt="book.title"
-                  class="h-24 w-16 rounded-md border border-slate-700 object-cover shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
+                  class="h-24 w-16 rounded-md border border-(--app-border) object-cover shadow"
                 >
                 <div
                   v-else
-                  class="flex h-24 w-16 items-center justify-center rounded-md border border-slate-700 bg-slate-800 text-[10px] text-slate-400"
+                  class="flex h-24 w-16 items-center justify-center rounded-md border border-(--app-border) bg-(--app-surface-muted) text-[10px] text-(--app-text-soft)"
                 >
                   {{ t('books.noCover') }}
                 </div>
 
                 <div class="min-w-0 flex-1">
-                  <p class="line-clamp-2 font-serif text-base font-semibold tracking-wide text-slate-100">
+                  <p class="line-clamp-2 font-serif text-base font-semibold text-(--app-text)">
                     {{ book.title }}
                   </p>
-                  <p class="text-xs text-slate-400">
+                  <p class="bm-muted text-xs">
                     {{ t('books.by') }} {{ book.authors.join(', ') || t('books.unknownAuthor') }}
                   </p>
-                  <div class="mt-1 flex flex-wrap gap-2 text-[11px] text-slate-400">
-                    <span class="rounded bg-slate-800 px-2 py-0.5">
+                  <div class="bm-muted mt-1 flex flex-wrap gap-2 text-[11px]">
+                    <span class="rounded bg-(--app-surface-muted) px-2 py-0.5">
                       {{ t('books.source') }}: {{ book.source }}
                     </span>
-                    <span class="rounded bg-slate-800 px-2 py-0.5">
+                    <span class="rounded bg-(--app-surface-muted) px-2 py-0.5">
                       {{ t('books.pages') }}:
                       {{ book.totalPages ?? t('books.unknownPages') }}
                     </span>
@@ -681,7 +710,7 @@ withBodyScrollLock(showAddModal)
                 <div class="h-fit w-28 text-right">
                   <button
                     type="button"
-                    class="w-full cursor-pointer rounded-lg border border-emerald-500/50 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    class="bm-button bm-button-success w-full text-xs"
                     :disabled="isAddDisabled(book)"
                     @click="onAddBook(book.id)"
                   >
@@ -689,7 +718,7 @@ withBodyScrollLock(showAddModal)
                   </button>
                   <p
                     v-if="addDisabledReason(book)"
-                    class="mt-1 text-[10px] leading-tight text-slate-400"
+                    class="bm-muted mt-1 text-[10px] leading-tight"
                   >
                     {{ addDisabledReason(book) }}
                   </p>
@@ -700,7 +729,7 @@ withBodyScrollLock(showAddModal)
             <button
               v-if="hasMoreSearchResults"
               type="button"
-              class="w-full cursor-pointer rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              class="bm-button w-full"
               :disabled="loadingMoreSearch"
               @click="onLoadMoreSearch"
             >

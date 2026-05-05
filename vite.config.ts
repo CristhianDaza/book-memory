@@ -12,7 +12,14 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/bookmemory-192.svg', 'icons/bookmemory-512.svg'],
+      includeAssets: [
+        'icons/bookmemory-dark-32.png',
+        'icons/bookmemory-light-32.png',
+        'icons/bookmemory-dark-192.png',
+        'icons/bookmemory-light-192.png',
+        'icons/bookmemory-dark-512.png',
+        'icons/bookmemory-light-512.png',
+      ],
       injectRegister: false,
       workbox: {
         cleanupOutdatedCaches: true,
@@ -75,27 +82,27 @@ export default defineConfig({
         name: 'Book Memory',
         short_name: 'BookMemory',
         description: 'Track reading sessions, pages, and streaks.',
-        theme_color: '#020617',
-        background_color: '#020617',
+        theme_color: '#1E293B',
+        background_color: '#FFFFFF',
         display: 'standalone',
         start_url: '/',
         icons: [
           {
-            src: '/icons/bookmemory-192.svg',
+            src: '/icons/bookmemory-light-192.png',
             sizes: '192x192',
-            type: 'image/svg+xml',
+            type: 'image/png',
             purpose: 'any',
           },
           {
-            src: '/icons/bookmemory-512.svg',
+            src: '/icons/bookmemory-light-512.png',
             sizes: '512x512',
-            type: 'image/svg+xml',
+            type: 'image/png',
             purpose: 'any',
           },
           {
-            src: '/icons/bookmemory-512.svg',
+            src: '/icons/bookmemory-light-512.png',
             sizes: '512x512',
-            type: 'image/svg+xml',
+            type: 'image/png',
             purpose: 'maskable',
           },
         ],
@@ -105,9 +112,18 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-vue': ['vue', 'vue-router', 'pinia'],
-          'vendor-i18n': ['vue-i18n'],
+        manualChunks(id) {
+          if (id.includes('/node_modules/vue-i18n/')) {
+            return 'vendor-i18n'
+          }
+
+          if (
+            id.includes('/node_modules/vue/') ||
+            id.includes('/node_modules/vue-router/') ||
+            id.includes('/node_modules/pinia/')
+          ) {
+            return 'vendor-vue'
+          }
         },
       },
     },
