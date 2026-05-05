@@ -76,33 +76,33 @@ onMounted(async () => {
       </template>
     </PageHeader>
 
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <article class="bm-stat-card">
+    <div class="bm-home-stats grid grid-cols-3 gap-2 sm:gap-3">
+      <article class="bm-stat-card bm-home-stat-card">
         <Library
           :size="19"
-          class="text-[var(--app-primary-strong)]"
+          class="bm-home-stat-icon text-(--app-primary-strong)"
           aria-hidden="true"
         />
-        <p class="bm-stat-label mt-3">{{ t('home.kpiBooks') }}</p>
-        <p class="bm-stat-value">{{ totalBooks }}</p>
+        <p class="bm-stat-label bm-home-stat-label">{{ t('home.kpiBooks') }}</p>
+        <p class="bm-stat-value bm-home-stat-value">{{ totalBooks }}</p>
       </article>
-      <article class="bm-stat-card">
+      <article class="bm-stat-card bm-home-stat-card">
         <Heart
           :size="19"
-          class="text-(--app-warm)"
+          class="bm-home-stat-icon text-(--app-warm)"
           aria-hidden="true"
         />
-        <p class="bm-stat-label mt-3">{{ t('home.kpiFavorites') }}</p>
-        <p class="bm-stat-value text-(--app-warm)">{{ favoriteBooks }}</p>
+        <p class="bm-stat-label bm-home-stat-label">{{ t('home.kpiFavorites') }}</p>
+        <p class="bm-stat-value bm-home-stat-value text-(--app-warm)">{{ favoriteBooks }}</p>
       </article>
-      <article class="bm-stat-card">
+      <article class="bm-stat-card bm-home-stat-card">
         <BookOpen
           :size="19"
-          class="text-(--app-primary-strong)"
+          class="bm-home-stat-icon text-(--app-primary-strong)"
           aria-hidden="true"
         />
-        <p class="bm-stat-label mt-3">{{ t('home.kpiReading') }}</p>
-        <p class="bm-stat-value">{{ readingBooks }}</p>
+        <p class="bm-stat-label bm-home-stat-label">{{ t('home.kpiReading') }}</p>
+        <p class="bm-stat-value bm-home-stat-value">{{ readingBooks }}</p>
       </article>
     </div>
 

@@ -148,6 +148,7 @@ a {
   overflow-y: auto;
   min-width: 0;
   padding: 1.5rem;
+  scroll-behavior: smooth;
 }
 
 .bm-main-auth {
@@ -486,6 +487,10 @@ a {
   line-height: 1.1;
 }
 
+.bm-home-stat-label {
+  margin-top: 0.75rem;
+}
+
 .bm-input,
 .bm-select {
   width: 100%;
@@ -771,5 +776,51 @@ a {
   .bm-page-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 639px) {
+  .bm-home-stats {
+    gap: 0.45rem;
+  }
+
+  .bm-home-stat-card {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 0.85rem;
+    padding: 0.65rem 0.55rem;
+    box-shadow: none;
+  }
+
+  .bm-home-stat-icon {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+  }
+
+  .bm-home-stat-label {
+    min-width: 0;
+    flex: 1 1 auto;
+    margin-top: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.6rem;
+    letter-spacing: 0.035em;
+    line-height: 1;
+  }
+
+  .bm-home-stat-value {
+    flex: 0 0 auto;
+    font-size: 1.3rem;
+    line-height: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bm-main {
+    scroll-behavior: auto;
   }
 }

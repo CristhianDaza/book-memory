@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, type Component } from 'vue'
+import { computed, nextTick, ref, watch, type Component } from 'vue'
 import {
   ChevronDown,
   Download,
@@ -12,6 +12,7 @@ import {
   Trash2,
 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import IconButton from '../ui/IconButton.vue'
 import NavItem from '../ui/NavItem.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
@@ -50,7 +51,9 @@ defineEmits<{
 }>()
 
 const { t, locale } = useI18n()
+const route = useRoute()
 const { themeMode, resolvedTheme, setThemeMode } = useTheme()
+const mainScrollTarget = ref<HTMLElement | null>(null)
 
 const nextThemeMode = computed<ThemeMode>(() => {
   if (themeMode.value === 'system') return 'light'
@@ -79,6 +82,25 @@ const brandIconSrc = computed(() => `/icons/bookmemory-${resolvedTheme.value}-19
 function onToggleTheme() {
   setThemeMode(nextThemeMode.value)
 }
+
+watch(
+  () => route.fullPath,
+  async () => {
+    await nextTick()
+    const scrollTarget = mainScrollTarget.value
+    if (!scrollTarget) return
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      'matchMedia' in window &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    scrollTarget.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    })
+  },
+)
 </script>
 
 <template>
@@ -269,7 +291,10 @@ function onToggleTheme() {
           </div>
         </aside>
 
-        <main class="bm-main">
+        <main
+          ref="mainScrollTarget"
+          class="bm-main"
+        >
           <div class="bm-content">
             <section
               v-if="syncVisible"
@@ -297,6 +322,7 @@ function onToggleTheme() {
 
     <main
       v-else
+      ref="mainScrollTarget"
       class="bm-main bm-main-auth"
     >
       <div class="bm-content">
