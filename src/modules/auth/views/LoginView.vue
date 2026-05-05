@@ -21,12 +21,18 @@ const mode = ref<'login' | 'register'>('login')
 const resetInfoMessage = ref<string | null>(null)
 const redirecting = ref(false)
 const floatingBooks = [
-  { id: 1, color: '#1f7a5f', accent: '#dceee5', left: '9%', delay: '-0.8s', duration: '7.2s', size: '3.8rem', rotate: '-10deg' },
-  { id: 2, color: '#b96b2c', accent: '#f2dfc7', left: '24%', delay: '-3.2s', duration: '8.4s', size: '4.6rem', rotate: '8deg' },
-  { id: 3, color: '#155b47', accent: '#fffaf0', left: '43%', delay: '-1.9s', duration: '7.8s', size: '3.4rem', rotate: '-5deg' },
-  { id: 4, color: '#6f563d', accent: '#f7e7ba', left: '61%', delay: '-4.8s', duration: '9s', size: '4.2rem', rotate: '12deg' },
-  { id: 5, color: '#18734b', accent: '#d9eee2', left: '78%', delay: '-2.6s', duration: '8.8s', size: '3.7rem', rotate: '-14deg' },
-  { id: 6, color: '#a16207', accent: '#fffaf0', left: '88%', delay: '-5.7s', duration: '9.6s', size: '3.1rem', rotate: '7deg' },
+  { id: 1, imageSrc: '/auth-books/book-01.webp', color: '#1f7a5f', left: '9%', delay: '0.8s', duration: '7.2s', size: '3.8rem', rotate: '-10deg' },
+  { id: 2, imageSrc: '/auth-books/book-02.webp', color: '#b96b2c', left: '24%', delay: '3.2s', duration: '8.4s', size: '4.6rem', rotate: '8deg' },
+  { id: 3, imageSrc: '/auth-books/book-03.webp', color: '#155b47', left: '43%', delay: '1.9s', duration: '7.8s', size: '3.4rem', rotate: '-5deg' },
+  { id: 4, imageSrc: '/auth-books/book-04.webp', color: '#6f563d', left: '61%', delay: '4.8s', duration: '9s', size: '4.2rem', rotate: '12deg' },
+  { id: 5, imageSrc: '/auth-books/book-05.webp', color: '#18734b', left: '78%', delay: '2.6s', duration: '8.8s', size: '3.7rem', rotate: '-14deg' },
+  { id: 6, imageSrc: '/auth-books/book-06.webp', color: '#a16207', left: '88%', delay: '5.7s', duration: '9.6s', size: '3.1rem', rotate: '7deg' },
+  { id: 7, imageSrc: '/auth-books/book-07.webp', color: '#1f7a5f', left: '9%', delay: '0.8s', duration: '7.2s', size: '3.8rem', rotate: '-10deg' },
+  { id: 8, imageSrc: '/auth-books/book-08.webp', color: '#b96b2c', left: '24%', delay: '3.2s', duration: '8.4s', size: '4.6rem', rotate: '8deg' },
+  { id: 9, imageSrc: '/auth-books/book-09.webp', color: '#155b47', left: '43%', delay: '1.9s', duration: '7.8s', size: '3.4rem', rotate: '-5deg' },
+  { id: 10, imageSrc: '/auth-books/book-10.webp', color: '#6f563d', left: '61%', delay: '4.8s', duration: '9s', size: '4.2rem', rotate: '12deg' },
+  { id: 11, imageSrc: '/auth-books/book-11.webp', color: '#18734b', left: '78%', delay: '2.6s', duration: '8.8s', size: '3.7rem', rotate: '-14deg' },
+  { id: 12, imageSrc: '/auth-books/book-06.webp', color: '#a16207', left: '88%', delay: '5.7s', duration: '9.6s', size: '3.1rem', rotate: '7deg' },
 ]
 const modeSubtitle = computed(() =>
   mode.value === 'login' ? t('auth.subtitleLogin') : t('auth.subtitleRegister'),
@@ -107,7 +113,7 @@ function onToggleMode() {
           class="login-floating-book"
           :style="{
             '--book-color': book.color,
-            '--book-accent': book.accent,
+            '--book-image': `url(${book.imageSrc})`,
             '--book-left': book.left,
             '--book-delay': book.delay,
             '--book-duration': book.duration,
@@ -275,7 +281,7 @@ function onToggleMode() {
 .login-floating-book {
   position: absolute;
   left: var(--book-left);
-  bottom: -5.5rem;
+  bottom: 1rem;
   width: var(--book-size);
   height: calc(var(--book-size) * 1.28);
   transform: rotate(var(--book-rotate));
@@ -290,28 +296,9 @@ function onToggleMode() {
   border: 1px solid color-mix(in srgb, var(--book-color) 74%, var(--app-border));
   border-radius: 0.42rem 0.72rem 0.72rem 0.42rem;
   background: var(--book-color);
-}
-
-.login-book-cover::before {
-  content: "";
-  position: absolute;
-  inset: 0.38rem auto 0.38rem 0.42rem;
-  width: 0.34rem;
-  border-radius: 999px;
-  background: var(--book-accent);
-  opacity: 0.9;
-}
-
-.login-book-cover::after {
-  content: "";
-  position: absolute;
-  right: 0.55rem;
-  bottom: 0.62rem;
-  width: 1.25rem;
-  height: 0.28rem;
-  border-radius: 999px;
-  background: var(--book-accent);
-  opacity: 0.78;
+  background-image: var(--book-image);
+  background-position: center;
+  background-size: cover;
 }
 
 .login-book-pages {
@@ -342,7 +329,7 @@ function onToggleMode() {
   }
 
   100% {
-    transform: translate3d(0, -24rem, 0) rotate(calc(var(--book-rotate) * -1)) scale(1.08);
+    transform: translate3d(0, -20rem, 0) rotate(calc(var(--book-rotate) * -1)) scale(1.08);
     opacity: 0;
   }
 }
