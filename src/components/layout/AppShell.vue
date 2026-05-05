@@ -1,10 +1,24 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
-import { BookOpen, Download, Globe2, LogOut, ShieldCheck, Trash2 } from 'lucide-vue-next'
+import { computed, type Component } from 'vue'
+import {
+  BookOpen,
+  ChevronDown,
+  Download,
+  Globe2,
+  Laptop,
+  LogOut,
+  Moon,
+  ShieldCheck,
+  Sun,
+  Trash2,
+} from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
 import IconButton from '../ui/IconButton.vue'
 import NavItem from '../ui/NavItem.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
 import ThemeToggle from '../ui/ThemeToggle.vue'
+import { useTheme } from '../../composables/useTheme'
+import type { ThemeMode } from '../../types/theme'
 
 interface ShellNavItem {
   to: string
@@ -35,6 +49,35 @@ defineEmits<{
   deleteAccount: []
   signOut: []
 }>()
+
+const { t, locale } = useI18n()
+const { themeMode, setThemeMode } = useTheme()
+
+const nextThemeMode = computed<ThemeMode>(() => {
+  if (themeMode.value === 'system') return 'light'
+  if (themeMode.value === 'light') return 'dark'
+  return 'system'
+})
+
+const themeLabel = computed(() => {
+  if (themeMode.value === 'system') return t('theme.system')
+  if (themeMode.value === 'light') return t('theme.light')
+  return t('theme.dark')
+})
+
+const themeIcon = computed<Component>(() => {
+  if (themeMode.value === 'system') return Laptop
+  if (themeMode.value === 'light') return Sun
+  return Moon
+})
+
+const currentLanguageLabel = computed(() =>
+  locale.value === 'es' ? t('common.spanishFull') : t('common.englishFull'),
+)
+
+function onToggleTheme() {
+  setThemeMode(nextThemeMode.value)
+}
 </script>
 
 <template>
@@ -59,7 +102,7 @@ defineEmits<{
         <div class="flex items-center gap-2">
           <ThemeToggle />
           <IconButton
-            :label="nextLocaleLabel"
+            :label="t('common.switchLanguage', { language: nextLocaleLabel })"
             @click="$emit('changeLocale')"
           >
             <Globe2
@@ -113,51 +156,107 @@ defineEmits<{
             <p class="bm-muted text-xs leading-relaxed">{{ syncMessage }}</p>
           </div>
 
-          <div class="grid gap-2">
-            <div class="flex gap-2">
-              <ThemeToggle />
-              <IconButton
-                :label="nextLocaleLabel"
-                @click="$emit('changeLocale')"
+          <div class="grid gap-3">
+            <section class="bm-sidebar-section">
+              <p class="bm-sidebar-section-title">{{ t('home.sessionSection') }}</p>
+              <button
+                type="button"
+                class="bm-button w-full"
+                @click="$emit('signOut')"
               >
-                <Globe2
-                  :size="18"
+                <LogOut
+                  :size="17"
                   aria-hidden="true"
                 />
-              </IconButton>
-              <IconButton
-                :label="exportAriaLabel"
-                :disabled="exportingData"
-                @click="$emit('exportData')"
-              >
-                <Download
-                  :size="18"
+                {{ signOutLabel }}
+              </button>
+            </section>
+
+            <details class="bm-sidebar-danger-zone">
+              <summary>
+                <span>{{ t('home.accountOptions') }}</span>
+                <ChevronDown
+                  :size="16"
                   aria-hidden="true"
                 />
-              </IconButton>
-            </div>
-            <button
-              type="button"
-              class="bm-button bm-button-danger w-full"
-              @click="$emit('deleteAccount')"
-            >
-              <Trash2
-                :size="17"
-                aria-hidden="true"
-              />
-              {{ deleteLabel }}
-            </button>
-            <button
-              type="button"
-              class="bm-button w-full"
-              @click="$emit('signOut')"
-            >
-              <LogOut
-                :size="17"
-                aria-hidden="true"
-              />
-              {{ signOutLabel }}
-            </button>
+              </summary>
+              <section class="bm-sidebar-section">
+                <p class="bm-sidebar-section-title">{{ t('home.preferences') }}</p>
+                <button
+                  type="button"
+                  class="bm-sidebar-action-row bm-sidebar-action-button"
+                  :aria-label="t('theme.toggle')"
+                  @click="onToggleTheme"
+                >
+                  <span class="bm-sidebar-action-copy">
+                    <span class="bm-sidebar-action-label">{{ t('theme.setting') }}</span>
+                    <span class="bm-sidebar-action-value">{{ themeLabel }}</span>
+                  </span>
+                  <span class="bm-sidebar-action-icon">
+                    <component
+                      :is="themeIcon"
+                      :size="18"
+                      aria-hidden="true"
+                    />
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class="bm-sidebar-action-row bm-sidebar-action-button"
+                  :aria-label="t('common.switchLanguage', { language: nextLocaleLabel })"
+                  @click="$emit('changeLocale')"
+                >
+                  <span class="bm-sidebar-action-copy">
+                    <span class="bm-sidebar-action-label">{{ t('common.language') }}</span>
+                    <span class="bm-sidebar-action-value">{{ currentLanguageLabel }}</span>
+                  </span>
+                  <span class="bm-sidebar-action-icon">
+                    <Globe2
+                      :size="18"
+                      aria-hidden="true"
+                    />
+                  </span>
+                </button>
+              </section>
+
+              <section class="bm-sidebar-section">
+                <p class="bm-sidebar-section-title">{{ t('home.dataSection') }}</p>
+                <button
+                  type="button"
+                  class="bm-sidebar-action-row bm-sidebar-action-button"
+                  :aria-label="exportAriaLabel"
+                  :disabled="exportingData"
+                  @click="$emit('exportData')"
+                >
+                  <span class="bm-sidebar-action-copy">
+                    <span class="bm-sidebar-action-label">{{ t('home.exportData') }}</span>
+                    <span class="bm-sidebar-action-value">{{ exportLabel }}</span>
+                  </span>
+                  <span class="bm-sidebar-action-icon">
+                    <Download
+                      :size="18"
+                      aria-hidden="true"
+                    />
+                  </span>
+                </button>
+              </section>
+
+              <section class="bm-sidebar-section">
+                <p class="bm-sidebar-section-title">{{ t('home.dangerSection') }}</p>
+                <p class="bm-muted text-xs leading-relaxed">{{ t('home.accountOptionsHint') }}</p>
+                <button
+                  type="button"
+                  class="bm-button bm-button-danger w-full"
+                  @click="$emit('deleteAccount')"
+                >
+                  <Trash2
+                    :size="17"
+                    aria-hidden="true"
+                  />
+                  {{ deleteLabel }}
+                </button>
+              </section>
+            </details>
           </div>
         </aside>
 

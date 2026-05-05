@@ -100,9 +100,9 @@ function onToggleMode() {
 
 <template>
   <section class="mx-auto grid max-w-5xl items-center gap-6 py-4 md:grid-cols-[1.05fr_0.95fr]">
-    <div class="bm-page-header relative min-h-128 flex-col items-stretch justify-between overflow-hidden p-5">
+    <div class="bm-page-header relative min-h-128 flex-col items-stretch! justify-between overflow-hidden p-5">
       <div
-        class="relative isolate min-h-[17.5rem] overflow-hidden rounded-2xl bg-[var(--app-surface-muted)] max-[640px]:min-h-48"
+        class="relative isolate min-h-70 w-full overflow-hidden rounded-2xl bg-(--app-surface-muted) max-[640px]:min-h-48"
         aria-hidden="true"
       >
         <span class="absolute inset-[1.5rem_16%_auto] h-px bg-[color-mix(in_srgb,var(--app-border)_76%,transparent)] opacity-[0.72]" />
@@ -110,7 +110,7 @@ function onToggleMode() {
         <span
           v-for="book in floatingBooks"
           :key="book.id"
-          class="login-floating-book absolute bottom-[-5rem] left-[var(--book-left)] z-[var(--book-z)] h-[calc(var(--book-size)*1.28)] w-[var(--book-size)] opacity-[var(--book-depth)] drop-shadow-[0_calc(0.6rem*var(--book-depth))_calc(1rem*var(--book-depth))_rgba(15,23,42,0.18)] will-change-[transform,opacity] motion-reduce:opacity-90 max-[640px]:h-[calc(var(--book-size)*1.05)] max-[640px]:w-[calc(var(--book-size)*0.82)]"
+          class="login-floating-book absolute -bottom-20 left-(--book-left) z-(--book-z) h-[calc(var(--book-size)*1.28)] w-(--book-size) opacity-(--book-depth) drop-shadow-[0_calc(0.6rem*var(--book-depth))_calc(1rem*var(--book-depth))_rgba(15,23,42,0.18)] will-change-[transform,opacity] motion-reduce:opacity-90 max-[640px]:h-[calc(var(--book-size)*1.05)] max-[640px]:w-[calc(var(--book-size)*0.82)]"
           :style="{
             '--book-color': book.color,
             '--book-image': `url(${book.imageSrc})`,
@@ -123,12 +123,12 @@ function onToggleMode() {
             '--book-depth': book.depth,
           }"
         >
-          <span class="absolute inset-0 border border-[color-mix(in_srgb,var(--book-color)_74%,var(--app-border))] bg-[var(--book-color)] bg-cover bg-center [background-image:var(--book-image)] [border-radius:0.42rem_0.72rem_0.72rem_0.42rem]" />
-          <span class="absolute inset-[0.42rem_-0.38rem_0.42rem_auto] w-[0.6rem] rounded-[0_0.55rem_0.55rem_0] border border-l-0 border-[var(--app-border)] bg-[var(--app-surface)]" />
+          <span class="absolute inset-0 border border-[color-mix(in_srgb,var(--book-color)_74%,var(--app-border))] bg-(--book-color) bg-cover bg-center [background-image:var(--book-image)] rounded-[0.42rem_0.72rem_0.72rem_0.42rem]" />
+          <span class="absolute inset-[0.42rem_-0.38rem_0.42rem_auto] w-[0.6rem] rounded-[0_0.55rem_0.55rem_0] border border-l-0 border-(--app-border) bg-(--app-surface)" />
         </span>
       </div>
 
-      <div class="relative z-[1] pt-5">
+      <div class="relative z-1 pt-5">
         <span class="bm-brand-mark mb-5">
           <BookOpen
             :size="28"
