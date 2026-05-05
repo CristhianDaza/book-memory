@@ -8,6 +8,24 @@ import { deleteUserData } from '../services/accountService'
 let authSdkPromise: Promise<typeof import('firebase/auth')> | null = null
 let authStateUnsubscribe: (() => void) | null = null
 
+const firebaseAuthErrorKeys: Record<string, string> = {
+  'auth/account-exists-with-different-credential': 'authErrors.accountExistsWithDifferentCredential',
+  'auth/email-already-in-use': 'authErrors.emailAlreadyInUse',
+  'auth/invalid-credential': 'authErrors.invalidCredentials',
+  'auth/invalid-email': 'authErrors.invalidEmail',
+  'auth/missing-password': 'authErrors.missingPassword',
+  'auth/network-request-failed': 'authErrors.networkRequestFailed',
+  'auth/operation-not-allowed': 'authErrors.operationNotAllowed',
+  'auth/popup-blocked': 'authErrors.popupBlocked',
+  'auth/popup-closed-by-user': 'authErrors.popupClosedByUser',
+  'auth/requires-recent-login': 'authErrors.deleteAccountRequiresRecentLogin',
+  'auth/too-many-requests': 'authErrors.tooManyRequests',
+  'auth/user-disabled': 'authErrors.userDisabled',
+  'auth/user-not-found': 'authErrors.invalidCredentials',
+  'auth/weak-password': 'authErrors.weakPassword',
+  'auth/wrong-password': 'authErrors.invalidCredentials',
+}
+
 function getAuthSdk() {
   if (!authSdkPromise) {
     authSdkPromise = import('firebase/auth')
@@ -32,8 +50,17 @@ export const useAuthStore = defineStore('auth', () => {
     return i18n.global.t(key)
   }
 
+  function getFirebaseAuthErrorCode(error: unknown): string | null {
+    if (typeof error !== 'object' || error === null || !('code' in error)) return null
+    return typeof error.code === 'string' ? error.code : null
+  }
+
   function resolveErrorMessage(error: unknown, fallbackKey: string): string {
-    return error instanceof Error && error.message ? error.message : tAuthError(fallbackKey)
+    const code = getFirebaseAuthErrorCode(error)
+    if (code && firebaseAuthErrorKeys[code]) {
+      return tAuthError(firebaseAuthErrorKeys[code])
+    }
+    return tAuthError(fallbackKey)
   }
 
   function initAuth() {
@@ -184,12 +211,7 @@ export const useAuthStore = defineStore('auth', () => {
       await deleteUser(currentUser)
       return true
     } catch (error) {
-      const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : ''
-      if (code.includes('requires-recent-login')) {
-        errorMessage.value = tAuthError('authErrors.deleteAccountRequiresRecentLogin')
-      } else {
-        errorMessage.value = resolveErrorMessage(error, 'authErrors.deleteAccountFailed')
-      }
+      errorMessage.value = resolveErrorMessage(error, 'authErrors.deleteAccountFailed')
       return false
     }
   }
