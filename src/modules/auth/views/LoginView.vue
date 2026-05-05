@@ -100,17 +100,17 @@ function onToggleMode() {
 
 <template>
   <section class="mx-auto grid max-w-5xl items-center gap-6 py-4 md:grid-cols-[1.05fr_0.95fr]">
-    <div class="login-hero bm-page-header min-h-128 items-start">
+    <div class="bm-page-header relative min-h-128 flex-col items-stretch justify-between overflow-hidden p-5">
       <div
-        class="login-book-animation"
+        class="relative isolate min-h-[17.5rem] overflow-hidden rounded-2xl bg-[var(--app-surface-muted)] max-[640px]:min-h-48"
         aria-hidden="true"
       >
-        <span class="login-book-lane" />
-        <span class="login-book-lane login-book-lane-offset" />
+        <span class="absolute inset-[1.5rem_16%_auto] h-px bg-[color-mix(in_srgb,var(--app-border)_76%,transparent)] opacity-[0.72]" />
+        <span class="absolute inset-[auto_8%_2.2rem] h-px bg-[color-mix(in_srgb,var(--app-border)_76%,transparent)] opacity-[0.72]" />
         <span
           v-for="book in floatingBooks"
           :key="book.id"
-          class="login-floating-book"
+          class="login-floating-book absolute bottom-[-5rem] left-[var(--book-left)] z-[var(--book-z)] h-[calc(var(--book-size)*1.28)] w-[var(--book-size)] opacity-[var(--book-depth)] drop-shadow-[0_calc(0.6rem*var(--book-depth))_calc(1rem*var(--book-depth))_rgba(15,23,42,0.18)] will-change-[transform,opacity] motion-reduce:opacity-90 max-[640px]:h-[calc(var(--book-size)*1.05)] max-[640px]:w-[calc(var(--book-size)*0.82)]"
           :style="{
             '--book-color': book.color,
             '--book-image': `url(${book.imageSrc})`,
@@ -123,12 +123,12 @@ function onToggleMode() {
             '--book-depth': book.depth,
           }"
         >
-          <span class="login-book-cover" />
-          <span class="login-book-pages" />
+          <span class="absolute inset-0 border border-[color-mix(in_srgb,var(--book-color)_74%,var(--app-border))] bg-[var(--book-color)] bg-cover bg-center [background-image:var(--book-image)] [border-radius:0.42rem_0.72rem_0.72rem_0.42rem]" />
+          <span class="absolute inset-[0.42rem_-0.38rem_0.42rem_auto] w-[0.6rem] rounded-[0_0.55rem_0.55rem_0] border border-l-0 border-[var(--app-border)] bg-[var(--app-surface)]" />
         </span>
       </div>
 
-      <div class="login-hero-copy">
+      <div class="relative z-[1] pt-5">
         <span class="bm-brand-mark mb-5">
           <BookOpen
             :size="28"
@@ -250,77 +250,16 @@ function onToggleMode() {
 </template>
 
 <style scoped>
-.login-hero {
-  position: relative;
-  overflow: hidden;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: stretch;
-  padding: 1.25rem;
-}
-
-.login-book-animation {
-  position: relative;
-  min-height: 17.5rem;
-  overflow: hidden;
-  border-radius: 1rem;
-  background: var(--app-surface-muted);
-  isolation: isolate;
-}
-
-.login-book-lane {
-  position: absolute;
-  inset: 1.5rem 16% auto;
-  height: 1px;
-  background: color-mix(in srgb, var(--app-border) 76%, transparent);
-  opacity: 0.72;
-}
-
-.login-book-lane-offset {
-  inset: auto 8% 2.2rem;
-}
-
 .login-floating-book {
-  position: absolute;
-  z-index: var(--book-z);
-  left: var(--book-left);
-  bottom: -5rem;
-  width: var(--book-size);
-  height: calc(var(--book-size) * 1.28);
+  --book-rotate: 0deg;
+  --book-duration: 12s;
+  --book-delay: 0s;
+  --book-depth: 1;
+
   transform: rotate(var(--book-rotate));
   animation: book-rise var(--book-duration) linear infinite;
   animation-delay: var(--book-delay);
   animation-fill-mode: both;
-  filter: drop-shadow(0 calc(0.6rem * var(--book-depth)) calc(1rem * var(--book-depth)) rgba(15, 23, 42, 0.18));
-  opacity: var(--book-depth);
-  will-change: transform, opacity;
-}
-
-.login-book-cover {
-  position: absolute;
-  inset: 0;
-  border: 1px solid color-mix(in srgb, var(--book-color) 74%, var(--app-border));
-  border-radius: 0.42rem 0.72rem 0.72rem 0.42rem;
-  background: var(--book-color);
-  background-image: var(--book-image);
-  background-position: center;
-  background-size: cover;
-}
-
-.login-book-pages {
-  position: absolute;
-  inset: 0.42rem -0.38rem 0.42rem auto;
-  width: 0.6rem;
-  border: 1px solid var(--app-border);
-  border-left: 0;
-  border-radius: 0 0.55rem 0.55rem 0;
-  background: var(--app-surface);
-}
-
-.login-hero-copy {
-  position: relative;
-  z-index: 1;
-  padding-top: 1.25rem;
 }
 
 @keyframes book-rise {
@@ -343,18 +282,6 @@ function onToggleMode() {
 @media (prefers-reduced-motion: reduce) {
   .login-floating-book {
     animation: none;
-    opacity: 0.9;
-  }
-}
-
-@media (max-width: 640px) {
-  .login-book-animation {
-    min-height: 12rem;
-  }
-
-  .login-floating-book {
-    width: calc(var(--book-size) * 0.82);
-    height: calc(var(--book-size) * 1.05);
   }
 }
 </style>
