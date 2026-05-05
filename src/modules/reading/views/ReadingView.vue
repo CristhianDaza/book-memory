@@ -353,7 +353,7 @@ onMounted(async () => {
       <div class="bm-subtle-panel flex min-h-56 flex-col items-center justify-center text-center">
         <TimerReset
           :size="34"
-          class="text-[var(--app-accent-strong)]"
+          class="text-[var(--app-primary-strong)]"
           aria-hidden="true"
         />
         <p class="bm-eyebrow mt-3">{{ t('reading.timer') }}</p>

@@ -282,7 +282,7 @@ onBeforeUnmount(() => {
       <div class="flex items-start gap-2">
         <BookOpen
           :size="17"
-          class="mt-0.5 text-[var(--app-accent-strong)]"
+          class="mt-0.5 text-[var(--app-primary-strong)]"
           aria-hidden="true"
         />
         <p

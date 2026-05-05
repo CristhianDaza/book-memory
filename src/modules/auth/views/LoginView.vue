@@ -21,18 +21,18 @@ const mode = ref<'login' | 'register'>('login')
 const resetInfoMessage = ref<string | null>(null)
 const redirecting = ref(false)
 const floatingBooks = [
-  { id: 1, imageSrc: '/auth-books/book-01.webp', color: '#1f7a5f', left: '9%', delay: '0.8s', duration: '7.2s', size: '3.8rem', rotate: '-10deg' },
-  { id: 2, imageSrc: '/auth-books/book-02.webp', color: '#b96b2c', left: '24%', delay: '3.2s', duration: '8.4s', size: '4.6rem', rotate: '8deg' },
-  { id: 3, imageSrc: '/auth-books/book-03.webp', color: '#155b47', left: '43%', delay: '1.9s', duration: '7.8s', size: '3.4rem', rotate: '-5deg' },
-  { id: 4, imageSrc: '/auth-books/book-04.webp', color: '#6f563d', left: '61%', delay: '4.8s', duration: '9s', size: '4.2rem', rotate: '12deg' },
-  { id: 5, imageSrc: '/auth-books/book-05.webp', color: '#18734b', left: '78%', delay: '2.6s', duration: '8.8s', size: '3.7rem', rotate: '-14deg' },
-  { id: 6, imageSrc: '/auth-books/book-06.webp', color: '#a16207', left: '88%', delay: '5.7s', duration: '9.6s', size: '3.1rem', rotate: '7deg' },
-  { id: 7, imageSrc: '/auth-books/book-07.webp', color: '#1f7a5f', left: '9%', delay: '0.8s', duration: '7.2s', size: '3.8rem', rotate: '-10deg' },
-  { id: 8, imageSrc: '/auth-books/book-08.webp', color: '#b96b2c', left: '24%', delay: '3.2s', duration: '8.4s', size: '4.6rem', rotate: '8deg' },
-  { id: 9, imageSrc: '/auth-books/book-09.webp', color: '#155b47', left: '43%', delay: '1.9s', duration: '7.8s', size: '3.4rem', rotate: '-5deg' },
-  { id: 10, imageSrc: '/auth-books/book-10.webp', color: '#6f563d', left: '61%', delay: '4.8s', duration: '9s', size: '4.2rem', rotate: '12deg' },
-  { id: 11, imageSrc: '/auth-books/book-11.webp', color: '#18734b', left: '78%', delay: '2.6s', duration: '8.8s', size: '3.7rem', rotate: '-14deg' },
-  { id: 12, imageSrc: '/auth-books/book-06.webp', color: '#a16207', left: '88%', delay: '5.7s', duration: '9.6s', size: '3.1rem', rotate: '7deg' },
+  { id: 1, imageSrc: '/auth-books/book-01.webp', color: 'var(--app-primary)', left: '5%', delay: '-0.4s', duration: '11.4s', size: '3.5rem', rotate: '-15deg', z: 2, depth: '0.86' },
+  { id: 2, imageSrc: '/auth-books/book-02.webp', color: 'var(--app-secondary)', left: '23%', delay: '-5.1s', duration: '12.8s', size: '5rem', rotate: '9deg', z: 6, depth: '1.05' },
+  { id: 3, imageSrc: '/auth-books/book-03.webp', color: 'var(--app-accent)', left: '35%', delay: '-2.2s', duration: '10.7s', size: '3.2rem', rotate: '-4deg', z: 1, depth: '0.78' },
+  { id: 4, imageSrc: '/auth-books/book-04.webp', color: 'var(--app-primary-strong)', left: '58%', delay: '-8.9s', duration: '13.3s', size: '4.6rem', rotate: '16deg', z: 5, depth: '1' },
+  { id: 5, imageSrc: '/auth-books/book-05.webp', color: 'var(--app-secondary-strong)', left: '76%', delay: '-3.7s', duration: '11.9s', size: '3.9rem', rotate: '-18deg', z: 4, depth: '0.95' },
+  { id: 6, imageSrc: '/auth-books/book-06.webp', color: 'var(--app-accent-strong)', left: '88%', delay: '-10.6s', duration: '12.4s', size: '3rem', rotate: '6deg', z: 2, depth: '0.82' },
+  { id: 7, imageSrc: '/auth-books/book-07.webp', color: 'var(--app-primary)', left: '12%', delay: '-7.3s', duration: '13.7s', size: '4.2rem', rotate: '13deg', z: 5, depth: '0.98' },
+  { id: 8, imageSrc: '/auth-books/book-08.webp', color: 'var(--app-secondary)', left: '29%', delay: '-1.5s', duration: '11.1s', size: '4.4rem', rotate: '-11deg', z: 7, depth: '1.08' },
+  { id: 9, imageSrc: '/auth-books/book-09.webp', color: 'var(--app-accent)', left: '51%', delay: '-9.8s', duration: '12.1s', size: '3.4rem', rotate: '7deg', z: 3, depth: '0.88' },
+  { id: 10, imageSrc: '/auth-books/book-10.webp', color: 'var(--app-primary-strong)', left: '66%', delay: '-4.4s', duration: '10.9s', size: '4.9rem', rotate: '-13deg', z: 8, depth: '1.12' },
+  { id: 11, imageSrc: '/auth-books/book-11.webp', color: 'var(--app-secondary-strong)', left: '81%', delay: '-6.2s', duration: '13s', size: '3.6rem', rotate: '18deg', z: 3, depth: '0.9' },
+  { id: 12, imageSrc: '/auth-books/book-06.webp', color: 'var(--app-accent-strong)', left: '93%', delay: '-11.4s', duration: '11.6s', size: '3.3rem', rotate: '-7deg', z: 1, depth: '0.8' },
 ]
 const modeSubtitle = computed(() =>
   mode.value === 'login' ? t('auth.subtitleLogin') : t('auth.subtitleRegister'),
@@ -99,7 +99,7 @@ function onToggleMode() {
 </script>
 
 <template>
-  <section class="mx-auto grid min-h-[calc(100vh-8rem)] max-w-5xl items-center gap-6 py-6 md:grid-cols-[1.05fr_0.95fr]">
+  <section class="mx-auto grid max-w-5xl items-center gap-6 py-4 md:grid-cols-[1.05fr_0.95fr]">
     <div class="login-hero bm-page-header min-h-[32rem] items-start">
       <div
         class="login-book-animation"
@@ -119,6 +119,8 @@ function onToggleMode() {
             '--book-duration': book.duration,
             '--book-size': book.size,
             '--book-rotate': book.rotate,
+            '--book-z': book.z,
+            '--book-depth': book.depth,
           }"
         >
           <span class="login-book-cover" />
@@ -262,7 +264,7 @@ function onToggleMode() {
   min-height: 17.5rem;
   overflow: hidden;
   border-radius: 1rem;
-  background: var(--app-surface-raised);
+  background: var(--app-surface-muted);
   isolation: isolate;
 }
 
@@ -280,14 +282,18 @@ function onToggleMode() {
 
 .login-floating-book {
   position: absolute;
+  z-index: var(--book-z);
   left: var(--book-left);
-  bottom: 1rem;
+  bottom: -5rem;
   width: var(--book-size);
   height: calc(var(--book-size) * 1.28);
   transform: rotate(var(--book-rotate));
   animation: book-rise var(--book-duration) linear infinite;
   animation-delay: var(--book-delay);
-  filter: drop-shadow(0 0.75rem 1rem rgba(71, 52, 30, 0.16));
+  animation-fill-mode: both;
+  filter: drop-shadow(0 calc(0.6rem * var(--book-depth)) calc(1rem * var(--book-depth)) rgba(15, 23, 42, 0.18));
+  opacity: var(--book-depth);
+  will-change: transform, opacity;
 }
 
 .login-book-cover {
@@ -319,17 +325,17 @@ function onToggleMode() {
 
 @keyframes book-rise {
   0% {
-    transform: translate3d(0, 0, 0) rotate(var(--book-rotate)) scale(0.86);
+    transform: translate3d(0, 0, 0) rotate(var(--book-rotate)) scale(calc(var(--book-depth) * 0.88));
     opacity: 0;
   }
 
-  12%,
-  82% {
+  4%,
+  92% {
     opacity: 1;
   }
 
   100% {
-    transform: translate3d(0, -20rem, 0) rotate(calc(var(--book-rotate) * -1)) scale(1.08);
+    transform: translate3d(0, -24rem, 0) rotate(calc(var(--book-rotate) * -1)) scale(calc(var(--book-depth) * 1.08));
     opacity: 0;
   }
 }

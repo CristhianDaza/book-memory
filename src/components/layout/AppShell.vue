@@ -189,14 +189,17 @@ defineEmits<{
 
     <main
       v-else
-      class="bm-main"
+      class="bm-main bm-main-auth"
     >
       <div class="bm-content">
         <slot />
       </div>
     </main>
 
-    <footer class="bm-footer">
+    <footer
+      class="bm-footer"
+      :class="{ 'bm-footer-with-bottom-nav': showChrome }"
+    >
       <div class="mx-auto flex max-w-6xl flex-col items-start gap-2 px-4 py-4 text-xs sm:flex-row sm:items-center sm:justify-between">
         <p class="leading-relaxed">
           © {{ currentYear }} BookMemory. Designed &amp; Developed by
@@ -204,7 +207,7 @@ defineEmits<{
             href="https://cris-dev.com"
             target="_blank"
             rel="noopener noreferrer"
-            class="font-semibold text-[var(--app-accent-strong)] underline underline-offset-2"
+            class="font-semibold text-[var(--app-primary-strong)] underline underline-offset-2"
           >
             cris-dev
           </a>.

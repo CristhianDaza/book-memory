@@ -80,7 +80,7 @@ onMounted(async () => {
       <article class="bm-stat-card">
         <Library
           :size="19"
-          class="text-[var(--app-accent-strong)]"
+          class="text-[var(--app-primary-strong)]"
           aria-hidden="true"
         />
         <p class="bm-stat-label mt-3">{{ t('home.kpiBooks') }}</p>
@@ -98,7 +98,7 @@ onMounted(async () => {
       <article class="bm-stat-card">
         <BookOpen
           :size="19"
-          class="text-[var(--app-accent-strong)]"
+          class="text-[var(--app-primary-strong)]"
           aria-hidden="true"
         />
         <p class="bm-stat-label mt-3">{{ t('home.kpiReading') }}</p>

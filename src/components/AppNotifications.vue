@@ -9,7 +9,7 @@ const { items } = storeToRefs(notificationsStore)
 function toneClass(type: NotificationType) {
   if (type === 'success') return 'border-[var(--app-success)] bg-[var(--app-success-soft)] text-[var(--app-success)]'
   if (type === 'error') return 'border-[var(--app-danger)] bg-[var(--app-danger-soft)] text-[var(--app-danger)]'
-  return 'border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent-strong)]'
+  return 'border-[var(--app-primary)] bg-[var(--app-primary-soft)] text-[var(--app-primary-strong)]'
 }
 </script>
 

@@ -278,7 +278,7 @@ withBodyScrollLock(showAddModal)
             <input
               v-model="showOnlyFavorites"
               type="checkbox"
-              class="h-4 w-4 cursor-pointer accent-[var(--app-accent)]"
+              class="h-4 w-4 cursor-pointer accent-[var(--app-primary)]"
             >
             {{ t('books.onlyFavorites') }}
           </label>
@@ -467,7 +467,7 @@ withBodyScrollLock(showAddModal)
             :aria-selected="addMode === 'search'"
             :class="
               addMode === 'search'
-                ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+                ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
                 : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
             "
             @click="onChangeAddMode('search')"
@@ -481,7 +481,7 @@ withBodyScrollLock(showAddModal)
             :aria-selected="addMode === 'manual'"
             :class="
               addMode === 'manual'
-                ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+                ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
                 : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
             "
             @click="onChangeAddMode('manual')"
@@ -503,7 +503,7 @@ withBodyScrollLock(showAddModal)
                 class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
                 :class="
                   searchLanguageMode === 'active'
-                    ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+                    ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
                     : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
                 "
                 @click="onChangeSearchLanguageMode('active')"
@@ -515,7 +515,7 @@ withBodyScrollLock(showAddModal)
                 class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
                 :class="
                   searchLanguageMode === 'all'
-                    ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+                    ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
                     : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
                 "
                 @click="onChangeSearchLanguageMode('all')"

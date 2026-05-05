@@ -151,7 +151,7 @@ onMounted(async () => {
           class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
           :class="
             range === '7d'
-              ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+              ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
               : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
           "
           @click="onChangeRange('7d')"
@@ -163,7 +163,7 @@ onMounted(async () => {
           class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
           :class="
             range === '30d'
-              ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+              ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
               : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
           "
           @click="onChangeRange('30d')"
@@ -175,7 +175,7 @@ onMounted(async () => {
           class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
           :class="
             range === 'all'
-              ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+              ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
               : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
           "
           @click="onChangeRange('all')"
@@ -313,7 +313,7 @@ onMounted(async () => {
           </p>
           <div class="bm-progress-track mt-1">
             <div
-              class="h-full rounded bg-[var(--app-success)]"
+              class="h-full rounded bg-[var(--app-accent)]"
               :style="{ width: `${goalsProgress.monthlyMinutesProgress}%` }"
             />
           </div>
@@ -340,7 +340,7 @@ onMounted(async () => {
           class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
           :class="
             activityMetric === 'sessions'
-              ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+              ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
               : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
           "
           @click="onChangeMetric('sessions')"
@@ -352,7 +352,7 @@ onMounted(async () => {
           class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
           :class="
             activityMetric === 'pages'
-              ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+              ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
               : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
           "
           @click="onChangeMetric('pages')"
@@ -364,7 +364,7 @@ onMounted(async () => {
           class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
           :class="
             activityMetric === 'minutes'
-              ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+              ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
               : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
           "
           @click="onChangeMetric('minutes')"
@@ -378,7 +378,7 @@ onMounted(async () => {
           <p class="bm-stat-label text-[10px]">
             {{ t('stats.avgDailySessions') }}
           </p>
-          <p class="mt-1 text-sm font-semibold text-[var(--app-accent-strong)]">
+          <p class="mt-1 text-sm font-semibold text-[var(--app-primary-strong)]">
             {{ formatDecimal(averageDailySessions) }}
           </p>
         </article>
@@ -405,44 +405,44 @@ onMounted(async () => {
       </div>
 
       <div class="-mx-1 overflow-x-auto px-1">
-        <div class="flex h-48 min-w-max items-end gap-2 border-b border-slate-800/80 pb-2 sm:gap-3">
+        <div class="flex h-48 min-w-max items-end gap-2 border-b border-[var(--app-border)] pb-2 sm:gap-3">
           <article
             v-for="point in activitySeries"
             :key="point.dayStart"
             class="flex w-8 flex-col items-center gap-1 sm:w-9"
             :title="`${formatDayTitle(point.dayStart)}: ${getActivityValue(point)} ${metricUnitLabel()}`"
           >
-            <div class="relative flex h-36 w-full items-end rounded-md border border-slate-800 bg-slate-900/70 p-1">
+            <div class="relative flex h-36 w-full items-end rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-1">
               <div
                 class="w-full rounded-sm transition"
                 :class="
                   getActivityValue(point) === 0
-                    ? 'bg-slate-700/60'
+                    ? 'bg-[var(--app-surface-muted)]'
                     : isToday(point.dayStart)
-                      ? 'bg-amber-400'
-                      : 'bg-cyan-400/90'
+                      ? 'bg-[var(--app-secondary)]'
+                      : 'bg-[var(--app-accent)]'
                 "
                 :style="{ height: barHeight(getActivityValue(point)) }"
               />
             </div>
             <span
               class="text-[10px]"
-              :class="isToday(point.dayStart) ? 'text-amber-300' : 'text-slate-400'"
+              :class="isToday(point.dayStart) ? 'text-[var(--app-secondary-strong)]' : 'text-[var(--app-text-muted)]'"
             >
               {{ formatDayLabel(point.dayStart) }}
             </span>
-            <span class="text-[10px] font-semibold text-slate-300">{{ getActivityValue(point) }}</span>
+            <span class="text-[10px] font-semibold text-[var(--app-text)]">{{ getActivityValue(point) }}</span>
           </article>
         </div>
       </div>
 
-      <div class="mt-3 flex items-center gap-3 text-[11px] text-slate-400">
+      <div class="mt-3 flex items-center gap-3 text-[11px] text-[var(--app-text-muted)]">
         <span class="inline-flex items-center gap-1">
-          <span class="h-2 w-2 rounded-full bg-cyan-400" />
+          <span class="h-2 w-2 rounded-full bg-[var(--app-accent)]" />
           {{ t('stats.regularDay') }}
         </span>
         <span class="inline-flex items-center gap-1">
-          <span class="h-2 w-2 rounded-full bg-amber-400" />
+          <span class="h-2 w-2 rounded-full bg-[var(--app-secondary)]" />
           {{ t('stats.today') }}
         </span>
       </div>
