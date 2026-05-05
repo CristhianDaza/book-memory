@@ -60,7 +60,7 @@ describe('books store', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     vi.mocked(fetchLibraryBooks).mockResolvedValue([])
-    vi.mocked(addBookToLibrary).mockResolvedValue(createBook({ id: 'manual_1', source: 'manual' }))
+    vi.mocked(addBookToLibrary).mockResolvedValue(createBook({ id: 'manual_1', source: 'manual', status: 'wishlist' }))
     vi.mocked(deleteLibraryBook).mockResolvedValue()
     vi.mocked(updateLibraryBookMetadata).mockResolvedValue()
     vi.mocked(updateLibraryBookFavorite).mockResolvedValue()
@@ -107,5 +107,6 @@ describe('books store', () => {
 
     expect(addBookToLibrary).toHaveBeenCalledWith('user-1', manualBook)
     expect(store.library[0]?.id).toBe('manual_1')
+    expect(store.library[0]?.status).toBe('wishlist')
   })
 })

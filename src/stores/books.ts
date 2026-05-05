@@ -115,7 +115,7 @@ export const useBooksStore = defineStore('books', () => {
       totalPages: book.totalPages,
       favorite: false,
       currentPage: 0,
-      status: 'reading',
+      status: 'wishlist',
       createdAt: new Date(),
       updatedAt: new Date(),
     }
