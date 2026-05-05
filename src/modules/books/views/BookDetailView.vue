@@ -280,16 +280,16 @@ onMounted(async () => {
       </p>
       <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
         <div class="mx-auto w-48 lg:mx-0">
-          <div class="overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-muted)] shadow-lg">
+          <div class="overflow-hidden rounded-2xl border border-(--app-border) bg-(--app-surface-muted) shadow-lg">
             <img
               v-if="book.coverUrl"
               :src="book.coverUrl"
               :alt="book.title"
-              class="aspect-[2/3] w-full object-cover"
+              class="aspect-2/3 w-full object-cover"
             >
             <div
               v-else
-              class="flex aspect-[2/3] w-full items-center justify-center px-3 text-center text-xs text-[var(--app-text-soft)]"
+              class="flex aspect-2/3 w-full items-center justify-center px-3 text-center text-xs text-(--app-text-soft)"
             >
               {{ t('books.noCover') }}
             </div>
@@ -324,7 +324,7 @@ onMounted(async () => {
               </div>
               <BookOpen
                 :size="28"
-                class="text-[var(--app-accent-strong)]"
+                class="text-(--app-accent-strong)"
                 aria-hidden="true"
               />
             </div>
@@ -487,7 +487,7 @@ onMounted(async () => {
               <li
                 v-for="session in visibleSessions"
                 :key="session.id"
-                class="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2 text-xs text-[var(--app-text-muted)]"
+                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2 text-xs text-(--app-text-muted)"
               >
                 <template v-if="editingSessionId === session.id">
                   <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">

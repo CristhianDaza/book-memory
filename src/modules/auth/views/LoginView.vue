@@ -100,7 +100,7 @@ function onToggleMode() {
 
 <template>
   <section class="mx-auto grid max-w-5xl items-center gap-6 py-4 md:grid-cols-[1.05fr_0.95fr]">
-    <div class="login-hero bm-page-header min-h-[32rem] items-start">
+    <div class="login-hero bm-page-header min-h-128 items-start">
       <div
         class="login-book-animation"
         aria-hidden="true"
@@ -234,14 +234,14 @@ function onToggleMode() {
 
     <p
       v-if="errorMessage"
-      class="mt-3 rounded-lg border border-[var(--app-danger)] bg-[var(--app-danger-soft)] p-2 text-xs text-[var(--app-danger)]"
+      class="mt-3 rounded-lg border border-(--app-danger) bg-(--app-danger-soft) p-2 text-xs text-(--app-danger)"
     >
       {{ errorMessage }}
     </p>
 
     <p
       v-if="resetInfoMessage"
-      class="mt-3 rounded-lg border border-[var(--app-success)] bg-[var(--app-success-soft)] p-2 text-xs text-[var(--app-success)]"
+      class="mt-3 rounded-lg border border-(--app-success) bg-(--app-success-soft) p-2 text-xs text-(--app-success)"
     >
       {{ resetInfoMessage }}
     </p>

@@ -282,12 +282,12 @@ onBeforeUnmount(() => {
       <div class="flex items-start gap-2">
         <BookOpen
           :size="17"
-          class="mt-0.5 text-[var(--app-primary-strong)]"
+          class="mt-0.5 text-(--app-primary-strong)"
           aria-hidden="true"
         />
         <p
           class="text-xs"
-          :class="conflictSyncCount > 0 ? 'text-[var(--app-danger)]' : 'text-[var(--app-warning)]'"
+          :class="conflictSyncCount > 0 ? 'text-(--app-danger)' : 'text-(--app-warning)'"
         >
           {{ syncMessage }}
           <span

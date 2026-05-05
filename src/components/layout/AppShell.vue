@@ -207,7 +207,7 @@ defineEmits<{
             href="https://cris-dev.com"
             target="_blank"
             rel="noopener noreferrer"
-            class="font-semibold text-[var(--app-primary-strong)] underline underline-offset-2"
+            class="font-semibold text-(--app-primary-strong) underline underline-offset-2"
           >
             cris-dev
           </a>.

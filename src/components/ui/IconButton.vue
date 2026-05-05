@@ -21,9 +21,9 @@ defineEmits<{
     type="button"
     class="bm-icon-button"
     :class="{
-      'text-[var(--app-danger)]': tone === 'danger',
-      'text-[var(--app-success)]': tone === 'success',
-      'text-[var(--app-warm)]': tone === 'warm',
+      'text-(--app-danger)': tone === 'danger',
+      'text-(--app-success)': tone === 'success',
+      'text-(--app-warm)': tone === 'warm',
     }"
     :aria-label="label"
     :title="label"

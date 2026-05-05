@@ -145,14 +145,14 @@ onMounted(async () => {
 
     <SurfaceCard>
     <div class="flex flex-wrap items-center justify-between gap-2">
-      <div class="inline-flex rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-1">
+      <div class="inline-flex rounded-xl border border-(--app-border) bg-(--app-surface-muted) p-1">
         <button
           type="button"
           class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
           :class="
             range === '7d'
-              ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
-              : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
+              ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+              : 'text-(--app-text-muted) hover:bg-(--app-surface)'
           "
           @click="onChangeRange('7d')"
         >
@@ -163,8 +163,8 @@ onMounted(async () => {
           class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
           :class="
             range === '30d'
-              ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
-              : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
+              ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+              : 'text-(--app-text-muted) hover:bg-(--app-surface)'
           "
           @click="onChangeRange('30d')"
         >
@@ -175,8 +175,8 @@ onMounted(async () => {
           class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
           :class="
             range === 'all'
-              ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
-              : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
+              ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+              : 'text-(--app-text-muted) hover:bg-(--app-surface)'
           "
           @click="onChangeRange('all')"
         >
@@ -187,7 +187,7 @@ onMounted(async () => {
 
     <p
       v-if="mappedError"
-      class="mt-4 rounded-lg border border-[var(--app-danger)] bg-[var(--app-danger-soft)] p-2 text-xs text-[var(--app-danger)]"
+      class="mt-4 rounded-lg border border-(--app-danger) bg-(--app-danger-soft) p-2 text-xs text-(--app-danger)"
     >
       {{ mappedError }}
     </p>
@@ -245,7 +245,7 @@ onMounted(async () => {
         <p class="bm-stat-label">
           {{ t('stats.bestStreak') }}
         </p>
-        <p class="mt-1 text-lg font-semibold text-[var(--app-text)]">
+        <p class="mt-1 text-lg font-semibold text-(--app-text)">
           {{ summary.bestStreakDays }}
         </p>
       </article>
@@ -253,7 +253,7 @@ onMounted(async () => {
         <p class="bm-stat-label">
           {{ t('stats.sessionsThisWeek') }}
         </p>
-        <p class="mt-1 text-lg font-semibold text-[var(--app-text)]">
+        <p class="mt-1 text-lg font-semibold text-(--app-text)">
           {{ summary.sessionsThisWeek }}
         </p>
       </article>
@@ -261,7 +261,7 @@ onMounted(async () => {
         <p class="bm-stat-label">
           {{ t('stats.sessionsThisMonth') }}
         </p>
-        <p class="mt-1 text-lg font-semibold text-[var(--app-text)]">
+        <p class="mt-1 text-lg font-semibold text-(--app-text)">
           {{ summary.sessionsThisMonth }}
         </p>
       </article>
@@ -313,7 +313,7 @@ onMounted(async () => {
           </p>
           <div class="bm-progress-track mt-1">
             <div
-              class="h-full rounded bg-[var(--app-accent)]"
+              class="h-full rounded bg-(--app-accent)"
               :style="{ width: `${goalsProgress.monthlyMinutesProgress}%` }"
             />
           </div>
@@ -334,14 +334,14 @@ onMounted(async () => {
         </p>
       </div>
 
-      <div class="mb-3 inline-flex rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-1">
+      <div class="mb-3 inline-flex rounded-lg border border-(--app-border) bg-(--app-surface-muted) p-1">
         <button
           type="button"
           class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
           :class="
             activityMetric === 'sessions'
-              ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
-              : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
+              ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+              : 'text-(--app-text-muted) hover:bg-(--app-surface)'
           "
           @click="onChangeMetric('sessions')"
         >
@@ -352,8 +352,8 @@ onMounted(async () => {
           class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
           :class="
             activityMetric === 'pages'
-              ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
-              : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
+              ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+              : 'text-(--app-text-muted) hover:bg-(--app-surface)'
           "
           @click="onChangeMetric('pages')"
         >
@@ -364,8 +364,8 @@ onMounted(async () => {
           class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
           :class="
             activityMetric === 'minutes'
-              ? 'bg-[var(--app-primary)] text-[var(--app-primary-contrast)]'
-              : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
+              ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+              : 'text-(--app-text-muted) hover:bg-(--app-surface)'
           "
           @click="onChangeMetric('minutes')"
         >
@@ -378,7 +378,7 @@ onMounted(async () => {
           <p class="bm-stat-label text-[10px]">
             {{ t('stats.avgDailySessions') }}
           </p>
-          <p class="mt-1 text-sm font-semibold text-[var(--app-primary-strong)]">
+          <p class="mt-1 text-sm font-semibold text-(--app-primary-strong)">
             {{ formatDecimal(averageDailySessions) }}
           </p>
         </article>
@@ -386,7 +386,7 @@ onMounted(async () => {
           <p class="bm-stat-label text-[10px]">
             {{ t('stats.activeDays') }}
           </p>
-          <p class="mt-1 text-sm font-semibold text-[var(--app-text)]">
+          <p class="mt-1 text-sm font-semibold text-(--app-text)">
             {{ activeDays }}
           </p>
         </article>
@@ -394,7 +394,7 @@ onMounted(async () => {
           <p class="bm-stat-label text-[10px]">
             {{ t('stats.peakDay') }}
           </p>
-          <p class="mt-1 text-sm font-semibold text-[var(--app-text)]">
+          <p class="mt-1 text-sm font-semibold text-(--app-text)">
             {{
               peakActivity
                 ? `${formatDayTitle(peakActivity.dayStart)} · ${peakActivity.sessionCount} ${t('stats.sessionsShort')}`
@@ -405,44 +405,44 @@ onMounted(async () => {
       </div>
 
       <div class="-mx-1 overflow-x-auto px-1">
-        <div class="flex h-48 min-w-max items-end gap-2 border-b border-[var(--app-border)] pb-2 sm:gap-3">
+        <div class="flex h-48 min-w-max items-end gap-2 border-b border-(--app-border) pb-2 sm:gap-3">
           <article
             v-for="point in activitySeries"
             :key="point.dayStart"
             class="flex w-8 flex-col items-center gap-1 sm:w-9"
             :title="`${formatDayTitle(point.dayStart)}: ${getActivityValue(point)} ${metricUnitLabel()}`"
           >
-            <div class="relative flex h-36 w-full items-end rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-1">
+            <div class="relative flex h-36 w-full items-end rounded-md border border-(--app-border) bg-(--app-surface) p-1">
               <div
                 class="w-full rounded-sm transition"
                 :class="
                   getActivityValue(point) === 0
-                    ? 'bg-[var(--app-surface-muted)]'
+                    ? 'bg-(--app-surface-muted)'
                     : isToday(point.dayStart)
-                      ? 'bg-[var(--app-secondary)]'
-                      : 'bg-[var(--app-accent)]'
+                      ? 'bg-(--app-secondary)'
+                      : 'bg-(--app-accent)'
                 "
                 :style="{ height: barHeight(getActivityValue(point)) }"
               />
             </div>
             <span
               class="text-[10px]"
-              :class="isToday(point.dayStart) ? 'text-[var(--app-secondary-strong)]' : 'text-[var(--app-text-muted)]'"
+              :class="isToday(point.dayStart) ? 'text-(--app-secondary-strong)' : 'text-(--app-text-muted)'"
             >
               {{ formatDayLabel(point.dayStart) }}
             </span>
-            <span class="text-[10px] font-semibold text-[var(--app-text)]">{{ getActivityValue(point) }}</span>
+            <span class="text-[10px] font-semibold text-(--app-text)">{{ getActivityValue(point) }}</span>
           </article>
         </div>
       </div>
 
-      <div class="mt-3 flex items-center gap-3 text-[11px] text-[var(--app-text-muted)]">
+      <div class="mt-3 flex items-center gap-3 text-[11px] text-(--app-text-muted)">
         <span class="inline-flex items-center gap-1">
-          <span class="h-2 w-2 rounded-full bg-[var(--app-accent)]" />
+          <span class="h-2 w-2 rounded-full bg-(--app-accent)" />
           {{ t('stats.regularDay') }}
         </span>
         <span class="inline-flex items-center gap-1">
-          <span class="h-2 w-2 rounded-full bg-[var(--app-secondary)]" />
+          <span class="h-2 w-2 rounded-full bg-(--app-secondary)" />
           {{ t('stats.today') }}
         </span>
       </div>
@@ -470,7 +470,7 @@ onMounted(async () => {
           :key="entry.bookId"
           class="bm-card"
         >
-          <p class="text-sm font-semibold text-[var(--app-text)]">
+          <p class="text-sm font-semibold text-(--app-text)">
             {{ entry.title }}
           </p>
           <p class="bm-muted mt-1 text-xs">

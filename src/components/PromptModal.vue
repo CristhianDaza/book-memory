@@ -32,7 +32,7 @@ withBodyScrollLock(computed(() => props.open))
 <template>
   <div
     v-if="open"
-    class="bm-modal-backdrop z-[55]"
+    class="bm-modal-backdrop z-55"
     @click.self="onCancel"
   >
     <section class="bm-modal-sheet flex max-h-[88dvh] max-w-md flex-col p-4 sm:p-6">

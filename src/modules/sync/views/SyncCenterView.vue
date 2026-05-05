@@ -209,7 +209,7 @@ onBeforeUnmount(() => {
       <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <article class="bm-stat-card">
           <p class="bm-stat-label">{{ t('sync.connectionLabel') }}</p>
-          <p class="mt-1 text-lg font-semibold" :class="isOnline ? 'text-[var(--app-success)]' : 'text-[var(--app-warning)]'">
+          <p class="mt-1 text-lg font-semibold" :class="isOnline ? 'text-(--app-success)' : 'text-(--app-warning)'">
             {{ isOnline ? t('sync.online') : t('sync.offline') }}
           </p>
         </article>
@@ -219,7 +219,7 @@ onBeforeUnmount(() => {
         </article>
         <article class="bm-stat-card">
           <p class="bm-stat-label">{{ t('sync.conflictsLabel') }}</p>
-          <p class="mt-1 text-lg font-semibold text-[var(--app-danger)]">{{ conflictCount }}</p>
+          <p class="mt-1 text-lg font-semibold text-(--app-danger)">{{ conflictCount }}</p>
         </article>
         <article class="bm-stat-card">
           <p class="bm-stat-label">{{ t('sync.updatedLabel') }}</p>
@@ -260,14 +260,14 @@ onBeforeUnmount(() => {
           :key="`queue-${group.key}`"
           class="bm-subtle-panel"
         >
-          <p class="text-sm font-semibold text-[var(--app-text)]">{{ group.label }} ({{ group.items.length }})</p>
+          <p class="text-sm font-semibold text-(--app-text)">{{ group.label }} ({{ group.items.length }})</p>
           <ul class="mt-2 space-y-2">
             <li
               v-for="item in group.items"
               :key="item.id"
               class="bm-card"
             >
-              <p class="text-sm text-[var(--app-text)]">{{ describeQueueItem(item) }}</p>
+              <p class="text-sm text-(--app-text)">{{ describeQueueItem(item) }}</p>
               <p class="bm-muted mt-1 text-xs">{{ t('sync.createdAt') }}: {{ formatDate(item.createdAt) }}</p>
               <div class="mt-2 flex gap-2">
                 <button
@@ -304,18 +304,18 @@ onBeforeUnmount(() => {
         <section
           v-for="group in groupedConflicts"
           :key="`conflict-${group.key}`"
-          class="rounded-xl border border-[var(--app-danger)] bg-[var(--app-danger-soft)] p-3"
+          class="rounded-xl border border-(--app-danger) bg-(--app-danger-soft) p-3"
         >
-          <p class="text-sm font-semibold text-[var(--app-danger)]">{{ group.label }} ({{ group.items.length }})</p>
+          <p class="text-sm font-semibold text-(--app-danger)">{{ group.label }} ({{ group.items.length }})</p>
           <ul class="mt-2 space-y-2">
             <li
               v-for="item in group.items"
               :key="item.id"
-              class="rounded-lg border border-[var(--app-danger)] bg-[var(--app-surface)] p-3"
+              class="rounded-lg border border-(--app-danger) bg-(--app-surface) p-3"
             >
-              <p class="text-sm text-[var(--app-text)]">{{ describeQueueItem(item) }}</p>
-              <p class="mt-1 text-xs text-[var(--app-danger)]">{{ t('sync.conflictGuide') }}</p>
-              <p class="mt-1 text-xs text-[var(--app-danger)]">{{ t('sync.whatHappened') }}: {{ item.errorMessage }}</p>
+              <p class="text-sm text-(--app-text)">{{ describeQueueItem(item) }}</p>
+              <p class="mt-1 text-xs text-(--app-danger)">{{ t('sync.conflictGuide') }}</p>
+              <p class="mt-1 text-xs text-(--app-danger)">{{ t('sync.whatHappened') }}: {{ item.errorMessage }}</p>
               <div class="mt-2 flex gap-2">
                 <button
                   type="button"
@@ -333,11 +333,11 @@ onBeforeUnmount(() => {
                 </button>
               </div>
 
-              <div v-if="showTechnicalDetails" class="mt-2 rounded-md border border-[var(--app-danger)] bg-[var(--app-danger-soft)] p-2">
-                <p class="text-[11px] text-[var(--app-danger)]">{{ t('sync.techRetries') }}: {{ item.retryCount }}</p>
-                <p class="text-[11px] text-[var(--app-danger)]">{{ t('sync.techFailedAt') }}: {{ formatDate(item.failedAt) }}</p>
-                <p class="text-[11px] text-[var(--app-danger)]">{{ t('sync.techNextRetryAt') }}: {{ formatDate(item.nextRetryAt) }}</p>
-                <p class="text-[11px] text-[var(--app-danger)]">{{ t('sync.techId') }}: {{ item.id }}</p>
+              <div v-if="showTechnicalDetails" class="mt-2 rounded-md border border-(--app-danger) bg-(--app-danger-soft) p-2">
+                <p class="text-[11px] text-(--app-danger)">{{ t('sync.techRetries') }}: {{ item.retryCount }}</p>
+                <p class="text-[11px] text-(--app-danger)">{{ t('sync.techFailedAt') }}: {{ formatDate(item.failedAt) }}</p>
+                <p class="text-[11px] text-(--app-danger)">{{ t('sync.techNextRetryAt') }}: {{ formatDate(item.nextRetryAt) }}</p>
+                <p class="text-[11px] text-(--app-danger)">{{ t('sync.techId') }}: {{ item.id }}</p>
               </div>
             </li>
           </ul>

@@ -89,16 +89,16 @@ onMounted(async () => {
       <article class="bm-stat-card">
         <Heart
           :size="19"
-          class="text-[var(--app-warm)]"
+          class="text-(--app-warm)"
           aria-hidden="true"
         />
         <p class="bm-stat-label mt-3">{{ t('home.kpiFavorites') }}</p>
-        <p class="bm-stat-value text-[var(--app-warm)]">{{ favoriteBooks }}</p>
+        <p class="bm-stat-value text-(--app-warm)">{{ favoriteBooks }}</p>
       </article>
       <article class="bm-stat-card">
         <BookOpen
           :size="19"
-          class="text-[var(--app-primary-strong)]"
+          class="text-(--app-primary-strong)"
           aria-hidden="true"
         />
         <p class="bm-stat-label mt-3">{{ t('home.kpiReading') }}</p>
@@ -115,7 +115,7 @@ onMounted(async () => {
       </div>
       <div
         v-if="continueReadingBook"
-        class="grid gap-4 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-4 sm:grid-cols-[minmax(0,1fr)_auto]"
+        class="grid gap-4 rounded-2xl border border-(--app-border) bg-(--app-surface-muted) p-4 sm:grid-cols-[minmax(0,1fr)_auto]"
       >
         <div>
           <StatusBadge tone="success">
@@ -125,7 +125,7 @@ onMounted(async () => {
             />
             {{ t('home.continueReadingTitle') }}
           </StatusBadge>
-          <p class="mt-3 font-serif text-2xl font-bold text-[var(--app-text)]">
+          <p class="mt-3 font-serif text-2xl font-bold text-(--app-text)">
             {{ continueReadingBook.title }}
           </p>
           <p class="bm-muted mt-1 text-sm">
@@ -210,11 +210,11 @@ onMounted(async () => {
         >
           <button
             type="button"
-            class="absolute right-2 top-2 z-10 cursor-pointer rounded-full border bg-[var(--app-surface)] px-2 py-1 text-sm shadow transition disabled:cursor-not-allowed disabled:opacity-60"
+            class="absolute right-2 top-2 z-10 cursor-pointer rounded-full border bg-(--app-surface) px-2 py-1 text-sm shadow transition disabled:cursor-not-allowed disabled:opacity-60"
             :class="
               item.favorite
-                ? 'border-[var(--app-danger)] text-[var(--app-danger)]'
-                : 'border-[var(--app-border)] text-[var(--app-text-muted)] hover:text-[var(--app-danger)]'
+                ? 'border-(--app-danger) text-(--app-danger)'
+                : 'border-(--app-border) text-(--app-text-muted) hover:text-(--app-danger)'
             "
             :disabled="isFavoriteUpdating(item.id)"
             @click.prevent.stop="onToggleFavorite(item.id)"
@@ -230,14 +230,14 @@ onMounted(async () => {
             >
             <div
               v-else
-              class="flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-[var(--app-text-soft)]"
+              class="flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-(--app-text-soft)"
             >
               {{ t('books.noCover') }}
             </div>
           </div>
 
           <div class="space-y-1 p-3">
-            <p class="line-clamp-2 min-h-[2.5rem] font-serif text-sm font-semibold text-[var(--app-text)]">
+            <p class="line-clamp-2 min-h-10 font-serif text-sm font-semibold text-(--app-text)">
               {{ item.title }}
             </p>
             <p class="bm-muted line-clamp-1 text-[11px]">

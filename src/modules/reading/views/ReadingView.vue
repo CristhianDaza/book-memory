@@ -330,12 +330,12 @@ onMounted(async () => {
               {{ book.title }}
             </option>
           </select>
-          <p
+          <span
             v-if="hasActiveSession && activeSessionBook"
             class="bm-soft mt-1 text-[11px]"
           >
             {{ t('reading.lockedBookHint', { title: activeSessionBook.title }) }}
-          </p>
+          </span>
         </label>
 
         <label class="bm-label">
@@ -353,17 +353,17 @@ onMounted(async () => {
       <div class="bm-subtle-panel flex min-h-56 flex-col items-center justify-center text-center">
         <TimerReset
           :size="34"
-          class="text-[var(--app-primary-strong)]"
+          class="text-(--app-primary-strong)"
           aria-hidden="true"
         />
         <p class="bm-eyebrow mt-3">{{ t('reading.timer') }}</p>
-        <p class="mt-2 font-mono text-5xl font-black text-[var(--app-text)]">{{ formattedElapsed }}</p>
+        <p class="mt-2 font-mono text-5xl font-black text-(--app-text)">{{ formattedElapsed }}</p>
       </div>
     </div>
 
     <p
       v-if="localError"
-      class="mt-3 rounded-lg border border-[var(--app-danger)] bg-[var(--app-danger-soft)] p-2 text-xs text-[var(--app-danger)]"
+      class="mt-3 rounded-lg border border-(--app-danger) bg-(--app-danger-soft) p-2 text-xs text-(--app-danger)"
     >
       {{ localError }}
     </p>

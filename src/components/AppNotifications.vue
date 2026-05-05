@@ -14,7 +14,7 @@ function toneClass(type: NotificationType) {
 </script>
 
 <template>
-  <div class="pointer-events-none fixed inset-x-0 top-3 z-[60] flex flex-col items-center gap-2 px-3">
+  <div class="pointer-events-none fixed inset-x-0 top-3 z-60 flex flex-col items-center gap-2 px-3">
     <TransitionGroup
       name="toast"
       tag="div"
