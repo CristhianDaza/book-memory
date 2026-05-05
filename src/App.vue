@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { BarChart3, BookOpen, Home, Library, RefreshCw, TimerReset } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import AppShell from './components/layout/AppShell.vue'
 import AppNotifications from './components/AppNotifications.vue'
 import ConfirmModal from './components/ConfirmModal.vue'
 import { setAppLocale } from './i18n'
@@ -27,8 +29,7 @@ const router = useRouter()
 const route = useRoute()
 const { t, locale } = useI18n()
 
-const showSectionNav = computed(() => route.name !== 'login')
-const showUserControls = computed(() => route.name !== 'login')
+const showChrome = computed(() => route.name !== 'login')
 const currentLocale = computed(() => locale.value as AppLocale)
 const nextLocale = computed<AppLocale>(() => (currentLocale.value === 'es' ? 'en' : 'es'))
 const nextLocaleLabel = computed(() =>
@@ -52,8 +53,45 @@ let removeWindowRejectionListener: (() => void) | null = null
 const showSyncBanner = computed(
   () => !isOnline.value || pendingSyncCount.value > 0 || conflictSyncCount.value > 0,
 )
+const syncTone = computed<'success' | 'warning' | 'danger'>(() => {
+  if (conflictSyncCount.value > 0) return 'danger'
+  if (!isOnline.value || pendingSyncCount.value > 0) return 'warning'
+  return 'success'
+})
 const currentYear = computed(() => new Date().getFullYear())
 const appVersion = computed(() => import.meta.env.VITE_APP_VERSION || 'v0.0.0')
+const navItems = computed(() => [
+  {
+    to: '/',
+    label: t('home.home'),
+    active: route.name === 'home',
+    icon: Home,
+  },
+  {
+    to: '/books',
+    label: t('home.books'),
+    active: route.name === 'books' || route.name === 'book-detail',
+    icon: Library,
+  },
+  {
+    to: '/reading',
+    label: t('home.reading'),
+    active: route.name === 'reading',
+    icon: TimerReset,
+  },
+  {
+    to: '/stats',
+    label: t('home.stats'),
+    active: route.name === 'stats',
+    icon: BarChart3,
+  },
+  {
+    to: '/sync',
+    label: t('home.sync'),
+    active: route.name === 'sync',
+    icon: RefreshCw,
+  },
+])
 const syncMessage = computed(() => {
   if (conflictSyncCount.value > 0) {
     return t('common.syncConflict', { count: conflictSyncCount.value })
@@ -217,174 +255,39 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-slate-950 text-slate-100">
+  <AppShell
+    :nav-items="navItems"
+    :show-chrome="showChrome"
+    :sync-visible="showSyncBanner"
+    :sync-tone="syncTone"
+    :sync-message="syncMessage"
+    :next-locale-label="nextLocaleLabel"
+    :exporting-data="exportingData"
+    :export-label="exportingData ? t('home.exportingData') : t('home.exportData')"
+    :export-aria-label="t('home.exportDataAria')"
+    :delete-label="t('home.deleteAccount')"
+    :sign-out-label="t('home.signOut')"
+    :current-year="currentYear"
+    :app-version="appVersion"
+    @change-locale="onChangeLocale(nextLocale)"
+    @export-data="onExportMyData"
+    @delete-account="onOpenDeleteAccountConfirm"
+    @sign-out="onOpenLogoutConfirm"
+  >
     <AppNotifications />
-    <main class="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
-      <div
-        v-if="showUserControls"
-        class="mb-3 flex flex-wrap items-center justify-end gap-2"
-      >
-        <span class="text-xs uppercase tracking-wide text-slate-400">{{ t('common.language') }}</span>
-        <button
-          type="button"
-          class="cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 transition hover:bg-slate-800"
-          @click="onChangeLocale(nextLocale)"
-        >
-          {{ nextLocaleLabel }}
-        </button>
-        <button
-          type="button"
-          class="cursor-pointer rounded-xl border border-cyan-500/60 px-2.5 py-2 text-sm text-cyan-200 transition hover:bg-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
-          :disabled="exportingData"
-          :aria-label="t('home.exportDataAria')"
-          :title="t('home.exportDataAria')"
-          @click="onExportMyData"
-        >
-          <span class="sm:hidden">
-            <svg
-              v-if="exportingData"
-              class="h-4 w-4 animate-pulse"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 3v12" />
-              <path d="m7 10 5 5 5-5" />
-              <path d="M5 21h14" />
-            </svg>
-            <svg
-              v-else
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 3v12" />
-              <path d="m7 10 5 5 5-5" />
-              <path d="M5 21h14" />
-            </svg>
-          </span>
-          <span class="hidden sm:inline">
-            {{ exportingData ? t('home.exportingData') : t('home.exportData') }}
-          </span>
-        </button>
-        <button
-          type="button"
-          class="cursor-pointer rounded-xl border border-rose-500/60 px-2.5 py-2 text-sm text-rose-200 transition hover:bg-rose-500/10 sm:px-3"
-          :aria-label="t('home.deleteAccountAria')"
-          :title="t('home.deleteAccountAria')"
-          @click="onOpenDeleteAccountConfirm"
-        >
-          <span class="sm:hidden">
-            <svg
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M3 6h18" />
-              <path d="M8 6V4h8v2" />
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-              <path d="M10 11v6M14 11v6" />
-            </svg>
-          </span>
-          <span class="hidden sm:inline">{{ t('home.deleteAccount') }}</span>
-        </button>
-        <button
-          class="cursor-pointer rounded-xl border border-orange-500/60 px-2.5 py-2 text-sm text-orange-200 transition hover:bg-orange-500/10 sm:px-3"
-          :aria-label="t('home.signOutAria')"
-          :title="t('home.signOutAria')"
-          @click="onOpenLogoutConfirm"
-        >
-          <span class="sm:hidden">
-            <svg
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <path d="M16 17l5-5-5-5" />
-              <path d="M21 12H9" />
-            </svg>
-          </span>
-          <span class="hidden sm:inline">{{ t('home.signOut') }}</span>
-        </button>
-      </div>
-
-      <nav
-        v-if="showSectionNav"
-        class="mb-4 flex gap-2 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/60 p-2 sm:grid sm:grid-cols-5 sm:overflow-visible"
-      >
-        <RouterLink
-          to="/"
-          class="min-w-[92px] shrink-0 cursor-pointer rounded-xl px-3 py-2 text-center text-sm font-medium transition sm:min-w-0"
-          :class="route.name === 'home' ? 'bg-cyan-500 text-slate-950' : 'text-slate-200 hover:bg-slate-800'"
-        >
-          {{ t('home.home') }}
-        </RouterLink>
-        <RouterLink
-          to="/books"
-          class="min-w-[92px] shrink-0 cursor-pointer rounded-xl px-3 py-2 text-center text-sm font-medium transition sm:min-w-0"
-          :class="
-            route.name === 'books' || route.name === 'book-detail'
-              ? 'bg-cyan-500 text-slate-950'
-              : 'text-slate-200 hover:bg-slate-800'
-          "
-        >
-          {{ t('home.books') }}
-        </RouterLink>
-        <RouterLink
-          to="/reading"
-          class="min-w-[92px] shrink-0 cursor-pointer rounded-xl px-3 py-2 text-center text-sm font-medium transition sm:min-w-0"
-          :class="route.name === 'reading' ? 'bg-cyan-500 text-slate-950' : 'text-slate-200 hover:bg-slate-800'"
-        >
-          {{ t('home.reading') }}
-        </RouterLink>
-        <RouterLink
-          to="/stats"
-          class="min-w-[92px] shrink-0 cursor-pointer rounded-xl px-3 py-2 text-center text-sm font-medium transition sm:min-w-0"
-          :class="route.name === 'stats' ? 'bg-cyan-500 text-slate-950' : 'text-slate-200 hover:bg-slate-800'"
-        >
-          {{ t('home.stats') }}
-        </RouterLink>
-        <RouterLink
-          to="/sync"
-          class="min-w-[92px] shrink-0 cursor-pointer rounded-xl px-3 py-2 text-center text-sm font-medium transition sm:min-w-0"
-          :class="route.name === 'sync' ? 'bg-cyan-500 text-slate-950' : 'text-slate-200 hover:bg-slate-800'"
-        >
-          {{ t('home.sync') }}
-        </RouterLink>
-      </nav>
-
-      <section
-        v-if="showSyncBanner"
-        class="mb-4 flex flex-col gap-2 rounded-xl p-3 sm:flex-row sm:items-center sm:justify-between"
-        :class="
-          conflictSyncCount > 0
-            ? 'border border-rose-500/40 bg-rose-950/30'
-            : 'border border-amber-500/40 bg-amber-950/30'
-        "
-      >
+    <section
+      v-if="showSyncBanner"
+      class="bm-subtle-panel mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div class="flex items-start gap-2">
+        <BookOpen
+          :size="17"
+          class="mt-0.5 text-[var(--app-accent-strong)]"
+          aria-hidden="true"
+        />
         <p
           class="text-xs"
-          :class="conflictSyncCount > 0 ? 'text-rose-200' : 'text-amber-200'"
+          :class="conflictSyncCount > 0 ? 'text-[var(--app-danger)]' : 'text-[var(--app-warning)]'"
         >
           {{ syncMessage }}
           <span
@@ -406,10 +309,11 @@ onBeforeUnmount(() => {
             {{ t('common.syncRetrying') }}
           </span>
         </p>
-        <div class="flex gap-2">
+      </div>
+        <div class="flex flex-wrap gap-2">
           <button
             type="button"
-            class="cursor-pointer rounded-lg border border-amber-500/60 px-3 py-1.5 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            class="bm-button bm-button-warm text-xs"
             :disabled="!isOnline || pendingSyncCount === 0"
             @click="onRetrySync"
           >
@@ -418,7 +322,7 @@ onBeforeUnmount(() => {
           <button
             v-if="conflictSyncCount > 0"
             type="button"
-            class="cursor-pointer rounded-lg border border-rose-500/60 px-3 py-1.5 text-xs font-semibold text-rose-100 transition hover:bg-rose-500/20"
+            class="bm-button bm-button-danger text-xs"
             :disabled="retryableConflictCount === 0"
             @click="onRetryConflicts"
           >
@@ -427,7 +331,7 @@ onBeforeUnmount(() => {
           <button
             v-if="conflictSyncCount > 0"
             type="button"
-            class="cursor-pointer rounded-lg border border-rose-500/60 px-3 py-1.5 text-xs font-semibold text-rose-100 transition hover:bg-rose-500/20"
+            class="bm-button bm-button-danger text-xs"
             @click="onClearConflicts"
           >
             {{ t('common.syncClearConflicts') }}
@@ -435,24 +339,6 @@ onBeforeUnmount(() => {
         </div>
       </section>
       <RouterView />
-    </main>
-    <footer class="border-t border-slate-800 bg-slate-950/70">
-      <div class="mx-auto flex max-w-5xl flex-col items-start gap-2 px-4 py-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 lg:px-8">
-        <p class="leading-relaxed break-words">
-          © {{ currentYear }} BookMemory. Designed &amp; Developed by
-          <a
-            href="https://cris-dev.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="ml-1 text-cyan-300 underline decoration-cyan-500/50 underline-offset-2 transition hover:text-cyan-200"
-          >
-            cris-dev
-          </a>.
-          All rights reserved.
-        </p>
-        <p class="shrink-0">{{ appVersion }}</p>
-      </div>
-    </footer>
 
     <ConfirmModal
       :open="showLogoutConfirm"
@@ -475,5 +361,5 @@ onBeforeUnmount(() => {
       @cancel="onCancelDeleteAccountConfirm"
       @confirm="onConfirmDeleteAccount"
     />
-  </div>
+  </AppShell>
 </template>

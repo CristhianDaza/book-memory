@@ -88,6 +88,9 @@ describe('App sync banner', () => {
         plugins: [makeI18n()],
         stubs: {
           AppNotifications: true,
+          AppShell: {
+            template: '<div><slot /></div>',
+          },
           ConfirmModal: true,
           RouterLink: {
             template: '<a><slot /></a>',
@@ -98,8 +101,8 @@ describe('App sync banner', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Sin conexion. Operaciones pendientes: 2.')
-    const retryButton = wrapper.findAll('button').find((button) => button.text() === 'Reintentar sincronizacion')
+    expect(wrapper.text()).toContain('Sin conexión. Operaciones pendientes: 2.')
+    const retryButton = wrapper.findAll('button').find((button) => button.text() === 'Reintentar sincronización')
     expect(retryButton).toBeDefined()
     expect(retryButton!.attributes('disabled')).toBeDefined()
   })
@@ -128,6 +131,9 @@ describe('App sync banner', () => {
         plugins: [makeI18n()],
         stubs: {
           AppNotifications: true,
+          AppShell: {
+            template: '<div><slot /></div>',
+          },
           ConfirmModal: true,
           RouterLink: {
             template: '<a><slot /></a>',
@@ -138,7 +144,7 @@ describe('App sync banner', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Conflictos de sincronizacion: 1.')
+    expect(wrapper.text()).toContain('Conflictos de sincronización: 1.')
 
     const retryConflictsButton = wrapper
       .findAll('button')

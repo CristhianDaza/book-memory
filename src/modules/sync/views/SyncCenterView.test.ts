@@ -101,7 +101,7 @@ describe('SyncCenterView', () => {
 
     expect(wrapper.text()).toContain('Guardado y respaldo')
     expect(wrapper.text()).toContain('Cambios por enviar')
-    expect(wrapper.text()).toContain('Cambios que necesitan revision')
+    expect(wrapper.text()).toContain('Cambios que necesitan revisión')
 
     const discardQueueButton = wrapper
       .findAll('button')

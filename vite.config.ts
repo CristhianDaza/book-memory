@@ -75,8 +75,8 @@ export default defineConfig({
         name: 'Book Memory',
         short_name: 'BookMemory',
         description: 'Track reading sessions, pages, and streaks.',
-        theme_color: '#020617',
-        background_color: '#020617',
+        theme_color: '#1f7a5f',
+        background_color: '#f7f3ea',
         display: 'standalone',
         start_url: '/',
         icons: [

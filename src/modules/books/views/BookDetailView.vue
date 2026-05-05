@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
+import { BookOpen, Heart, Pencil, Play, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ConfirmModal from '../../../components/ConfirmModal.vue'
+import StatusBadge from '../../../components/ui/StatusBadge.vue'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
@@ -271,73 +273,100 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
+  <section class="bm-panel">
     <template v-if="book">
-      <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">
+      <p class="bm-eyebrow">
         {{ t('books.detailTitle') }}
       </p>
-      <div class="mt-3 grid grid-cols-1 gap-5 md:grid-cols-[180px_1fr]">
-        <img
-          v-if="book.coverUrl"
-          :src="book.coverUrl"
-          :alt="book.title"
-          class="h-64 w-44 rounded-lg border border-slate-700 object-cover shadow-[0_12px_34px_rgba(0,0,0,0.45)]"
-        >
-        <div
-          v-else
-          class="flex h-64 w-44 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-xs text-slate-400"
-        >
-          {{ t('books.noCover') }}
+      <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
+        <div class="mx-auto w-48 lg:mx-0">
+          <div class="overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-muted)] shadow-lg">
+            <img
+              v-if="book.coverUrl"
+              :src="book.coverUrl"
+              :alt="book.title"
+              class="aspect-[2/3] w-full object-cover"
+            >
+            <div
+              v-else
+              class="flex aspect-[2/3] w-full items-center justify-center px-3 text-center text-xs text-[var(--app-text-soft)]"
+            >
+              {{ t('books.noCover') }}
+            </div>
+          </div>
         </div>
 
         <div class="space-y-2">
-          <h1 class="font-serif text-3xl font-semibold tracking-wide text-white">
+          <h1 class="bm-title">
             {{ book.title }}
           </h1>
-          <p class="text-sm text-slate-300">
+          <p class="bm-muted text-sm">
             {{ t('books.by') }} {{ book.authors.join(', ') || t('books.unknownAuthor') }}
           </p>
-          <p class="text-sm text-slate-400">
-            {{ t('books.source') }}: {{ book.source }}
-          </p>
-          <p class="text-sm text-slate-400">
-            {{ t('books.pages') }}: {{ book.totalPages ?? t('books.unknownPages') }}
-          </p>
-          <p class="text-sm text-slate-400">
-            {{ t('books.progress') }}: {{ book.currentPage }}
-            <template v-if="book.totalPages">
-              / {{ book.totalPages }}
-            </template>
-          </p>
-          <p class="text-sm text-slate-400">
-            {{ t('books.remainingPages') }}:
-            {{ remainingPages === null ? t('books.unknownPages') : remainingPages }}
-          </p>
-          <p class="text-sm text-slate-400">
-            {{ t('books.status') }}: {{ t(`books.status_${book.status}`) }}
-          </p>
-          <p
-            class="text-sm"
-            :class="book.favorite ? 'text-amber-300' : 'text-slate-400'"
-          >
-            {{ book.favorite ? t('books.favorite') : t('books.notFavorite') }}
-          </p>
+          <div class="flex flex-wrap gap-2 pt-2">
+            <StatusBadge>{{ t('books.source') }}: {{ book.source }}</StatusBadge>
+            <StatusBadge>{{ t('books.status') }}: {{ t(`books.status_${book.status}`) }}</StatusBadge>
+            <StatusBadge :tone="book.favorite ? 'warning' : 'neutral'">
+              {{ book.favorite ? t('books.favorite') : t('books.notFavorite') }}
+            </StatusBadge>
+          </div>
+
+          <div class="bm-subtle-panel mt-4">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="bm-stat-label">{{ t('books.progress') }}</p>
+                <p class="bm-stat-value">
+                  {{ book.currentPage }}
+                  <span class="text-base font-semibold text-[var(--app-text-muted)]">
+                    / {{ book.totalPages ?? t('books.unknownPages') }}
+                  </span>
+                </p>
+              </div>
+              <BookOpen
+                :size="28"
+                class="text-[var(--app-accent-strong)]"
+                aria-hidden="true"
+              />
+            </div>
+            <div
+              v-if="book.totalPages"
+              class="bm-progress-track mt-3"
+            >
+              <div
+                class="bm-progress-fill"
+                :style="{ width: `${Math.min(100, Math.round((book.currentPage / book.totalPages) * 100))}%` }"
+              />
+            </div>
+            <p class="bm-muted mt-2 text-sm">
+              {{ t('books.remainingPages') }}:
+              {{ remainingPages === null ? t('books.unknownPages') : remainingPages }}
+            </p>
+          </div>
 
           <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               type="button"
-              class="cursor-pointer rounded-xl border border-cyan-500/60 px-3 py-2 text-sm font-medium text-cyan-200 transition hover:bg-cyan-500/10"
+              class="bm-button bm-button-primary"
               @click="onStartReadingSession"
             >
+              <Play
+                :size="17"
+                aria-hidden="true"
+              />
               {{ t('books.startSession') }}
             </button>
 
             <button
               type="button"
-              class="cursor-pointer rounded-xl border border-amber-500/60 px-3 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+              class="bm-button bm-button-warm"
               :disabled="isFavoriteUpdating() || isDeleting()"
               @click="onToggleFavorite"
             >
+              <Heart
+                :size="17"
+                :fill="book.favorite ? 'currentColor' : 'none'"
+                aria-hidden="true"
+              />
               {{
                 isFavoriteUpdating()
                   ? t('books.updatingFavorite')
@@ -349,58 +378,66 @@ onMounted(async () => {
 
             <button
               type="button"
-              class="cursor-pointer rounded-xl border border-rose-500/60 px-3 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+              class="bm-button bm-button-danger"
               :disabled="isDeleting() || isFavoriteUpdating()"
               @click="onRequestRemoveBook"
             >
+              <Trash2
+                :size="17"
+                aria-hidden="true"
+              />
               {{ isDeleting() ? t('books.deletingBook') : t('books.removeBook') }}
             </button>
           </div>
 
-          <div class="mt-4 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+          <div class="bm-subtle-panel mt-4">
             <div class="mb-2 flex items-center justify-between">
-              <p class="text-xs uppercase tracking-wide text-slate-400">
+              <p class="bm-eyebrow">
                 {{ t('books.editMetadata') }}
               </p>
               <button
                 v-if="!editMode"
                 type="button"
-                class="cursor-pointer rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-200 transition hover:bg-slate-800"
+                class="bm-button text-xs"
                 @click="onStartEdit"
               >
+                <Pencil
+                  :size="14"
+                  aria-hidden="true"
+                />
                 {{ t('books.editAction') }}
               </button>
             </div>
 
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <label class="text-xs text-slate-300">
+              <label class="bm-label">
                 {{ t('books.pages') }}
                 <input
                   v-model="formTotalPages"
                   type="number"
                   min="1"
                   :disabled="!editMode || isMetadataUpdating()"
-                  class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2 disabled:opacity-60"
+                  class="bm-input mt-1 py-1.5 text-sm"
                 >
               </label>
 
-              <label class="text-xs text-slate-300">
+              <label class="bm-label">
                 {{ t('books.progress') }}
                 <input
                   v-model="formCurrentPage"
                   type="number"
                   min="0"
                   :disabled="!editMode || isMetadataUpdating()"
-                  class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2 disabled:opacity-60"
+                  class="bm-input mt-1 py-1.5 text-sm"
                 >
               </label>
 
-              <label class="text-xs text-slate-300">
+              <label class="bm-label">
                 {{ t('books.status') }}
                 <select
                   v-model="formStatus"
                   :disabled="!editMode || isMetadataUpdating()"
-                  class="mt-1 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none ring-cyan-400 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  class="bm-select mt-1 py-1.5 text-sm"
                 >
                   <option value="reading">{{ t('books.status_reading') }}</option>
                   <option value="finished">{{ t('books.status_finished') }}</option>
@@ -415,7 +452,7 @@ onMounted(async () => {
             >
               <button
                 type="button"
-                class="cursor-pointer rounded-lg bg-cyan-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+                class="bm-button bm-button-primary"
                 :disabled="isMetadataUpdating()"
                 @click="onSaveMetadata"
               >
@@ -423,7 +460,7 @@ onMounted(async () => {
               </button>
               <button
                 type="button"
-                class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                class="bm-button"
                 :disabled="isMetadataUpdating()"
                 @click="onCancelEdit"
               >
@@ -432,13 +469,13 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="mt-4 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-            <p class="text-xs uppercase tracking-wide text-slate-400">
+          <div class="bm-subtle-panel mt-4">
+            <p class="bm-eyebrow">
               {{ t('books.recentSessions') }}
             </p>
             <p
               v-if="loadingSessions"
-              class="mt-2 text-sm text-slate-400"
+              class="bm-muted mt-2 text-sm"
             >
               {{ t('books.loadingSessions') }}
             </p>
@@ -450,42 +487,42 @@ onMounted(async () => {
               <li
                 v-for="session in visibleSessions"
                 :key="session.id"
-                class="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs text-slate-300"
+                class="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2 text-xs text-[var(--app-text-muted)]"
               >
                 <template v-if="editingSessionId === session.id">
                   <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <label>
-                      <span class="text-[11px] text-slate-400">{{ t('reading.startPage') }}</span>
+                      <span class="bm-soft text-[11px]">{{ t('reading.startPage') }}</span>
                       <input
                         v-model="editingSessionStartPage"
                         type="number"
                         min="0"
-                        class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100"
+                        class="bm-input mt-1 py-1 text-xs"
                       >
                     </label>
                     <label>
-                      <span class="text-[11px] text-slate-400">{{ t('reading.endPage') }}</span>
+                      <span class="bm-soft text-[11px]">{{ t('reading.endPage') }}</span>
                       <input
                         v-model="editingSessionEndPage"
                         type="number"
                         min="0"
-                        class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100"
+                        class="bm-input mt-1 py-1 text-xs"
                       >
                     </label>
                     <label>
-                      <span class="text-[11px] text-slate-400">{{ t('books.sessionDuration') }} (min)</span>
+                      <span class="bm-soft text-[11px]">{{ t('books.sessionDuration') }} (min)</span>
                       <input
                         v-model="editingSessionDurationMinutes"
                         type="number"
                         min="0"
-                        class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100"
+                        class="bm-input mt-1 py-1 text-xs"
                       >
                     </label>
                   </div>
                   <div class="mt-2 flex gap-2">
                     <button
                       type="button"
-                      class="cursor-pointer rounded-md bg-cyan-500 px-2 py-1 text-xs font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+                      class="bm-button bm-button-primary text-xs"
                       :disabled="savingSessionEdit"
                       @click="onSaveEditSession(session.id)"
                     >
@@ -493,7 +530,7 @@ onMounted(async () => {
                     </button>
                     <button
                       type="button"
-                      class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-200"
+                      class="bm-button text-xs"
                       :disabled="savingSessionEdit"
                       @click="onCancelEditSession"
                     >
@@ -514,14 +551,14 @@ onMounted(async () => {
                   <div class="mt-2 flex gap-2">
                     <button
                       type="button"
-                      class="cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-[11px] text-slate-200 transition hover:bg-slate-800"
+                      class="bm-button text-[11px]"
                       @click="onStartEditSession(session)"
                     >
                       {{ t('books.editSession') }}
                     </button>
                     <button
                       type="button"
-                      class="cursor-pointer rounded-md border border-rose-500/60 px-2 py-1 text-[11px] text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                      class="bm-button bm-button-danger text-[11px]"
                       :disabled="deletingSessionId === session.id"
                       @click="onRequestDeleteSession(session.id)"
                     >
@@ -534,14 +571,14 @@ onMounted(async () => {
 
             <p
               v-else
-              class="mt-2 text-sm text-slate-400"
+              class="bm-muted mt-2 text-sm"
             >
               {{ t('books.noSessions') }}
             </p>
             <button
               v-if="canLoadMoreSessions"
               type="button"
-              class="mt-2 cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-slate-800"
+              class="bm-button mt-2 text-xs"
               @click="onLoadMoreSessions"
             >
               {{ t('books.loadMoreSessions') }}
@@ -552,11 +589,11 @@ onMounted(async () => {
     </template>
 
     <template v-else>
-      <p class="text-sm text-slate-300">
+      <p class="bm-muted text-sm">
         {{ t('books.notFound') }}
       </p>
       <RouterLink
-        class="mt-4 inline-flex rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+        class="bm-button mt-4"
         to="/books"
       >
         {{ t('books.backToLibrary') }}

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import PageHeader from '../../../components/ui/PageHeader.vue'
+import SurfaceCard from '../../../components/ui/SurfaceCard.vue'
 import {
   getOfflineConflictCount,
   getOfflineConflicts,
@@ -123,9 +125,11 @@ const groupedQueueItems = computed(() => buildGroups(queueItems.value))
 const groupedConflicts = computed(() => buildGroups(conflicts.value))
 
 const statusToneClass = computed(() => {
-  if (hasConflicts.value) return 'border-rose-500/50 bg-rose-950/25 text-rose-100'
-  if (hasPending.value || !isOnline.value) return 'border-amber-500/50 bg-amber-950/20 text-amber-100'
-  return 'border-emerald-500/50 bg-emerald-950/20 text-emerald-100'
+  if (hasConflicts.value) return 'border-[var(--app-danger)] bg-[var(--app-danger-soft)] text-[var(--app-danger)]'
+  if (hasPending.value || !isOnline.value) {
+    return 'border-[var(--app-warning)] bg-[var(--app-warning-soft)] text-[var(--app-warning)]'
+  }
+  return 'border-[var(--app-success)] bg-[var(--app-success-soft)] text-[var(--app-success)]'
 })
 
 const statusTitle = computed(() => {
@@ -185,19 +189,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="space-y-4">
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
-      <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">
-        {{ t('modules.syncLabel') }}
-      </p>
-      <h1 class="mt-2 text-2xl font-semibold text-white">
-        {{ t('sync.title') }}
-      </h1>
-      <p class="mt-2 text-sm text-slate-300">
-        {{ t('sync.subtitle') }}
-      </p>
+  <section class="bm-page">
+    <PageHeader
+      :eyebrow="t('modules.syncLabel')"
+      :title="t('sync.title')"
+      :subtitle="t('sync.subtitle')"
+    />
 
-      <article class="mt-4 rounded-xl border p-4" :class="statusToneClass">
+    <SurfaceCard>
+      <article class="rounded-xl border p-4" :class="statusToneClass">
         <p class="text-sm font-semibold">
           {{ statusTitle }}
         </p>
@@ -207,31 +207,31 @@ onBeforeUnmount(() => {
       </article>
 
       <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-          <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('sync.connectionLabel') }}</p>
-          <p class="mt-1 text-lg font-semibold" :class="isOnline ? 'text-emerald-300' : 'text-amber-300'">
+        <article class="bm-stat-card">
+          <p class="bm-stat-label">{{ t('sync.connectionLabel') }}</p>
+          <p class="mt-1 text-lg font-semibold" :class="isOnline ? 'text-[var(--app-success)]' : 'text-[var(--app-warning)]'">
             {{ isOnline ? t('sync.online') : t('sync.offline') }}
           </p>
         </article>
-        <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-          <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('sync.pendingLabel') }}</p>
-          <p class="mt-1 text-lg font-semibold text-white">{{ pendingCount }}</p>
+        <article class="bm-stat-card">
+          <p class="bm-stat-label">{{ t('sync.pendingLabel') }}</p>
+          <p class="bm-stat-value mt-1">{{ pendingCount }}</p>
         </article>
-        <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-          <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('sync.conflictsLabel') }}</p>
-          <p class="mt-1 text-lg font-semibold text-rose-300">{{ conflictCount }}</p>
+        <article class="bm-stat-card">
+          <p class="bm-stat-label">{{ t('sync.conflictsLabel') }}</p>
+          <p class="mt-1 text-lg font-semibold text-[var(--app-danger)]">{{ conflictCount }}</p>
         </article>
-        <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-          <p class="text-[11px] uppercase tracking-wide text-slate-400">{{ t('sync.updatedLabel') }}</p>
-          <p class="mt-1 text-xs text-slate-300">{{ formatDate(lastSuccess) }}</p>
-          <p class="mt-1 text-[11px] text-slate-400">{{ t('sync.lastAttempt') }}: {{ formatDate(lastAttempt) }}</p>
+        <article class="bm-stat-card">
+          <p class="bm-stat-label">{{ t('sync.updatedLabel') }}</p>
+          <p class="bm-muted mt-1 text-xs">{{ formatDate(lastSuccess) }}</p>
+          <p class="bm-soft mt-1 text-[11px]">{{ t('sync.lastAttempt') }}: {{ formatDate(lastAttempt) }}</p>
         </article>
       </div>
 
       <div class="mt-3 flex gap-2">
         <button
           type="button"
-          class="cursor-pointer rounded-lg border border-cyan-500/60 px-3 py-1.5 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-500/10"
+          class="bm-button bm-button-primary text-xs"
           :disabled="isPrimaryActionDisabled"
           @click="onPrimaryAction"
         >
@@ -239,40 +239,40 @@ onBeforeUnmount(() => {
         </button>
         <button
           type="button"
-          class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-slate-800"
+          class="bm-button text-xs"
           @click="toggleDetails"
         >
           {{ showTechnicalDetails ? t('sync.hideDetails') : t('sync.showDetails') }}
         </button>
       </div>
 
-      <p class="mt-2 text-xs text-slate-400">
+      <p class="bm-muted mt-2 text-xs">
         {{ isOnline ? t('sync.autoSyncHint') : t('sync.offlineHint') }}
       </p>
-    </section>
+    </SurfaceCard>
 
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
-      <h2 class="text-lg font-semibold text-white">{{ t('sync.queueTitle') }}</h2>
-      <p v-if="queueItems.length === 0" class="mt-2 text-sm text-slate-400">{{ t('sync.emptyQueue') }}</p>
+    <SurfaceCard>
+      <h2 class="bm-section-title">{{ t('sync.queueTitle') }}</h2>
+      <p v-if="queueItems.length === 0" class="bm-muted mt-2 text-sm">{{ t('sync.emptyQueue') }}</p>
       <div v-else class="mt-3 space-y-4">
         <section
           v-for="group in groupedQueueItems"
           :key="`queue-${group.key}`"
-          class="rounded-xl border border-slate-800 bg-slate-950/50 p-3"
+          class="bm-subtle-panel"
         >
-          <p class="text-sm font-semibold text-slate-100">{{ group.label }} ({{ group.items.length }})</p>
+          <p class="text-sm font-semibold text-[var(--app-text)]">{{ group.label }} ({{ group.items.length }})</p>
           <ul class="mt-2 space-y-2">
             <li
               v-for="item in group.items"
               :key="item.id"
-              class="rounded-lg border border-slate-800 bg-slate-950/70 p-3"
+              class="bm-card"
             >
-              <p class="text-sm text-slate-200">{{ describeQueueItem(item) }}</p>
-              <p class="mt-1 text-xs text-slate-400">{{ t('sync.createdAt') }}: {{ formatDate(item.createdAt) }}</p>
+              <p class="text-sm text-[var(--app-text)]">{{ describeQueueItem(item) }}</p>
+              <p class="bm-muted mt-1 text-xs">{{ t('sync.createdAt') }}: {{ formatDate(item.createdAt) }}</p>
               <div class="mt-2 flex gap-2">
                 <button
                   type="button"
-                  class="cursor-pointer rounded-md border border-cyan-500/60 px-2 py-1 text-[11px] text-cyan-200 transition hover:bg-cyan-500/10"
+                  class="bm-button bm-button-primary text-[11px]"
                   :disabled="!isOnline"
                   @click="onRetryAll"
                 >
@@ -280,69 +280,69 @@ onBeforeUnmount(() => {
                 </button>
                 <button
                   type="button"
-                  class="cursor-pointer rounded-md border border-rose-500/60 px-2 py-1 text-[11px] text-rose-200 transition hover:bg-rose-500/10"
+                  class="bm-button bm-button-danger text-[11px]"
                   @click="onDiscardQueueItem(item.id)"
                 >
                   {{ t('sync.actionRemove') }}
                 </button>
               </div>
 
-              <div v-if="showTechnicalDetails" class="mt-2 rounded-md border border-slate-800 bg-slate-900/60 p-2">
-                <p class="text-[11px] text-slate-400">{{ t('sync.techAction') }}: {{ item.action }}</p>
-                <p class="text-[11px] text-slate-400">{{ t('sync.techId') }}: {{ item.id }}</p>
+              <div v-if="showTechnicalDetails" class="bm-subtle-panel mt-2 p-2">
+                <p class="bm-soft text-[11px]">{{ t('sync.techAction') }}: {{ item.action }}</p>
+                <p class="bm-soft text-[11px]">{{ t('sync.techId') }}: {{ item.id }}</p>
               </div>
             </li>
           </ul>
         </section>
       </div>
-    </section>
+    </SurfaceCard>
 
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
-      <h2 class="text-lg font-semibold text-white">{{ t('sync.conflictsTitle') }}</h2>
-      <p v-if="conflicts.length === 0" class="mt-2 text-sm text-slate-400">{{ t('sync.emptyConflicts') }}</p>
+    <SurfaceCard>
+      <h2 class="bm-section-title">{{ t('sync.conflictsTitle') }}</h2>
+      <p v-if="conflicts.length === 0" class="bm-muted mt-2 text-sm">{{ t('sync.emptyConflicts') }}</p>
       <div v-else class="mt-3 space-y-4">
         <section
           v-for="group in groupedConflicts"
           :key="`conflict-${group.key}`"
-          class="rounded-xl border border-rose-700/30 bg-rose-950/15 p-3"
+          class="rounded-xl border border-[var(--app-danger)] bg-[var(--app-danger-soft)] p-3"
         >
-          <p class="text-sm font-semibold text-rose-100">{{ group.label }} ({{ group.items.length }})</p>
+          <p class="text-sm font-semibold text-[var(--app-danger)]">{{ group.label }} ({{ group.items.length }})</p>
           <ul class="mt-2 space-y-2">
             <li
               v-for="item in group.items"
               :key="item.id"
-              class="rounded-lg border border-rose-700/30 bg-rose-950/20 p-3"
+              class="rounded-lg border border-[var(--app-danger)] bg-[var(--app-surface)] p-3"
             >
-              <p class="text-sm text-rose-100">{{ describeQueueItem(item) }}</p>
-              <p class="mt-1 text-xs text-rose-200">{{ t('sync.conflictGuide') }}</p>
-              <p class="mt-1 text-xs text-rose-300/90">{{ t('sync.whatHappened') }}: {{ item.errorMessage }}</p>
+              <p class="text-sm text-[var(--app-text)]">{{ describeQueueItem(item) }}</p>
+              <p class="mt-1 text-xs text-[var(--app-danger)]">{{ t('sync.conflictGuide') }}</p>
+              <p class="mt-1 text-xs text-[var(--app-danger)]">{{ t('sync.whatHappened') }}: {{ item.errorMessage }}</p>
               <div class="mt-2 flex gap-2">
                 <button
                   type="button"
-                  class="cursor-pointer rounded-md border border-cyan-500/60 px-2 py-1 text-[11px] text-cyan-200 transition hover:bg-cyan-500/10"
+                  class="bm-button bm-button-primary text-[11px]"
                   @click="onKeepThisDeviceVersion(item.id)"
                 >
                   {{ t('sync.keepDeviceVersion') }}
                 </button>
                 <button
                   type="button"
-                  class="cursor-pointer rounded-md border border-rose-500/60 px-2 py-1 text-[11px] text-rose-200 transition hover:bg-rose-500/10"
+                  class="bm-button bm-button-danger text-[11px]"
                   @click="onUseCloudVersion(item.id)"
                 >
                   {{ t('sync.useCloudVersion') }}
                 </button>
               </div>
 
-              <div v-if="showTechnicalDetails" class="mt-2 rounded-md border border-rose-700/30 bg-rose-950/25 p-2">
-                <p class="text-[11px] text-rose-300">{{ t('sync.techRetries') }}: {{ item.retryCount }}</p>
-                <p class="text-[11px] text-rose-300">{{ t('sync.techFailedAt') }}: {{ formatDate(item.failedAt) }}</p>
-                <p class="text-[11px] text-rose-300">{{ t('sync.techNextRetryAt') }}: {{ formatDate(item.nextRetryAt) }}</p>
-                <p class="text-[11px] text-rose-300">{{ t('sync.techId') }}: {{ item.id }}</p>
+              <div v-if="showTechnicalDetails" class="mt-2 rounded-md border border-[var(--app-danger)] bg-[var(--app-danger-soft)] p-2">
+                <p class="text-[11px] text-[var(--app-danger)]">{{ t('sync.techRetries') }}: {{ item.retryCount }}</p>
+                <p class="text-[11px] text-[var(--app-danger)]">{{ t('sync.techFailedAt') }}: {{ formatDate(item.failedAt) }}</p>
+                <p class="text-[11px] text-[var(--app-danger)]">{{ t('sync.techNextRetryAt') }}: {{ formatDate(item.nextRetryAt) }}</p>
+                <p class="text-[11px] text-[var(--app-danger)]">{{ t('sync.techId') }}: {{ item.id }}</p>
               </div>
             </li>
           </ul>
         </section>
       </div>
-    </section>
+    </SurfaceCard>
   </section>
 </template>

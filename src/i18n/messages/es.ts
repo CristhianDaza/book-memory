@@ -17,6 +17,12 @@ export const es = {
     syncLatestReason: 'Error: {reason}',
     syncRetrying: 'Reintentando...',
   },
+  theme: {
+    toggle: 'Cambiar tema',
+    system: 'Tema del sistema',
+    light: 'Tema claro',
+    dark: 'Tema oscuro',
+  },
   home: {
     home: 'Inicio',
     libraryHubTitle: 'Tu biblioteca en un solo lugar',

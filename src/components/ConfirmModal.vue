@@ -25,16 +25,16 @@ withBodyScrollLock(computed(() => props.open))
 <template>
   <div
     v-if="open"
-    class="fixed inset-0 z-50 flex items-end bg-slate-950/80 p-3 sm:items-center sm:justify-center"
+    class="bm-modal-backdrop"
     @click.self="onCancel"
   >
-    <section class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-2xl sm:p-6">
-      <h2 class="text-lg font-semibold text-white">
+    <section class="bm-modal-sheet max-w-md p-4 sm:p-6">
+      <h2 class="bm-section-title">
         {{ title }}
       </h2>
       <p
         v-if="message"
-        class="mt-2 text-sm text-slate-300"
+        class="bm-muted mt-2 text-sm"
       >
         {{ message }}
       </p>
@@ -42,7 +42,7 @@ withBodyScrollLock(computed(() => props.open))
       <div class="mt-4 grid grid-cols-2 gap-2">
         <button
           type="button"
-          class="cursor-pointer rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          class="bm-button"
           :disabled="loading"
           @click="onCancel"
         >
@@ -50,8 +50,8 @@ withBodyScrollLock(computed(() => props.open))
         </button>
         <button
           type="button"
-          class="cursor-pointer rounded-xl px-3 py-2 text-sm font-semibold text-slate-950 transition disabled:cursor-not-allowed disabled:opacity-60"
-          :class="danger ? 'bg-rose-500 hover:bg-rose-400' : 'bg-cyan-500 hover:bg-cyan-400'"
+          class="bm-button"
+          :class="danger ? 'bm-button-danger' : 'bm-button-primary'"
           :disabled="loading"
           @click="onConfirm"
         >

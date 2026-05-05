@@ -2,6 +2,8 @@
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import PageHeader from '../../../components/ui/PageHeader.vue'
+import SurfaceCard from '../../../components/ui/SurfaceCard.vue'
 import { useStatsStore } from '../../../stores/stats'
 import type { StatsActivityMetric, StatsRange } from '../../../types/stats'
 
@@ -123,26 +125,34 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-7">
-    <p class="text-xs uppercase tracking-[0.18em] text-cyan-300">
-      {{ t('modules.statsLabel') }}
-    </p>
-    <h1 class="mt-2 text-2xl font-semibold text-white">
-      {{ t('stats.title') }}
-    </h1>
-    <p class="mt-3 text-sm text-slate-300">
-      {{ t('stats.subtitle') }}
-    </p>
+  <div class="bm-page">
+    <PageHeader
+      :eyebrow="t('modules.statsLabel')"
+      :title="t('stats.title')"
+      :subtitle="t('stats.subtitle')"
+    >
+      <template #actions>
+        <button
+          type="button"
+          class="bm-button"
+          :disabled="filteredSessions.length === 0"
+          @click="onExportCsv"
+        >
+          {{ t('stats.exportCsv') }}
+        </button>
+      </template>
+    </PageHeader>
 
-    <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
-      <div class="inline-flex rounded-xl border border-slate-800 bg-slate-950/60 p-1">
+    <SurfaceCard>
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div class="inline-flex rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-1">
         <button
           type="button"
           class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
           :class="
             range === '7d'
-              ? 'bg-cyan-500 text-slate-950'
-              : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+              ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+              : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
           "
           @click="onChangeRange('7d')"
         >
@@ -153,8 +163,8 @@ onMounted(async () => {
           class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
           :class="
             range === '30d'
-              ? 'bg-cyan-500 text-slate-950'
-              : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+              ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+              : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
           "
           @click="onChangeRange('30d')"
         >
@@ -165,35 +175,26 @@ onMounted(async () => {
           class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
           :class="
             range === 'all'
-              ? 'bg-cyan-500 text-slate-950'
-              : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+              ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+              : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
           "
           @click="onChangeRange('all')"
         >
           {{ t('stats.rangeAll') }}
         </button>
       </div>
-
-      <button
-        type="button"
-        class="cursor-pointer rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-slate-800"
-        :disabled="filteredSessions.length === 0"
-        @click="onExportCsv"
-      >
-        {{ t('stats.exportCsv') }}
-      </button>
     </div>
 
     <p
       v-if="mappedError"
-      class="mt-4 rounded-lg border border-rose-700/50 bg-rose-950/50 p-2 text-xs text-rose-200"
+      class="mt-4 rounded-lg border border-[var(--app-danger)] bg-[var(--app-danger-soft)] p-2 text-xs text-[var(--app-danger)]"
     >
       {{ mappedError }}
     </p>
 
     <p
       v-if="loading"
-      class="mt-4 text-sm text-slate-400"
+      class="bm-muted mt-4 text-sm"
     >
       {{ t('stats.loading') }}
     </p>
@@ -202,35 +203,35 @@ onMounted(async () => {
       v-else
       class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4"
     >
-      <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+      <article class="bm-stat-card">
+        <p class="bm-stat-label">
           {{ t('stats.totalSessions') }}
         </p>
-        <p class="mt-1 text-xl font-semibold text-white">
+        <p class="bm-stat-value mt-1">
           {{ summary.totalSessions }}
         </p>
       </article>
-      <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+      <article class="bm-stat-card">
+        <p class="bm-stat-label">
           {{ t('stats.totalPages') }}
         </p>
-        <p class="mt-1 text-xl font-semibold text-white">
+        <p class="bm-stat-value mt-1">
           {{ summary.totalPages }}
         </p>
       </article>
-      <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+      <article class="bm-stat-card">
+        <p class="bm-stat-label">
           {{ t('stats.totalMinutes') }}
         </p>
-        <p class="mt-1 text-xl font-semibold text-white">
+        <p class="bm-stat-value mt-1">
           {{ summary.totalMinutes }}
         </p>
       </article>
-      <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+      <article class="bm-stat-card">
+        <p class="bm-stat-label">
           {{ t('stats.currentStreak') }}
         </p>
-        <p class="mt-1 text-xl font-semibold text-white">
+        <p class="bm-stat-value mt-1">
           {{ summary.currentStreakDays }}
         </p>
       </article>
@@ -240,27 +241,27 @@ onMounted(async () => {
       v-if="!loading"
       class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3"
     >
-      <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+      <article class="bm-stat-card">
+        <p class="bm-stat-label">
           {{ t('stats.bestStreak') }}
         </p>
-        <p class="mt-1 text-lg font-semibold text-white">
+        <p class="mt-1 text-lg font-semibold text-[var(--app-text)]">
           {{ summary.bestStreakDays }}
         </p>
       </article>
-      <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+      <article class="bm-stat-card">
+        <p class="bm-stat-label">
           {{ t('stats.sessionsThisWeek') }}
         </p>
-        <p class="mt-1 text-lg font-semibold text-white">
+        <p class="mt-1 text-lg font-semibold text-[var(--app-text)]">
           {{ summary.sessionsThisWeek }}
         </p>
       </article>
-      <article class="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-        <p class="text-[11px] uppercase tracking-wide text-slate-400">
+      <article class="bm-stat-card">
+        <p class="bm-stat-label">
           {{ t('stats.sessionsThisMonth') }}
         </p>
-        <p class="mt-1 text-lg font-semibold text-white">
+        <p class="mt-1 text-lg font-semibold text-[var(--app-text)]">
           {{ summary.sessionsThisMonth }}
         </p>
       </article>
@@ -268,51 +269,51 @@ onMounted(async () => {
 
     <section
       v-if="!loading"
-      class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+      class="bm-subtle-panel mt-4"
     >
-      <p class="text-sm font-semibold text-white">
+      <p class="bm-section-title">
         {{ t('stats.goalsTitle') }}
       </p>
       <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
-          <label class="text-[11px] uppercase tracking-wide text-slate-400">
+        <article class="bm-card">
+          <label class="bm-label">
             {{ t('stats.weeklyPagesGoal') }}
             <input
               v-model.number="weeklyGoalInput"
               type="number"
               min="1"
-              class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100"
+              class="bm-input mt-1 py-1 text-sm"
               @change="onUpdateWeeklyGoal"
             >
           </label>
-          <p class="mt-2 text-xs text-slate-300">
+          <p class="bm-muted mt-2 text-xs">
             {{ summary.pagesThisWeek }} / {{ goalsProgress.weeklyPagesGoal }} {{ t('stats.pagesShort') }}
           </p>
-          <div class="mt-1 h-2 rounded bg-slate-800">
+          <div class="bm-progress-track mt-1">
             <div
-              class="h-full rounded bg-cyan-400"
+              class="bm-progress-fill"
               :style="{ width: `${goalsProgress.weeklyPagesProgress}%` }"
             />
           </div>
         </article>
 
-        <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
-          <label class="text-[11px] uppercase tracking-wide text-slate-400">
+        <article class="bm-card">
+          <label class="bm-label">
             {{ t('stats.monthlyMinutesGoal') }}
             <input
               v-model.number="monthlyGoalInput"
               type="number"
               min="1"
-              class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100"
+              class="bm-input mt-1 py-1 text-sm"
               @change="onUpdateMonthlyGoal"
             >
           </label>
-          <p class="mt-2 text-xs text-slate-300">
+          <p class="bm-muted mt-2 text-xs">
             {{ summary.minutesThisMonth }} / {{ goalsProgress.monthlyMinutesGoal }} {{ t('stats.minutesShort') }}
           </p>
-          <div class="mt-1 h-2 rounded bg-slate-800">
+          <div class="bm-progress-track mt-1">
             <div
-              class="h-full rounded bg-emerald-400"
+              class="h-full rounded bg-[var(--app-success)]"
               :style="{ width: `${goalsProgress.monthlyMinutesProgress}%` }"
             />
           </div>
@@ -322,25 +323,25 @@ onMounted(async () => {
 
     <section
       v-if="!loading"
-      class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+      class="bm-subtle-panel mt-4"
     >
       <div class="mb-3 flex items-center justify-between gap-2">
-        <p class="text-sm font-semibold text-white">
+        <p class="bm-section-title">
           {{ t('stats.activityTitle') }}
         </p>
-        <p class="text-xs text-slate-400">
+        <p class="bm-muted text-xs">
           {{ t('stats.activitySubtitle') }}
         </p>
       </div>
 
-      <div class="mb-3 inline-flex rounded-lg border border-slate-800 bg-slate-900/70 p-1">
+      <div class="mb-3 inline-flex rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-1">
         <button
           type="button"
           class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
           :class="
             activityMetric === 'sessions'
-              ? 'bg-cyan-500 text-slate-950'
-              : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+              ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+              : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
           "
           @click="onChangeMetric('sessions')"
         >
@@ -351,8 +352,8 @@ onMounted(async () => {
           class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
           :class="
             activityMetric === 'pages'
-              ? 'bg-cyan-500 text-slate-950'
-              : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+              ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+              : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
           "
           @click="onChangeMetric('pages')"
         >
@@ -363,8 +364,8 @@ onMounted(async () => {
           class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
           :class="
             activityMetric === 'minutes'
-              ? 'bg-cyan-500 text-slate-950'
-              : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+              ? 'bg-[var(--app-accent)] text-[var(--app-accent-contrast)]'
+              : 'text-[var(--app-text-muted)] hover:bg-[var(--app-surface)]'
           "
           @click="onChangeMetric('minutes')"
         >
@@ -373,27 +374,27 @@ onMounted(async () => {
       </div>
 
       <div class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-2">
-          <p class="text-[10px] uppercase tracking-wide text-slate-400">
+        <article class="bm-card p-2">
+          <p class="bm-stat-label text-[10px]">
             {{ t('stats.avgDailySessions') }}
           </p>
-          <p class="mt-1 text-sm font-semibold text-cyan-300">
+          <p class="mt-1 text-sm font-semibold text-[var(--app-accent-strong)]">
             {{ formatDecimal(averageDailySessions) }}
           </p>
         </article>
-        <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-2">
-          <p class="text-[10px] uppercase tracking-wide text-slate-400">
+        <article class="bm-card p-2">
+          <p class="bm-stat-label text-[10px]">
             {{ t('stats.activeDays') }}
           </p>
-          <p class="mt-1 text-sm font-semibold text-white">
+          <p class="mt-1 text-sm font-semibold text-[var(--app-text)]">
             {{ activeDays }}
           </p>
         </article>
-        <article class="rounded-lg border border-slate-800 bg-slate-900/70 p-2 col-span-2 sm:col-span-1">
-          <p class="text-[10px] uppercase tracking-wide text-slate-400">
+        <article class="bm-card col-span-2 p-2 sm:col-span-1">
+          <p class="bm-stat-label text-[10px]">
             {{ t('stats.peakDay') }}
           </p>
-          <p class="mt-1 text-sm font-semibold text-white">
+          <p class="mt-1 text-sm font-semibold text-[var(--app-text)]">
             {{
               peakActivity
                 ? `${formatDayTitle(peakActivity.dayStart)} · ${peakActivity.sessionCount} ${t('stats.sessionsShort')}`
@@ -449,14 +450,14 @@ onMounted(async () => {
 
     <section
       v-if="!loading"
-      class="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+      class="bm-subtle-panel mt-4"
     >
-      <p class="text-sm font-semibold text-white">
+      <p class="bm-section-title">
         {{ t('stats.topBooksTitle') }}
       </p>
       <p
         v-if="topBooks.length === 0"
-        class="mt-2 text-sm text-slate-400"
+        class="bm-muted mt-2 text-sm"
       >
         {{ t('stats.topBooksEmpty') }}
       </p>
@@ -467,15 +468,15 @@ onMounted(async () => {
         <li
           v-for="entry in topBooks"
           :key="entry.bookId"
-          class="rounded-lg border border-slate-800 bg-slate-900/70 p-3"
+          class="bm-card"
         >
-          <p class="text-sm font-semibold text-white">
+          <p class="text-sm font-semibold text-[var(--app-text)]">
             {{ entry.title }}
           </p>
-          <p class="mt-1 text-xs text-slate-300">
+          <p class="bm-muted mt-1 text-xs">
             {{ t('stats.totalPages') }}: {{ entry.totalPages }} · {{ t('stats.totalMinutes') }}: {{ entry.totalMinutes }}
           </p>
-          <p class="text-xs text-slate-400">
+          <p class="bm-soft text-xs">
             {{ t('stats.bookAvgPages') }}: {{ formatDecimal(entry.avgPagesPerSession) }} ·
             {{ t('stats.bookAvgMinutes') }}: {{ formatDecimal(entry.avgMinutesPerSession) }}
           </p>
@@ -485,9 +486,10 @@ onMounted(async () => {
 
     <p
       v-if="!loading && filteredSessions.length === 0"
-      class="mt-4 text-sm text-slate-400"
+      class="bm-muted mt-4 text-sm"
     >
       {{ t('stats.empty') }}
     </p>
-  </section>
+    </SurfaceCard>
+  </div>
 </template>

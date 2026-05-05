@@ -17,6 +17,12 @@ export const en = {
     syncLatestReason: 'Error: {reason}',
     syncRetrying: 'Retrying...',
   },
+  theme: {
+    toggle: 'Change theme',
+    system: 'System theme',
+    light: 'Light theme',
+    dark: 'Dark theme',
+  },
   home: {
     home: 'Home',
     libraryHubTitle: 'Your library in one place',
