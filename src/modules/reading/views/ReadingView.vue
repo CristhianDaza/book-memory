@@ -30,9 +30,9 @@ const saving = ref(false)
 const localError = ref<string | null>(null)
 const showFinishModal = ref(false)
 const finishEndPage = ref<string>('0')
+const bookSelectionLockedByRoute = ref(false)
 
 const routeBookId = computed(() => (typeof route.query.bookId === 'string' ? route.query.bookId : ''))
-const isBookSelectionFixedByRoute = computed(() => routeBookId.value.length > 0)
 const selectedBook = computed(() => library.value.find((book) => book.id === selectedBookId.value) ?? null)
 const activeSessionBook = computed(() =>
   sessionBookId.value ? library.value.find((book) => book.id === sessionBookId.value) ?? null : null,
@@ -73,6 +73,7 @@ watch(selectedBook, (book) => {
 
 async function loadContext() {
   await booksStore.ensureLibraryLoaded()
+  bookSelectionLockedByRoute.value = routeBookId.value.length > 0
 
   if (hasActiveSession.value && sessionBookId.value) {
     readingStore.setSelectedBook(sessionBookId.value)
@@ -91,6 +92,10 @@ function onSelectBook(bookId: string) {
     readingStore.setStartPage(selected.currentPage)
     readingStore.setEndPage(selected.currentPage)
   }
+}
+
+function onOpenBookDetail(bookId: string) {
+  void router.push({ name: 'book-detail', params: { id: bookId } }).catch(() => {})
 }
 
 function onStart() {
@@ -321,7 +326,7 @@ onMounted(async () => {
     <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div class="space-y-3">
         <label
-          v-if="!isBookSelectionFixedByRoute"
+          v-if="!bookSelectionLockedByRoute"
           class="bm-label"
         >
           {{ t('reading.selectBook') }}
@@ -347,9 +352,11 @@ onMounted(async () => {
           </span>
         </label>
 
-        <div
+        <button
           v-if="effectiveSessionBook"
-          class="bm-subtle-panel flex items-center gap-3"
+          type="button"
+          class="bm-subtle-panel flex w-full cursor-pointer items-center gap-3 text-left transition hover:border-(--app-primary) hover:bg-(--app-surface-raised)"
+          @click="onOpenBookDetail(effectiveSessionBook.id)"
         >
           <div class="h-24 w-16 flex-none overflow-hidden rounded-lg border border-(--app-border) bg-(--app-surface-raised)">
             <img
@@ -382,7 +389,7 @@ onMounted(async () => {
               {{ effectiveSessionBook.totalPages ?? t('reading.unknownRemaining') }}
             </p>
           </div>
-        </div>
+        </button>
 
         <label class="bm-label">
           {{ t('reading.startPage') }}

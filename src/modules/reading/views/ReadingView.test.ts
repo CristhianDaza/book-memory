@@ -253,6 +253,7 @@ describe('ReadingView', () => {
 
   it('hides the book selector when opened from a book detail route', async () => {
     mocks.routeQuery.bookId = 'book-2'
+    mocks.readingStore.selectedBookId.value = 'book-2'
     mocks.readingStore.hasActiveSession.value = false
     mocks.readingStore.sessionBookId.value = null
     mocks.readingStore.sessionStartedAt.value = null
@@ -265,6 +266,27 @@ describe('ReadingView', () => {
     await flushPromises()
 
     expect(wrapper.find('select').exists()).toBe(false)
+    expect(wrapper.find('img[alt="Cuentos completos"]').attributes('src')).toBe('https://example.com/cuentos.jpg')
     expect(mocks.readingStore.setSelectedBook).toHaveBeenCalledWith('book-2')
+  })
+
+  it('opens the book detail when clicking the reading book card', async () => {
+    const wrapper = mount(ReadingView, {
+      global: {
+        plugins: [makeI18n()],
+      },
+    })
+    await flushPromises()
+
+    const bookCard = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Deep Work') && button.text().includes('Cal Newport'))
+    if (!bookCard) {
+      throw new Error('missing reading book card')
+    }
+
+    await bookCard.trigger('click')
+
+    expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'book-detail', params: { id: 'book-1' } })
   })
 })
