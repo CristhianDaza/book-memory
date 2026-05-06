@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
-import { Pause, Play, RotateCcw, TimerReset } from 'lucide-vue-next'
+import { BookOpen, Pause, Play, RotateCcw, TimerReset } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import PromptModal from '../../../components/PromptModal.vue'
@@ -31,6 +31,8 @@ const localError = ref<string | null>(null)
 const showFinishModal = ref(false)
 const finishEndPage = ref<string>('0')
 
+const routeBookId = computed(() => (typeof route.query.bookId === 'string' ? route.query.bookId : ''))
+const isBookSelectionFixedByRoute = computed(() => routeBookId.value.length > 0)
 const selectedBook = computed(() => library.value.find((book) => book.id === selectedBookId.value) ?? null)
 const activeSessionBook = computed(() =>
   sessionBookId.value ? library.value.find((book) => book.id === sessionBookId.value) ?? null : null,
@@ -72,8 +74,12 @@ watch(selectedBook, (book) => {
 async function loadContext() {
   await booksStore.ensureLibraryLoaded()
 
-  const fromQuery = typeof route.query.bookId === 'string' ? route.query.bookId : ''
-  const initialBookId = fromQuery || library.value[0]?.id || ''
+  if (hasActiveSession.value && sessionBookId.value) {
+    readingStore.setSelectedBook(sessionBookId.value)
+    return
+  }
+
+  const initialBookId = routeBookId.value || library.value[0]?.id || ''
   if (initialBookId) readingStore.setSelectedBook(initialBookId)
 }
 
@@ -312,9 +318,12 @@ onMounted(async () => {
     <h1 class="bm-title mt-2">{{ t('reading.title') }}</h1>
     <p class="bm-muted mt-2 text-sm">{{ t('reading.subtitle') }}</p>
 
-    <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_20rem]">
+    <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div class="space-y-3">
-        <label class="bm-label">
+        <label
+          v-if="!isBookSelectionFixedByRoute"
+          class="bm-label"
+        >
           {{ t('reading.selectBook') }}
           <select
             v-model="selectedBookId"
@@ -338,6 +347,43 @@ onMounted(async () => {
           </span>
         </label>
 
+        <div
+          v-if="effectiveSessionBook"
+          class="bm-subtle-panel flex items-center gap-3"
+        >
+          <div class="h-24 w-16 flex-none overflow-hidden rounded-lg border border-(--app-border) bg-(--app-surface-raised)">
+            <img
+              v-if="effectiveSessionBook.coverUrl"
+              :src="effectiveSessionBook.coverUrl"
+              :alt="effectiveSessionBook.title"
+              class="h-full w-full object-cover"
+            >
+            <div
+              v-else
+              class="grid h-full w-full place-items-center text-(--app-text-soft)"
+              :aria-label="t('books.noCover')"
+            >
+              <BookOpen
+                :size="24"
+                aria-hidden="true"
+              />
+            </div>
+          </div>
+
+          <div class="min-w-0">
+            <p class="text-sm font-extrabold leading-tight text-(--app-text)">
+              {{ effectiveSessionBook.title }}
+            </p>
+            <p class="mt-1 truncate text-xs text-(--app-text-muted)">
+              {{ effectiveSessionBook.authors.join(', ') || t('books.unknownAuthor') }}
+            </p>
+            <p class="mt-2 text-[11px] font-bold text-(--app-text-soft)">
+              {{ t('books.progress') }}: {{ effectiveSessionBook.currentPage }} /
+              {{ effectiveSessionBook.totalPages ?? t('reading.unknownRemaining') }}
+            </p>
+          </div>
+        </div>
+
         <label class="bm-label">
           {{ t('reading.startPage') }}
           <input
@@ -352,12 +398,12 @@ onMounted(async () => {
 
       <div class="bm-subtle-panel flex min-h-56 flex-col items-center justify-center text-center">
         <TimerReset
-          :size="34"
+          :size="28"
           class="text-(--app-primary-strong)"
           aria-hidden="true"
         />
         <p class="bm-eyebrow mt-3">{{ t('reading.timer') }}</p>
-        <p class="mt-2 font-mono text-5xl font-black text-(--app-text)">{{ formattedElapsed }}</p>
+        <p class="mt-2 font-mono text-4xl font-black text-(--app-text)">{{ formattedElapsed }}</p>
       </div>
     </div>
 

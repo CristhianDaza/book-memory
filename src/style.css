@@ -519,6 +519,7 @@ a {
 }
 
 .bm-label {
+  display: block;
   color: var(--app-text-muted);
   font-size: 0.78rem;
   font-weight: 700;
