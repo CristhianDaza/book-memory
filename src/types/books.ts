@@ -24,3 +24,7 @@ export interface LibraryBook {
   createdAt?: unknown
   updatedAt?: unknown
 }
+
+export type LibraryBookMetadataUpdate = Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'> &
+  Partial<Pick<LibraryBook, 'coverUrl'>>
+

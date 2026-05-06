@@ -16,7 +16,7 @@ import {
   enqueueOfflineLibraryUpdateFavorite,
   enqueueOfflineLibraryUpdateMetadata,
 } from '../services/offlineQueueService'
-import type { BookSearchResult, LibraryBook } from '../types/books'
+import type { BookSearchResult, LibraryBook, LibraryBookMetadataUpdate } from '../types/books'
 import type { AppLocale } from '../types/i18n'
 import { useAuthStore } from './auth'
 import { useSessionsStore } from './sessions'
@@ -61,8 +61,8 @@ export const useBooksStore = defineStore('books', () => {
   }
 
   function normalizeMetadataPayload(
-    payload: Pick<LibraryBook, 'coverUrl' | 'totalPages' | 'currentPage' | 'status'>,
-  ): Pick<LibraryBook, 'coverUrl' | 'totalPages' | 'currentPage' | 'status'> {
+    payload: LibraryBookMetadataUpdate,
+  ): LibraryBookMetadataUpdate {
     return {
       ...payload,
       currentPage:
@@ -403,7 +403,7 @@ export const useBooksStore = defineStore('books', () => {
 
   async function updateBookMetadata(
     bookId: string,
-    payload: Pick<LibraryBook, 'coverUrl' | 'totalPages' | 'currentPage' | 'status'>,
+    payload: LibraryBookMetadataUpdate,
     options?: { trackStreak?: boolean },
   ) {
     clearError()
@@ -430,7 +430,13 @@ export const useBooksStore = defineStore('books', () => {
     metadataUpdatingIds.value = [...metadataUpdatingIds.value, bookId]
 
     library.value = library.value.map((book) =>
-      book.id === bookId ? { ...book, ...normalizedPayload } : book,
+      book.id === bookId
+        ? {
+            ...book,
+            ...normalizedPayload,
+            coverUrl: normalizedPayload.coverUrl === undefined ? book.coverUrl : normalizedPayload.coverUrl,
+          }
+        : book,
     )
     libraryLoadedAt.value = Date.now()
 
