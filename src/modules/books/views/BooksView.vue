@@ -658,7 +658,7 @@ withBodyScrollLock(showAddModal)
               class="bm-card animate-pulse"
             >
               <div class="flex gap-3">
-                <div class="h-24 w-16 rounded-md bg-(--app-surface-muted)" />
+                <div class="h-32 w-[5.35rem] rounded-md bg-(--app-surface-muted) sm:h-28 sm:w-[4.65rem]" />
                 <div class="min-w-0 flex-1 space-y-2">
                   <div class="h-4 w-full rounded bg-(--app-border) sm:w-2/3" />
                   <div class="h-3 w-3/4 rounded bg-(--app-border) sm:w-1/2" />
@@ -713,11 +713,11 @@ withBodyScrollLock(showAddModal)
                   v-if="book.coverUrl"
                   :src="book.coverUrl"
                   :alt="book.title"
-                  class="h-24 w-16 rounded-md border border-(--app-border) object-cover shadow"
+                  class="h-32 w-[5.35rem] rounded-md border border-(--app-border) object-cover shadow sm:h-28 sm:w-[4.65rem]"
                 >
                 <div
                   v-else
-                  class="flex h-24 w-16 items-center justify-center rounded-md border border-(--app-border) bg-(--app-surface-muted) text-[10px] text-(--app-text-soft)"
+                  class="flex h-32 w-[5.35rem] items-center justify-center rounded-md border border-(--app-border) bg-(--app-surface-muted) text-center text-[10px] text-(--app-text-soft) sm:h-28 sm:w-[4.65rem]"
                 >
                   {{ t('books.noCover') }}
                 </div>
