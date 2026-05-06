@@ -162,4 +162,20 @@ describe('BooksView add flow', () => {
     expect(wrapper.text()).not.toContain('books.title')
     expect(wrapper.text()).not.toContain('books.addWithPagesTitle')
   })
+
+  it('adds a manual cover URL when the search result has no cover', async () => {
+    const wrapper = mountView()
+    const coverUrl = 'https://example.com/cover.jpg'
+
+    await openSearchResultPagesModal(wrapper)
+    await wrapper.find('.z-55 input[type="url"]').setValue(`  ${coverUrl}  `)
+    await wrapper.find('.z-55 .bm-button-success').trigger('click')
+    await flushPromises()
+
+    expect(addBookToLibrary).toHaveBeenCalledWith('user-1', {
+      ...searchResult,
+      coverUrl,
+      totalPages: 321,
+    })
+  })
 })

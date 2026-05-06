@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
-import { BookOpen, Heart, Pencil, Play, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, BookOpen, Heart, Pencil, Play, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ConfirmModal from '../../../components/ConfirmModal.vue'
@@ -30,6 +30,7 @@ const book = computed(() => booksStore.getLibraryBookById(bookId.value))
 const editMode = ref(false)
 const formTotalPages = ref<string>('')
 const formCurrentPage = ref<string>('0')
+const formCoverUrl = ref<string>('')
 const formStatus = ref<'reading' | 'finished' | 'wishlist'>('reading')
 const sessions = ref<ReadingSessionRecord[]>([])
 const loadingSessions = ref(false)
@@ -131,6 +132,7 @@ function syncFormFromBook() {
   if (!book.value) return
   formTotalPages.value = book.value.totalPages?.toString() ?? ''
   formCurrentPage.value = String(displayCurrentPage.value)
+  formCoverUrl.value = book.value.coverUrl ?? ''
   formStatus.value = book.value.status
 }
 
@@ -160,6 +162,7 @@ async function onSaveMetadata() {
   const safeTotalPages = parsedTotalPages !== null && Number.isFinite(parsedTotalPages) && parsedTotalPages > 0
     ? Math.floor(parsedTotalPages)
     : null
+  const safeCoverUrl = book.value.coverUrl ?? (formCoverUrl.value.trim() || null)
 
   const currentPageCapped =
     safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
@@ -176,6 +179,7 @@ async function onSaveMetadata() {
   }
 
   await booksStore.updateBookMetadata(book.value.id, {
+    coverUrl: safeCoverUrl,
     totalPages: safeTotalPages,
     currentPage: nextCurrentPage,
     status: formStatus.value,
@@ -322,9 +326,21 @@ onMounted(async () => {
 <template>
   <section class="bm-panel">
     <template v-if="book">
-      <p class="bm-eyebrow">
-        {{ t('books.detailTitle') }}
-      </p>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p class="bm-eyebrow">
+          {{ t('books.detailTitle') }}
+        </p>
+        <RouterLink
+          class="bm-button w-full sm:w-fit"
+          :to="{ name: 'books' }"
+        >
+          <ArrowLeft
+            :size="17"
+            aria-hidden="true"
+          />
+          {{ t('books.backToLibrary') }}
+        </RouterLink>
+      </div>
       <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
         <div class="mx-auto w-48 lg:mx-0">
           <div class="overflow-hidden rounded-2xl border border-(--app-border) bg-(--app-surface-muted) shadow-lg">
@@ -491,6 +507,20 @@ onMounted(async () => {
                   <option value="finished">{{ t('books.status_finished') }}</option>
                   <option value="wishlist">{{ t('books.status_wishlist') }}</option>
                 </select>
+              </label>
+
+              <label
+                v-if="!book.coverUrl"
+                class="bm-label sm:col-span-3"
+              >
+                {{ t('books.manualCoverUrl') }}
+                <input
+                  v-model="formCoverUrl"
+                  type="url"
+                  :placeholder="t('books.manualCoverUrlPlaceholder')"
+                  :disabled="!editMode || isMetadataUpdating()"
+                  class="bm-input mt-1 py-1.5 text-sm"
+                >
               </label>
             </div>
 

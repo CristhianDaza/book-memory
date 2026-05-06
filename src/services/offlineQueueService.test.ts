@@ -4,6 +4,7 @@ import {
   enqueueOfflineFinishReadingSession,
   enqueueOfflineClearReadingState,
   enqueueOfflineSaveReadingState,
+  enqueueOfflineStreakDay,
   getOfflineConflicts,
   getOfflineConflictCount,
   getOfflineQueueItems,
@@ -18,18 +19,27 @@ import {
 import { updateLibraryBookMetadata } from './libraryService'
 import { createReadingSessionWithId } from './readingSessionService'
 import { clearReadingState, saveReadingState } from './readingStateService'
+import { markStreakDay } from './streakService'
 
 vi.mock('./readingSessionService', () => ({
   createReadingSessionWithId: vi.fn(),
+  deleteSessionsForBook: vi.fn(),
 }))
 
 vi.mock('./libraryService', () => ({
+  addBookToLibrary: vi.fn(),
+  deleteLibraryBook: vi.fn(),
+  updateLibraryBookFavorite: vi.fn(),
   updateLibraryBookMetadata: vi.fn(),
 }))
 
 vi.mock('./readingStateService', () => ({
   saveReadingState: vi.fn(),
   clearReadingState: vi.fn(),
+}))
+
+vi.mock('./streakService', () => ({
+  markStreakDay: vi.fn(),
 }))
 
 const STORAGE_KEY = 'book-memory-offline-queue'
@@ -59,6 +69,17 @@ describe('offlineQueueService', () => {
     vi.stubGlobal('navigator', { onLine: true })
     vi.mocked(createReadingSessionWithId).mockResolvedValue()
     vi.mocked(updateLibraryBookMetadata).mockResolvedValue()
+    vi.mocked(markStreakDay).mockResolvedValue({
+      created: true,
+      record: {
+        id: '2026-01-01',
+        dayId: '2026-01-01',
+        actions: ['reading_session_finished'],
+        firstAction: 'reading_session_finished',
+        lastAction: 'reading_session_finished',
+        activityCount: 1,
+      },
+    })
     clearOfflineConflicts()
   })
 
@@ -175,6 +196,21 @@ describe('offlineQueueService', () => {
       totalPages: 300,
       currentPage: 20,
       status: 'reading',
+    })
+    expect(getOfflineQueueCount()).toBe(0)
+  })
+
+  it('replays queued streak day updates', async () => {
+    enqueueOfflineStreakDay('u1', {
+      dayId: '2026-01-01',
+      action: 'book_added',
+    })
+
+    await replayOfflineQueue()
+
+    expect(markStreakDay).toHaveBeenCalledWith('u1', {
+      dayId: '2026-01-01',
+      action: 'book_added',
     })
     expect(getOfflineQueueCount()).toBe(0)
   })

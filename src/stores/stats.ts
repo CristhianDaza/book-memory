@@ -15,6 +15,7 @@ import type {
 import { useAuthStore } from './auth'
 import { useBooksStore } from './books'
 import { useSessionsStore } from './sessions'
+import { useStreakStore } from './streak'
 
 function parseDate(value: unknown): Date | null {
   if (!value) return null
@@ -36,49 +37,6 @@ function startOfWeek(date: Date): Date {
   target.setDate(target.getDate() + diff)
   target.setHours(0, 0, 0, 0)
   return target
-}
-
-function countCurrentStreakDays(daysDesc: number[], todayStart: number): number {
-  if (daysDesc.length === 0) return 0
-  const latestDay = daysDesc[0]
-  if (latestDay === undefined) return 0
-  const latestDiff = Math.round((todayStart - latestDay) / 86400000)
-  if (latestDiff > 1) return 0
-
-  let streak = 1
-  for (let index = 1; index < daysDesc.length; index += 1) {
-    const previous = daysDesc[index - 1]
-    const current = daysDesc[index]
-    if (previous === undefined || current === undefined) continue
-    const diffDays = Math.round((previous - current) / 86400000)
-    if (diffDays === 0) continue
-    if (diffDays === 1) {
-      streak += 1
-      continue
-    }
-    break
-  }
-  return streak
-}
-
-function bestStreakDays(daysDesc: number[]): number {
-  if (daysDesc.length === 0) return 0
-  let best = 1
-  let current = 1
-  for (let index = 1; index < daysDesc.length; index += 1) {
-    const previous = daysDesc[index - 1]
-    const day = daysDesc[index]
-    if (previous === undefined || day === undefined) continue
-    const diffDays = Math.round((previous - day) / 86400000)
-    if (diffDays === 0) continue
-    if (diffDays === 1) {
-      current += 1
-      if (current > best) best = current
-      continue
-    }
-    current = 1
-  }
-  return best
 }
 
 export const useStatsStore = defineStore('stats', () => {
@@ -177,23 +135,14 @@ export const useStatsStore = defineStore('stats', () => {
         .reduce((acc, item) => acc + Math.max(0, item.durationSeconds ?? 0), 0) / 60,
     )
 
-    const uniqueDaysDesc = Array.from(
-      new Set(
-        sessionsWithDates.value
-          .map((session) => startOfDay(session.startedAtDate))
-          .sort((a, b) => b - a),
-      ),
-    )
-
-    const currentStreakDays = countCurrentStreakDays(uniqueDaysDesc, startOfDay(now))
-    const longestStreakDays = bestStreakDays(uniqueDaysDesc)
+    const streakStore = useStreakStore()
 
     return {
       totalSessions,
       totalPages,
       totalMinutes,
-      currentStreakDays,
-      bestStreakDays: longestStreakDays,
+      currentStreakDays: streakStore.currentStreakDays,
+      bestStreakDays: streakStore.bestStreakDays,
       sessionsThisWeek,
       pagesThisWeek,
       sessionsThisMonth,
@@ -289,7 +238,9 @@ export const useStatsStore = defineStore('stats', () => {
     try {
       const booksStore = useBooksStore()
       const sessionsStore = useSessionsStore()
+      const streakStore = useStreakStore()
       await Promise.all([booksStore.ensureLibraryLoaded(), sessionsStore.ensureSessionsLoaded()])
+      await streakStore.migrateFromSessions(sessionsStore.allSessions)
       sessions.value = sessionsStore.allSessions
       libraryTitles.value = booksStore.library.reduce<Record<string, string>>((acc, book) => {
         acc[book.id] = book.title

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { ArrowRight, BookOpen, Heart, Library, TimerReset } from 'lucide-vue-next'
+import { ArrowRight, BookOpen, Flame, Heart, Library, TimerReset, Trophy } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import EmptyState from '../components/ui/EmptyState.vue'
 import PageHeader from '../components/ui/PageHeader.vue'
@@ -10,15 +10,18 @@ import SurfaceCard from '../components/ui/SurfaceCard.vue'
 import { useAuthStore } from '../stores/auth'
 import { useBooksStore } from '../stores/books'
 import { useSessionsStore } from '../stores/sessions'
+import { useStreakStore } from '../stores/streak'
 
 const authStore = useAuthStore()
 const booksStore = useBooksStore()
 const sessionsStore = useSessionsStore()
+const streakStore = useStreakStore()
 const { t } = useI18n()
 
 const { user } = storeToRefs(authStore)
 const { library, loadingLibrary, favoriteUpdatingIds } = storeToRefs(booksStore)
 const { latestSessionMillisByBook } = storeToRefs(sessionsStore)
+const { currentStreakDays, bestStreakDays } = storeToRefs(streakStore)
 const isMobileDashboard = ref(false)
 const totalBooks = computed(() => library.value.length)
 const favoriteBooks = computed(() => library.value.filter((book) => book.favorite).length)
@@ -78,6 +81,7 @@ onMounted(async () => {
   await booksStore.ensureLibraryLoaded()
   if (!user.value?.uid) return
   await sessionsStore.ensureSessionsLoaded()
+  await streakStore.migrateFromSessions(sessionsStore.allSessions)
 })
 
 onUnmounted(() => {
@@ -99,7 +103,7 @@ onUnmounted(() => {
       </template>
     </PageHeader>
 
-    <div class="bm-home-stats grid grid-cols-3 gap-2 sm:gap-3">
+    <div class="bm-home-stats grid grid-cols-3 gap-2 sm:hidden">
       <article class="bm-stat-card bm-home-stat-card">
         <Library
           :size="19"
@@ -126,6 +130,80 @@ onUnmounted(() => {
         />
         <p class="bm-stat-label bm-home-stat-label">{{ t('home.kpiReading') }}</p>
         <p class="bm-stat-value bm-home-stat-value">{{ readingBooks }}</p>
+      </article>
+    </div>
+
+    <article class="bm-stat-card flex items-center justify-around gap-2 px-3 py-2.5 sm:hidden">
+      <div class="flex min-w-0 items-center gap-2">
+        <Flame
+          :size="18"
+          class="flex-none text-(--app-warning)"
+          aria-hidden="true"
+        />
+        <div class="min-w-0">
+          <p class="bm-stat-label text-[10px] leading-tight">{{ t('streak.current') }}</p>
+          <p class="text-xl font-black leading-none text-(--app-warning)">{{ currentStreakDays }}</p>
+        </div>
+      </div>
+      <div class="h-9 w-px bg-(--app-border)" />
+      <div class="flex min-w-0 items-center gap-2">
+        <Trophy
+          :size="18"
+          class="flex-none text-(--app-accent-strong)"
+          aria-hidden="true"
+        />
+        <div class="min-w-0">
+          <p class="bm-stat-label text-[10px] leading-tight">{{ t('streak.best') }}</p>
+          <p class="text-xl font-black leading-none text-(--app-text)">{{ bestStreakDays }}</p>
+        </div>
+      </div>
+    </article>
+
+    <div class="bm-home-stats hidden gap-2 sm:grid sm:grid-cols-5 sm:gap-3">
+      <article class="bm-stat-card bm-home-stat-card">
+        <Library
+          :size="19"
+          class="bm-home-stat-icon text-(--app-primary-strong)"
+          aria-hidden="true"
+        />
+        <p class="bm-stat-label bm-home-stat-label">{{ t('home.kpiBooks') }}</p>
+        <p class="bm-stat-value bm-home-stat-value">{{ totalBooks }}</p>
+      </article>
+      <article class="bm-stat-card bm-home-stat-card">
+        <Heart
+          :size="19"
+          class="bm-home-stat-icon text-(--app-warm)"
+          aria-hidden="true"
+        />
+        <p class="bm-stat-label bm-home-stat-label">{{ t('home.kpiFavorites') }}</p>
+        <p class="bm-stat-value bm-home-stat-value text-(--app-warm)">{{ favoriteBooks }}</p>
+      </article>
+      <article class="bm-stat-card bm-home-stat-card">
+        <BookOpen
+          :size="19"
+          class="bm-home-stat-icon text-(--app-primary-strong)"
+          aria-hidden="true"
+        />
+        <p class="bm-stat-label bm-home-stat-label">{{ t('home.kpiReading') }}</p>
+        <p class="bm-stat-value bm-home-stat-value">{{ readingBooks }}</p>
+      </article>
+      <article class="bm-stat-card bm-home-stat-card">
+        <Flame
+          :size="19"
+          class="bm-home-stat-icon text-(--app-warning)"
+          aria-hidden="true"
+        />
+        <p class="bm-stat-label bm-home-stat-label">{{ t('streak.current') }}</p>
+        <p class="bm-stat-value bm-home-stat-value text-(--app-warning)">{{ currentStreakDays }}</p>
+      </article>
+      <article class="bm-stat-card bm-home-stat-card">
+        <Trophy
+          :size="19"
+          class="bm-home-stat-icon text-(--app-accent-strong)"
+          aria-hidden="true"
+        />
+        <p class="bm-stat-label bm-home-stat-label">{{ t('streak.best') }}</p>
+        <p class="bm-stat-value bm-home-stat-value">{{ bestStreakDays }}</p>
       </article>
     </div>
 

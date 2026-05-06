@@ -7,6 +7,7 @@ import AppShell from './components/layout/AppShell.vue'
 import AppNotifications from './components/AppNotifications.vue'
 import BookCompletionOverlay from './components/BookCompletionOverlay.vue'
 import ConfirmModal from './components/ConfirmModal.vue'
+import StreakProgressOverlay from './components/StreakProgressOverlay.vue'
 import { setAppLocale } from './i18n'
 import { exportUserData } from './services/accountService'
 import {
@@ -23,11 +24,15 @@ import { logAppEvent } from './services/observabilityService'
 import type { AppLocale } from './types/i18n'
 import { useAuthStore } from './stores/auth'
 import { useNotificationsStore } from './stores/notifications'
+import { useStreakStore } from './stores/streak'
 import { bookCompletionOverlay } from './composables/useBookCompletionOverlay'
 
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
+const streakStore = useStreakStore()
 const { isVisible: bookCompletionVisible, payload: bookCompletionPayload, hideBookCompletion } = bookCompletionOverlay
+const streakOverlayVisible = computed(() => streakStore.overlayVisible)
+const streakOverlayPayload = computed(() => streakStore.overlayPayload)
 const router = useRouter()
 const route = useRoute()
 const { t, locale } = useI18n()
@@ -371,6 +376,11 @@ onBeforeUnmount(() => {
       :authors="bookCompletionPayload?.authors"
       :cover-url="bookCompletionPayload?.coverUrl"
       @close="hideBookCompletion"
+    />
+    <StreakProgressOverlay
+      :visible="streakOverlayVisible"
+      :payload="streakOverlayPayload"
+      @close="streakStore.hideOverlay"
     />
   </AppShell>
 </template>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { Heart, Plus, Search, X } from 'lucide-vue-next'
+import { Check, Heart, Plus, Search, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import type { BookSearchResult } from '../../../types/books'
@@ -27,6 +27,7 @@ const searchInputRef = ref<HTMLInputElement | null>(null)
 const pendingBookToAdd = ref<BookSearchResult | null>(null)
 const showAddBookPagesModal = ref(false)
 const pendingManualPages = ref<string>('')
+const pendingManualCoverUrl = ref<string>('')
 const addAnotherBook = ref(false)
 const addMode = ref<'search' | 'manual'>('search')
 const manualTitle = ref('')
@@ -144,6 +145,7 @@ async function onAddBook(bookId: string) {
   if (!target) return
   pendingBookToAdd.value = target
   pendingManualPages.value = target.totalPages ? String(target.totalPages) : ''
+  pendingManualCoverUrl.value = ''
   showAddBookPagesModal.value = true
 }
 
@@ -151,6 +153,7 @@ function onCancelAddBookWithPages() {
   showAddBookPagesModal.value = false
   pendingBookToAdd.value = null
   pendingManualPages.value = ''
+  pendingManualCoverUrl.value = ''
   addAnotherBook.value = false
 }
 
@@ -167,8 +170,10 @@ async function onConfirmAddBookWithPages() {
 
   const parsed = Number(pendingManualPages.value)
   const safePages = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null
+  const manualCoverUrl = pendingManualCoverUrl.value.trim()
   const payload: BookSearchResult = {
     ...pendingBookToAdd.value,
+    coverUrl: pendingBookToAdd.value.coverUrl ?? (manualCoverUrl || null),
     totalPages: safePages,
   }
 
@@ -400,9 +405,20 @@ withBodyScrollLock(showAddModal)
               </div>
             </RouterLink>
 
+            <span
+              v-if="item.status === 'finished'"
+              class="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full border border-white/80 bg-(--app-success) px-2 py-1 text-[10px] font-bold leading-none text-white shadow-lg"
+            >
+              <Check
+                :size="12"
+                aria-hidden="true"
+              />
+              {{ t('books.readBadge') }}
+            </span>
+
             <button
               type="button"
-              class="absolute -right-1 -top-1 z-10 cursor-pointer rounded-full border bg-(--app-surface) p-0.5 shadow-sm transition sm:right-2 sm:top-2 sm:p-1 sm:shadow disabled:cursor-not-allowed disabled:opacity-60"
+              class="absolute right-2 top-2 z-10 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border bg-(--app-surface) shadow transition disabled:cursor-not-allowed disabled:opacity-60"
               :class="
                 item.favorite
                   ? 'border-(--app-danger) text-(--app-danger)'
@@ -412,8 +428,7 @@ withBodyScrollLock(showAddModal)
               @click.prevent.stop="onToggleFavorite(item.id)"
             >
               <Heart
-                :size="12"
-                class="sm:size-4"
+                :size="16"
                 :fill="item.favorite ? 'currentColor' : 'none'"
                 aria-hidden="true"
               />
@@ -794,6 +809,18 @@ withBodyScrollLock(showAddModal)
       @update:value="pendingManualPages = $event"
     >
       <template #details>
+        <label
+          v-if="pendingBookToAdd && !pendingBookToAdd.coverUrl"
+          class="bm-label mt-3 block"
+        >
+          {{ t('books.manualCoverUrl') }}
+          <input
+            v-model="pendingManualCoverUrl"
+            type="url"
+            :placeholder="t('books.manualCoverUrlPlaceholder')"
+            class="bm-input mt-1 text-sm"
+          >
+        </label>
         <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-(--app-text)">
           <input
             v-model="addAnotherBook"

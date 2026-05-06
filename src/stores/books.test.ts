@@ -39,6 +39,16 @@ vi.mock('../services/bookSearchService', () => ({
   isSearchBooksError: vi.fn(() => false),
 }))
 
+const streakMocks = vi.hoisted(() => ({
+  markTodayActivity: vi.fn(),
+}))
+
+vi.mock('./streak', () => ({
+  useStreakStore: () => ({
+    markTodayActivity: streakMocks.markTodayActivity,
+  }),
+}))
+
 function createBook(overrides: Partial<LibraryBook>): LibraryBook {
   return {
     id: 'google_1',
@@ -67,6 +77,7 @@ describe('books store', () => {
     vi.mocked(deleteSessionsForBook).mockResolvedValue()
     vi.mocked(fetchSessionsForBook).mockResolvedValue([])
     vi.mocked(searchBooks).mockResolvedValue({ items: [], totalItems: 0 })
+    streakMocks.markTodayActivity.mockResolvedValue(false)
   })
 
   it('filters library by status, query and favorites', () => {
@@ -108,6 +119,7 @@ describe('books store', () => {
     expect(addBookToLibrary).toHaveBeenCalledWith('user-1', manualBook)
     expect(store.library[0]?.id).toBe('manual_1')
     expect(store.library[0]?.status).toBe('wishlist')
+    expect(streakMocks.markTodayActivity).toHaveBeenCalledWith('book_added')
   })
 
   it('sets progress to total pages when a book is marked as finished', async () => {
@@ -117,6 +129,7 @@ describe('books store', () => {
     store.library = [createBook({ id: 'book-1', totalPages: 320, currentPage: 12, status: 'reading' })]
 
     await store.updateBookMetadata('book-1', {
+      coverUrl: null,
       totalPages: 320,
       currentPage: 12,
       status: 'finished',
@@ -125,9 +138,34 @@ describe('books store', () => {
     expect(store.library[0]?.currentPage).toBe(320)
     expect(store.library[0]?.status).toBe('finished')
     expect(updateLibraryBookMetadata).toHaveBeenCalledWith('user-1', 'book-1', {
+      coverUrl: null,
       totalPages: 320,
       currentPage: 320,
       status: 'finished',
+    })
+    expect(streakMocks.markTodayActivity).toHaveBeenCalledWith('book_finished')
+  })
+
+  it('updates a missing cover URL through metadata', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useBooksStore()
+    const coverUrl = 'https://example.com/cover.jpg'
+    store.library = [createBook({ id: 'book-1', coverUrl: null, totalPages: 320, currentPage: 12 })]
+
+    await store.updateBookMetadata('book-1', {
+      coverUrl,
+      totalPages: 320,
+      currentPage: 12,
+      status: 'reading',
+    })
+
+    expect(store.library[0]?.coverUrl).toBe(coverUrl)
+    expect(updateLibraryBookMetadata).toHaveBeenCalledWith('user-1', 'book-1', {
+      coverUrl,
+      totalPages: 320,
+      currentPage: 12,
+      status: 'reading',
     })
   })
 

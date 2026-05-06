@@ -1,5 +1,5 @@
 import { getFirebaseDb } from '../lib/firebase'
-import type { BookSearchResult, LibraryBook } from '../types/books'
+import type { BookSearchResult, LibraryBook, LibraryBookMetadataUpdate } from '../types/books'
 
 let firestoreSdkPromise: Promise<typeof import('firebase/firestore')> | null = null
 
@@ -86,13 +86,17 @@ export async function deleteLibraryBook(uid: string, bookId: string) {
 export async function updateLibraryBookMetadata(
   uid: string,
   bookId: string,
-  payload: Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'>,
+  payload: LibraryBookMetadataUpdate,
 ) {
   const db = await ensureFirestore()
   const { doc, serverTimestamp, updateDoc } = await getFirestoreSdk()
   const ref = doc(db, 'users', uid, 'library', bookId)
-  await updateDoc(ref, {
+  const updatePayload = {
     ...payload,
     updatedAt: serverTimestamp(),
-  })
+  }
+  if (payload.coverUrl === undefined) {
+    delete updatePayload.coverUrl
+  }
+  await updateDoc(ref, updatePayload)
 }

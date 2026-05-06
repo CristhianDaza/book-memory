@@ -169,6 +169,48 @@ service cloud.firestore {
       && data.updatedAt is timestamp;
     }
 
+    function isValidStreakAction(value) {
+      return value in [
+        'book_added',
+        'status_changed',
+        'book_finished',
+        'reading_session_finished',
+      ];
+    }
+
+    function isValidStreakDayData(docId, data) {
+      return data.keys().hasOnly([
+        'dayId',
+        'actions',
+        'firstAction',
+        'lastAction',
+        'activityCount',
+        'createdAt',
+        'updatedAt',
+      ])
+      && data.keys().hasAll([
+        'dayId',
+        'actions',
+        'firstAction',
+        'lastAction',
+        'activityCount',
+        'createdAt',
+        'updatedAt',
+      ])
+      && data.dayId is string
+      && docId == data.dayId
+      && data.actions is list
+      && data.actions.size() > 0
+      && data.actions.size() <= 4
+      && isValidStreakAction(data.firstAction)
+      && isValidStreakAction(data.lastAction)
+      && data.activityCount is int
+      && data.activityCount > 0
+      && data.activityCount <= 4
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
     function isValidAppLogData(data) {
       return data.keys().hasOnly([
         'kind',
@@ -215,6 +257,16 @@ service cloud.firestore {
       match /stats/{docId} {
         allow read: if isOwner(uid);
         allow create, update: if isOwner(uid) && isValidStatsGoalsData(request.resource.data);
+        allow delete: if isOwner(uid);
+      }
+
+      match /streak_days/{dayId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && isValidStreakDayData(dayId, request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if isOwner(uid) && isValidStreakDayData(dayId, request.resource.data);
         allow delete: if isOwner(uid);
       }
 

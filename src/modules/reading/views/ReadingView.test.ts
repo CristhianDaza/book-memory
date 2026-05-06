@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => {
   const notificationsSuccess = vi.fn()
   const notificationsError = vi.fn()
   const notificationsInfo = vi.fn()
+  const markTodayActivity = vi.fn()
   const routeQuery: Record<string, string> = {}
 
   const authStore = {
@@ -105,6 +106,7 @@ const mocks = vi.hoisted(() => {
     resetSession,
     notificationsSuccess,
     notificationsError,
+    markTodayActivity,
     routeQuery,
     authStore,
     booksStore,
@@ -139,6 +141,12 @@ vi.mock('../../../stores/notifications', () => ({
   useNotificationsStore: () => mocks.notificationsStore,
 }))
 
+vi.mock('../../../stores/streak', () => ({
+  useStreakStore: () => ({
+    markTodayActivity: mocks.markTodayActivity,
+  }),
+}))
+
 vi.mock('vue-router', () => ({
   useRoute: () => ({ query: mocks.routeQuery }),
   useRouter: () => ({ push: mocks.routerPush }),
@@ -161,6 +169,7 @@ describe('ReadingView', () => {
     mocks.updateBookMetadata.mockResolvedValue(undefined)
     mocks.hydrateFromCloud.mockResolvedValue(undefined)
     mocks.routerPush.mockResolvedValue(undefined)
+    mocks.markTodayActivity.mockResolvedValue(false)
     mocks.routeQuery.bookId = ''
     mocks.readingStore.selectedBookId.value = 'book-1'
     mocks.readingStore.sessionBookId.value = 'book-1'
@@ -231,6 +240,7 @@ describe('ReadingView', () => {
     })
     expect(mocks.pauseTimer).toHaveBeenCalled()
     expect(mocks.resetSession).toHaveBeenCalled()
+    expect(mocks.markTodayActivity).toHaveBeenCalledWith('reading_session_finished')
     expect(mocks.notificationsSuccess).toHaveBeenCalledWith('Offline: session queued for sync.')
     expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'book-detail', params: { id: 'book-1' } })
   })

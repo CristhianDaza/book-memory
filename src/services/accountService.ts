@@ -3,6 +3,7 @@ import { fetchLibraryBooks } from './libraryService'
 import { fetchReadingState } from './readingStateService'
 import { fetchUserSessions } from './readingSessionService'
 import { fetchStatsGoals } from './statsGoalsService'
+import { fetchStreakDays } from './streakService'
 import type { UserDataExport } from '../types/account'
 
 let firestoreSdkPromise: Promise<typeof import('firebase/firestore')> | null = null
@@ -40,11 +41,12 @@ async function deleteCollectionByChunks(uid: string, collectionName: string) {
 }
 
 export async function exportUserData(uid: string): Promise<UserDataExport> {
-  const [library, sessions, readingState, goals] = await Promise.all([
+  const [library, sessions, readingState, goals, streakDays] = await Promise.all([
     fetchLibraryBooks(uid),
     fetchUserSessions(uid),
     fetchReadingState(uid),
     fetchStatsGoals(uid),
+    fetchStreakDays(uid),
   ])
 
   return {
@@ -54,6 +56,7 @@ export async function exportUserData(uid: string): Promise<UserDataExport> {
     sessions,
     readingState,
     goals,
+    streakDays,
   }
 }
 
@@ -62,5 +65,6 @@ export async function deleteUserData(uid: string): Promise<void> {
   await deleteCollectionByChunks(uid, 'sessions')
   await deleteCollectionByChunks(uid, 'reading_state')
   await deleteCollectionByChunks(uid, 'stats')
+  await deleteCollectionByChunks(uid, 'streak_days')
   await deleteCollectionByChunks(uid, 'app_logs')
 }

@@ -16,10 +16,11 @@ import {
   enqueueOfflineLibraryUpdateFavorite,
   enqueueOfflineLibraryUpdateMetadata,
 } from '../services/offlineQueueService'
-import type { BookSearchResult, LibraryBook } from '../types/books'
+import type { BookSearchResult, LibraryBook, LibraryBookMetadataUpdate } from '../types/books'
 import type { AppLocale } from '../types/i18n'
 import { useAuthStore } from './auth'
 import { useSessionsStore } from './sessions'
+import { useStreakStore } from './streak'
 
 export const useBooksStore = defineStore('books', () => {
   const LIBRARY_CACHE_MAX_AGE_MS = 2 * 60_000
@@ -60,8 +61,8 @@ export const useBooksStore = defineStore('books', () => {
   }
 
   function normalizeMetadataPayload(
-    payload: Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'>,
-  ): Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'> {
+    payload: LibraryBookMetadataUpdate,
+  ): LibraryBookMetadataUpdate {
     return {
       ...payload,
       currentPage:
@@ -139,6 +140,15 @@ export const useBooksStore = defineStore('books', () => {
       status: 'wishlist',
       createdAt: new Date(),
       updatedAt: new Date(),
+    }
+  }
+
+  async function markStreakActivity(action: 'book_added' | 'status_changed' | 'book_finished') {
+    try {
+      const streakStore = useStreakStore()
+      await streakStore.markTodayActivity(action)
+    } catch {
+      // Streak tracking must not block the primary library action.
     }
   }
 
@@ -271,6 +281,7 @@ export const useBooksStore = defineStore('books', () => {
       libraryLoadedForUid.value = authStore.user.uid
       libraryLoadedAt.value = Date.now()
       selectedLibraryBookId.value = savedBook.id
+      void markStreakActivity('book_added')
     } catch (error) {
       if (isOfflineQueueCandidate(error)) {
         const optimisticBook = toOptimisticLibraryBook(book)
@@ -287,6 +298,7 @@ export const useBooksStore = defineStore('books', () => {
           totalPages: book.totalPages,
         })
         syncQueuedMessageKey.value = 'notifications.bookAddedQueuedOffline'
+        void markStreakActivity('book_added')
       } else {
         errorKey.value = 'books.addBookError'
         errorDetails.value = error instanceof Error ? error.message : null
@@ -391,7 +403,8 @@ export const useBooksStore = defineStore('books', () => {
 
   async function updateBookMetadata(
     bookId: string,
-    payload: Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'>,
+    payload: LibraryBookMetadataUpdate,
+    options?: { trackStreak?: boolean },
   ) {
     clearError()
     clearSyncQueuedMessage()
@@ -406,30 +419,47 @@ export const useBooksStore = defineStore('books', () => {
     if (!previousBook) return
 
     const normalizedPayload = normalizeMetadataPayload(payload)
+    const shouldTrackStreak = options?.trackStreak !== false
+    const statusChanged = shouldTrackStreak && previousBook.status !== normalizedPayload.status
+    const streakAction = statusChanged
+      ? normalizedPayload.status === 'finished'
+        ? 'book_finished'
+        : 'status_changed'
+      : null
 
     metadataUpdatingIds.value = [...metadataUpdatingIds.value, bookId]
 
     library.value = library.value.map((book) =>
-      book.id === bookId ? { ...book, ...normalizedPayload } : book,
+      book.id === bookId
+        ? {
+            ...book,
+            ...normalizedPayload,
+            coverUrl: normalizedPayload.coverUrl === undefined ? book.coverUrl : normalizedPayload.coverUrl,
+          }
+        : book,
     )
     libraryLoadedAt.value = Date.now()
 
     try {
       await updateLibraryBookMetadata(uid, bookId, normalizedPayload)
+      if (streakAction) void markStreakActivity(streakAction)
     } catch (error) {
       if (isOfflineQueueCandidate(error)) {
         enqueueOfflineLibraryUpdateMetadata(uid, {
           bookId,
+          coverUrl: normalizedPayload.coverUrl,
           totalPages: normalizedPayload.totalPages,
           currentPage: normalizedPayload.currentPage,
           status: normalizedPayload.status,
         })
         syncQueuedMessageKey.value = 'notifications.bookMetadataQueuedOffline'
+        if (streakAction) void markStreakActivity(streakAction)
       } else {
         library.value = library.value.map((book) =>
           book.id === bookId
             ? {
                 ...book,
+                coverUrl: previousBook.coverUrl,
                 totalPages: previousBook.totalPages,
                 currentPage: previousBook.currentPage,
                 status: previousBook.status,
@@ -464,11 +494,16 @@ export const useBooksStore = defineStore('books', () => {
       const nextStatus =
         currentBook.totalPages !== null && latestEndPage >= currentBook.totalPages ? 'finished' : 'reading'
 
-      await updateBookMetadata(bookId, {
-        totalPages: currentBook.totalPages,
-        currentPage: latestEndPage,
-        status: nextStatus,
-      })
+      await updateBookMetadata(
+        bookId,
+        {
+          coverUrl: currentBook.coverUrl,
+          totalPages: currentBook.totalPages,
+          currentPage: latestEndPage,
+          status: nextStatus,
+        },
+        { trackStreak: false },
+      )
     } catch (error) {
       errorKey.value = 'books.updateBookError'
       errorDetails.value = error instanceof Error ? error.message : null
