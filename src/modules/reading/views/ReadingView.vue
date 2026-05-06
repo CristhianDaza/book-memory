@@ -61,6 +61,11 @@ const formattedElapsed = computed(() => {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 })
 
+const startPageInput = computed(() => {
+  if (!selectedBook.value) return ''
+  return startPage.value > 0 ? String(startPage.value) : ''
+})
+
 const finishEndPageNumber = computed(() => {
   const parsed = Number(finishEndPage.value)
   return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
@@ -450,7 +455,7 @@ onMounted(async () => {
         <label class="bm-label">
           {{ t('reading.startPage') }}
           <input
-            :value="startPage"
+            :value="startPageInput"
             type="number"
             min="0"
             class="bm-input mt-1 text-sm"
