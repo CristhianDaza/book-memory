@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
-import { Pause, Play, RotateCcw, TimerReset } from 'lucide-vue-next'
+import { BookOpen, Pause, Play, RotateCcw, TimerReset } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import PromptModal from '../../../components/PromptModal.vue'
 import { enqueueOfflineFinishReadingSession } from '../../../services/offlineQueueService'
+import { useBookCompletionOverlay } from '../../../composables/useBookCompletionOverlay'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
@@ -26,21 +27,43 @@ const { library } = storeToRefs(booksStore)
 const { selectedBookId, sessionBookId, startPage, elapsedSeconds, running, hasActiveSession, sessionStartedAt } =
   storeToRefs(readingStore)
 
+const { showBookCompletion } = useBookCompletionOverlay()
+
 const saving = ref(false)
 const localError = ref<string | null>(null)
 const showFinishModal = ref(false)
 const finishEndPage = ref<string>('0')
+const bookSelectionLockedByRoute = ref(false)
 
+const routeBookId = computed(() => (typeof route.query.bookId === 'string' ? route.query.bookId : ''))
 const selectedBook = computed(() => library.value.find((book) => book.id === selectedBookId.value) ?? null)
 const activeSessionBook = computed(() =>
   sessionBookId.value ? library.value.find((book) => book.id === sessionBookId.value) ?? null : null,
 )
 const effectiveSessionBook = computed(() => activeSessionBook.value ?? selectedBook.value)
+
+const availableBooksForReading = computed(() =>
+  library.value.filter(
+    (book) =>
+      book.status === 'reading' &&
+      (book.totalPages === null || book.currentPage < book.totalPages),
+  ),
+)
+
+const isSelectedBookAvailable = computed(() => {
+  if (!selectedBook.value) return false
+  return availableBooksForReading.value.some((book) => book.id === selectedBook.value!.id)
+})
 const formattedElapsed = computed(() => {
   const total = elapsedSeconds.value
   const mins = Math.floor(total / 60)
   const secs = total % 60
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+})
+
+const startPageInput = computed(() => {
+  if (!selectedBook.value) return ''
+  return startPage.value > 0 ? String(startPage.value) : ''
 })
 
 const finishEndPageNumber = computed(() => {
@@ -61,6 +84,14 @@ const remainingPercent = computed(() => {
   return Math.max(0, Math.min(100, Math.round((remaining / total) * 100)))
 })
 
+const canStartReading = computed(() => {
+  const book = selectedBook.value
+  if (!book) return false
+  if (book.status === 'finished') return false
+  if (book.totalPages !== null && book.currentPage >= book.totalPages) return false
+  return true
+})
+
 watch(selectedBook, (book) => {
   if (!book) return
   if (!hasActiveSession.value && startPage.value === 0) {
@@ -71,20 +102,40 @@ watch(selectedBook, (book) => {
 
 async function loadContext() {
   await booksStore.ensureLibraryLoaded()
+  bookSelectionLockedByRoute.value = routeBookId.value.length > 0
 
-  const fromQuery = typeof route.query.bookId === 'string' ? route.query.bookId : ''
-  const initialBookId = fromQuery || library.value[0]?.id || ''
-  if (initialBookId) readingStore.setSelectedBook(initialBookId)
+  if (hasActiveSession.value && sessionBookId.value) {
+    readingStore.setSelectedBook(sessionBookId.value)
+    return
+  }
+
+  if (routeBookId.value) {
+    readingStore.setSelectedBook(routeBookId.value)
+    return
+  }
+
+  if (selectedBookId.value) readingStore.setSelectedBook('')
+  if (startPage.value !== 0) readingStore.setStartPage(0)
+  readingStore.setEndPage(0)
 }
 
 function onSelectBook(bookId: string) {
   if (hasActiveSession.value) return
   readingStore.setSelectedBook(bookId)
   const selected = library.value.find((book) => book.id === bookId)
+  if (!selected) {
+    readingStore.setStartPage(0)
+    readingStore.setEndPage(0)
+    return
+  }
   if (!hasActiveSession.value && selected) {
     readingStore.setStartPage(selected.currentPage)
     readingStore.setEndPage(selected.currentPage)
   }
+}
+
+function onOpenBookDetail(bookId: string) {
+  void router.push({ name: 'book-detail', params: { id: bookId } }).catch(() => {})
 }
 
 function onStart() {
@@ -190,6 +241,9 @@ function finishSessionQueuedOffline(
   totalPages: number | null,
 ) {
   const status = totalPages !== null && end >= totalPages ? ('finished' as const) : ('reading' as const)
+  const bookTitle = effectiveSessionBook.value?.title
+  const bookAuthors = effectiveSessionBook.value?.authors ?? []
+  const bookCoverUrl = effectiveSessionBook.value?.coverUrl ?? null
 
   enqueueOfflineFinishReadingSession(uid, {
     transactionId: createTransactionId(),
@@ -216,6 +270,15 @@ function finishSessionQueuedOffline(
       status,
     })
     .catch(() => {})
+
+  if (status === 'finished') {
+    showBookCompletion({
+      bookId,
+      title: bookTitle ?? '',
+      authors: bookAuthors,
+      coverUrl: bookCoverUrl,
+    })
+  }
 
   void router.push({ name: 'book-detail', params: { id: bookId } }).catch(() => {})
 }
@@ -274,6 +337,10 @@ async function onConfirmFinish() {
     const status =
       totalPages !== null && end >= totalPages ? ('finished' as const) : ('reading' as const)
 
+    const bookTitle = effectiveSessionBook.value?.title
+    const bookAuthors = effectiveSessionBook.value?.authors ?? []
+    const bookCoverUrl = effectiveSessionBook.value?.coverUrl ?? null
+
     await withTimeout(
       booksStore.updateBookMetadata(bookId, {
         totalPages,
@@ -283,6 +350,15 @@ async function onConfirmFinish() {
       5000,
       'network_timeout',
     )
+
+    if (status === 'finished') {
+      showBookCompletion({
+        bookId,
+        title: bookTitle ?? '',
+        authors: bookAuthors,
+        coverUrl: bookCoverUrl,
+      })
+    }
 
     readingStore.resetSession()
     showFinishModal.value = false
@@ -312,9 +388,12 @@ onMounted(async () => {
     <h1 class="bm-title mt-2">{{ t('reading.title') }}</h1>
     <p class="bm-muted mt-2 text-sm">{{ t('reading.subtitle') }}</p>
 
-    <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_20rem]">
+    <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div class="space-y-3">
-        <label class="bm-label">
+        <label
+          v-if="!bookSelectionLockedByRoute"
+          class="bm-label"
+        >
           {{ t('reading.selectBook') }}
           <select
             v-model="selectedBookId"
@@ -323,7 +402,13 @@ onMounted(async () => {
             @change="onSelectBook(selectedBookId)"
           >
             <option
-              v-for="book in library"
+              disabled
+              value=""
+            >
+              {{ t('reading.selectBookPlaceholder') }}
+            </option>
+            <option
+              v-for="book in availableBooksForReading"
               :key="book.id"
               :value="book.id"
             >
@@ -338,10 +423,56 @@ onMounted(async () => {
           </span>
         </label>
 
+        <button
+          v-if="effectiveSessionBook && (bookSelectionLockedByRoute || isSelectedBookAvailable)"
+          type="button"
+          class="bm-subtle-panel flex w-full cursor-pointer items-center gap-3 text-left transition hover:border-(--app-primary) hover:bg-(--app-surface-raised)"
+          @click="onOpenBookDetail(effectiveSessionBook.id)"
+        >
+          <div class="h-24 w-16 flex-none overflow-hidden rounded-lg border border-(--app-border) bg-(--app-surface-raised)">
+            <img
+              v-if="effectiveSessionBook.coverUrl"
+              :src="effectiveSessionBook.coverUrl"
+              :alt="effectiveSessionBook.title"
+              class="h-full w-full object-cover"
+            >
+            <div
+              v-else
+              class="grid h-full w-full place-items-center text-(--app-text-soft)"
+              :aria-label="t('books.noCover')"
+            >
+              <BookOpen
+                :size="24"
+                aria-hidden="true"
+              />
+            </div>
+          </div>
+
+          <div class="min-w-0">
+            <p class="text-sm font-extrabold leading-tight text-(--app-text)">
+              {{ effectiveSessionBook.title }}
+            </p>
+            <p class="mt-1 truncate text-xs text-(--app-text-muted)">
+              {{ effectiveSessionBook.authors.join(', ') || t('books.unknownAuthor') }}
+            </p>
+            <p class="mt-2 text-[11px] font-bold text-(--app-text-soft)">
+              {{ t('books.progress') }}: {{ effectiveSessionBook.currentPage }} /
+              {{ effectiveSessionBook.totalPages ?? t('reading.unknownRemaining') }}
+            </p>
+          </div>
+        </button>
+
+        <p
+          v-else-if="!bookSelectionLockedByRoute"
+          class="bm-soft mt-2 text-sm"
+        >
+          {{ t('reading.selectBook') }}
+        </p>
+
         <label class="bm-label">
           {{ t('reading.startPage') }}
           <input
-            :value="startPage"
+            :value="startPageInput"
             type="number"
             min="0"
             class="bm-input mt-1 text-sm"
@@ -352,12 +483,12 @@ onMounted(async () => {
 
       <div class="bm-subtle-panel flex min-h-56 flex-col items-center justify-center text-center">
         <TimerReset
-          :size="34"
+          :size="28"
           class="text-(--app-primary-strong)"
           aria-hidden="true"
         />
         <p class="bm-eyebrow mt-3">{{ t('reading.timer') }}</p>
-        <p class="mt-2 font-mono text-5xl font-black text-(--app-text)">{{ formattedElapsed }}</p>
+        <p class="mt-2 font-mono text-4xl font-black text-(--app-text)">{{ formattedElapsed }}</p>
       </div>
     </div>
 
@@ -372,7 +503,7 @@ onMounted(async () => {
       <button
         type="button"
         class="bm-button bm-button-primary"
-        :disabled="running"
+        :disabled="running || !canStartReading"
         @click="onStart"
       >
         <Play

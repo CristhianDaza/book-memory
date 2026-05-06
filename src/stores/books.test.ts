@@ -109,4 +109,39 @@ describe('books store', () => {
     expect(store.library[0]?.id).toBe('manual_1')
     expect(store.library[0]?.status).toBe('wishlist')
   })
+
+  it('sets progress to total pages when a book is marked as finished', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useBooksStore()
+    store.library = [createBook({ id: 'book-1', totalPages: 320, currentPage: 12, status: 'reading' })]
+
+    await store.updateBookMetadata('book-1', {
+      totalPages: 320,
+      currentPage: 12,
+      status: 'finished',
+    })
+
+    expect(store.library[0]?.currentPage).toBe(320)
+    expect(store.library[0]?.status).toBe('finished')
+    expect(updateLibraryBookMetadata).toHaveBeenCalledWith('user-1', 'book-1', {
+      totalPages: 320,
+      currentPage: 320,
+      status: 'finished',
+    })
+  })
+
+  it('normalizes finished book progress when loading existing library data', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    vi.mocked(fetchLibraryBooks).mockResolvedValue([
+      createBook({ id: 'book-1', totalPages: 450, currentPage: 0, status: 'finished' }),
+    ])
+    const store = useBooksStore()
+
+    await store.ensureLibraryLoaded()
+
+    expect(store.library[0]?.currentPage).toBe(450)
+    expect(store.library[0]?.status).toBe('finished')
+  })
 })

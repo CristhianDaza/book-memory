@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { ArrowRight, BookOpen, Heart, Library, TimerReset } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import EmptyState from '../components/ui/EmptyState.vue'
@@ -19,17 +19,26 @@ const { t } = useI18n()
 const { user } = storeToRefs(authStore)
 const { library, loadingLibrary, favoriteUpdatingIds } = storeToRefs(booksStore)
 const { latestSessionMillisByBook } = storeToRefs(sessionsStore)
+const isMobileDashboard = ref(false)
 const totalBooks = computed(() => library.value.length)
 const favoriteBooks = computed(() => library.value.filter((book) => book.favorite).length)
 const readingBooks = computed(() => library.value.filter((book) => book.status === 'reading').length)
+const sortedPreviewBooks = computed(() =>
+  [...library.value].sort((a, b) => {
+    const favoriteDiff = Number(b.favorite) - Number(a.favorite)
+    if (favoriteDiff !== 0) return favoriteDiff
+    return a.title.localeCompare(b.title)
+  }),
+)
+const mobilePreviewLimit = computed(() => {
+  const count = sortedPreviewBooks.value.length
+  if (count >= 6) return 6
+  if (count >= 4) return 4
+  if (count >= 2) return 2
+  return count
+})
 const previewBooks = computed(() =>
-  [...library.value]
-    .sort((a, b) => {
-      const favoriteDiff = Number(b.favorite) - Number(a.favorite)
-      if (favoriteDiff !== 0) return favoriteDiff
-      return a.title.localeCompare(b.title)
-    })
-    .slice(0, 5),
+  sortedPreviewBooks.value.slice(0, isMobileDashboard.value ? mobilePreviewLimit.value : 5),
 )
 const continueReadingBook = computed(() => {
   const reading = library.value.filter((book) => book.status === 'reading')
@@ -57,10 +66,24 @@ async function onToggleFavorite(bookId: string) {
   await booksStore.toggleFavorite(bookId)
 }
 
+function updateDashboardViewport() {
+  isMobileDashboard.value = typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
+}
+
 onMounted(async () => {
+  updateDashboardViewport()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', updateDashboardViewport)
+  }
   await booksStore.ensureLibraryLoaded()
   if (!user.value?.uid) return
   await sessionsStore.ensureSessionsLoaded()
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateDashboardViewport)
+  }
 })
 </script>
 

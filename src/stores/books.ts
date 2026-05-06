@@ -48,6 +48,27 @@ export const useBooksStore = defineStore('books', () => {
   const libraryLoadedAt = ref<number>(0)
   let libraryLoadPromise: Promise<void> | null = null
 
+  function normalizeFinishedBookProgress(book: LibraryBook): LibraryBook {
+    if (book.status !== 'finished' || book.totalPages === null || book.currentPage >= book.totalPages) {
+      return book
+    }
+
+    return {
+      ...book,
+      currentPage: book.totalPages,
+    }
+  }
+
+  function normalizeMetadataPayload(
+    payload: Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'>,
+  ): Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'> {
+    return {
+      ...payload,
+      currentPage:
+        payload.status === 'finished' && payload.totalPages !== null ? payload.totalPages : payload.currentPage,
+    }
+  }
+
   const libraryIds = computed(() => new Set(library.value.map((book) => book.id)))
   const selectedBook = computed(() =>
     selectedLibraryBookId.value
@@ -209,7 +230,7 @@ export const useBooksStore = defineStore('books', () => {
     loadingLibrary.value = true
     libraryLoadPromise = (async () => {
       try {
-        library.value = await fetchLibraryBooks(uid)
+        library.value = (await fetchLibraryBooks(uid)).map(normalizeFinishedBookProgress)
         libraryLoadedForUid.value = uid
         libraryLoadedAt.value = Date.now()
         if (!selectedLibraryBookId.value) {
@@ -245,7 +266,7 @@ export const useBooksStore = defineStore('books', () => {
 
     savingIds.value = [...savingIds.value, book.id]
     try {
-      const savedBook = await addBookToLibrary(authStore.user.uid, book)
+      const savedBook = normalizeFinishedBookProgress(await addBookToLibrary(authStore.user.uid, book))
       library.value = [savedBook, ...library.value.filter((item) => item.id !== savedBook.id)]
       libraryLoadedForUid.value = authStore.user.uid
       libraryLoadedAt.value = Date.now()
@@ -384,22 +405,24 @@ export const useBooksStore = defineStore('books', () => {
     const previousBook = library.value.find((book) => book.id === bookId)
     if (!previousBook) return
 
+    const normalizedPayload = normalizeMetadataPayload(payload)
+
     metadataUpdatingIds.value = [...metadataUpdatingIds.value, bookId]
 
     library.value = library.value.map((book) =>
-      book.id === bookId ? { ...book, ...payload } : book,
+      book.id === bookId ? { ...book, ...normalizedPayload } : book,
     )
     libraryLoadedAt.value = Date.now()
 
     try {
-      await updateLibraryBookMetadata(uid, bookId, payload)
+      await updateLibraryBookMetadata(uid, bookId, normalizedPayload)
     } catch (error) {
       if (isOfflineQueueCandidate(error)) {
         enqueueOfflineLibraryUpdateMetadata(uid, {
           bookId,
-          totalPages: payload.totalPages,
-          currentPage: payload.currentPage,
-          status: payload.status,
+          totalPages: normalizedPayload.totalPages,
+          currentPage: normalizedPayload.currentPage,
+          status: normalizedPayload.status,
         })
         syncQueuedMessageKey.value = 'notifications.bookMetadataQueuedOffline'
       } else {

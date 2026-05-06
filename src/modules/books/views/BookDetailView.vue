@@ -5,6 +5,7 @@ import { BookOpen, Heart, Pencil, Play, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ConfirmModal from '../../../components/ConfirmModal.vue'
+import { useBookCompletionOverlay } from '../../../composables/useBookCompletionOverlay'
 import StatusBadge from '../../../components/ui/StatusBadge.vue'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
@@ -22,6 +23,7 @@ const notificationsStore = useNotificationsStore()
 
 const { favoriteUpdatingIds, metadataUpdatingIds, deletingIds, syncQueuedMessageKey } = storeToRefs(booksStore)
 const { user } = storeToRefs(authStore)
+const { showBookCompletion } = useBookCompletionOverlay()
 
 const bookId = computed(() => String(route.params.id ?? ''))
 const book = computed(() => booksStore.getLibraryBookById(bookId.value))
@@ -53,9 +55,15 @@ function isMetadataUpdating() {
   return metadataUpdatingIds.value.includes(bookId.value)
 }
 
+const displayCurrentPage = computed(() => {
+  if (!book.value) return 0
+  if (book.value.status === 'finished' && book.value.totalPages !== null) return book.value.totalPages
+  return book.value.currentPage
+})
+
 const remainingPages = computed(() => {
   if (!book.value?.totalPages) return null
-  return Math.max(0, book.value.totalPages - book.value.currentPage)
+  return Math.max(0, book.value.totalPages - displayCurrentPage.value)
 })
 const visibleSessions = computed(() => sessions.value.slice(0, visibleSessionsCount.value))
 const canLoadMoreSessions = computed(() => sessions.value.length > visibleSessionsCount.value)
@@ -122,8 +130,15 @@ async function loadSessions() {
 function syncFormFromBook() {
   if (!book.value) return
   formTotalPages.value = book.value.totalPages?.toString() ?? ''
-  formCurrentPage.value = String(book.value.currentPage ?? 0)
+  formCurrentPage.value = String(displayCurrentPage.value)
   formStatus.value = book.value.status
+}
+
+function syncFinishedProgressField() {
+  if (formStatus.value !== 'finished') return
+  const parsedTotalPages = Number(formTotalPages.value)
+  if (!Number.isFinite(parsedTotalPages) || parsedTotalPages <= 0) return
+  formCurrentPage.value = String(Math.floor(parsedTotalPages))
 }
 
 function onStartEdit() {
@@ -139,7 +154,7 @@ function onCancelEdit() {
 async function onSaveMetadata() {
   if (!book.value) return
 
-  const parsedTotalPages = formTotalPages.value.trim() === '' ? null : Number(formTotalPages.value)
+  const parsedTotalPages = String(formTotalPages.value).trim() === '' ? null : Number(formTotalPages.value)
   const parsedCurrentPage = Number(formCurrentPage.value)
   const safeCurrentPage = Number.isFinite(parsedCurrentPage) && parsedCurrentPage >= 0 ? parsedCurrentPage : 0
   const safeTotalPages = parsedTotalPages !== null && Number.isFinite(parsedTotalPages) && parsedTotalPages > 0
@@ -149,9 +164,20 @@ async function onSaveMetadata() {
   const currentPageCapped =
     safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
 
+  const previousStatus = book.value.status
+
+  let nextCurrentPage: number
+  if (formStatus.value === 'finished' && safeTotalPages !== null) {
+    nextCurrentPage = safeTotalPages
+  } else if (previousStatus === 'finished' && formStatus.value !== 'finished' && safeTotalPages !== null && currentPageCapped >= safeTotalPages) {
+    nextCurrentPage = Math.max(0, safeTotalPages - 1)
+  } else {
+    nextCurrentPage = currentPageCapped
+  }
+
   await booksStore.updateBookMetadata(book.value.id, {
     totalPages: safeTotalPages,
-    currentPage: currentPageCapped,
+    currentPage: nextCurrentPage,
     status: formStatus.value,
   })
   if (booksStore.errorKey) {
@@ -159,12 +185,31 @@ async function onSaveMetadata() {
     return
   }
 
+  syncFormFromBook()
+
+  if (previousStatus !== 'finished' && formStatus.value === 'finished') {
+    showBookCompletion({
+      bookId: book.value.id,
+      title: book.value.title,
+      authors: book.value.authors,
+      coverUrl: book.value.coverUrl ?? null,
+    })
+  }
+
   showQueuedFeedbackIfAny()
   editMode.value = false
   notificationsStore.success(t('notifications.metadataSaved'))
 }
 
+const canStartReadingSession = computed(() => {
+  if (!book.value) return false
+  if (book.value.status === 'finished') return false
+  if (book.value.totalPages !== null && book.value.currentPage >= book.value.totalPages) return false
+  return true
+})
+
 async function onStartReadingSession() {
+  if (!canStartReadingSession.value) return
   if (!book.value) return
   await router.push({ name: 'reading', query: { bookId: book.value.id } })
 }
@@ -266,6 +311,8 @@ watch(
   { immediate: true },
 )
 
+watch([formStatus, formTotalPages], syncFinishedProgressField)
+
 onMounted(async () => {
   await booksStore.ensureLibraryLoaded()
   if (bookId.value) booksStore.selectLibraryBook(bookId.value)
@@ -316,7 +363,7 @@ onMounted(async () => {
               <div>
                 <p class="bm-stat-label">{{ t('books.progress') }}</p>
                 <p class="bm-stat-value">
-                  {{ book.currentPage }}
+                  {{ displayCurrentPage }}
                   <span class="text-base font-semibold text-(--app-text-muted)">
                     / {{ book.totalPages ?? t('books.unknownPages') }}
                   </span>
@@ -334,7 +381,7 @@ onMounted(async () => {
             >
               <div
                 class="bm-progress-fill"
-                :style="{ width: `${Math.min(100, Math.round((book.currentPage / book.totalPages) * 100))}%` }"
+                :style="{ width: `${Math.min(100, Math.round((displayCurrentPage / book.totalPages) * 100))}%` }"
               />
             </div>
             <p class="bm-muted mt-2 text-sm">
@@ -345,6 +392,7 @@ onMounted(async () => {
 
           <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
+              v-if="canStartReadingSession"
               type="button"
               class="bm-button bm-button-primary"
               @click="onStartReadingSession"
