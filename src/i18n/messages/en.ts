@@ -356,6 +356,9 @@ export const en = {
     empty: 'No sessions recorded for this range.',
   },
   notifications: {
+    bookCompleted: 'Book completed!',
+    bookCompletedTitle: 'Congratulations!',
+    bookCompletedSubtitle: 'You finished reading this book',
     bookAdded: 'Book added to your library.',
     bookAddedQueuedOffline: 'Offline: book queued to be added when connection is restored.',
     bookRemoved: 'Book removed from your library.',

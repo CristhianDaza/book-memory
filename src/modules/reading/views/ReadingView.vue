@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import PromptModal from '../../../components/PromptModal.vue'
 import { enqueueOfflineFinishReadingSession } from '../../../services/offlineQueueService'
+import { useBookCompletionOverlay } from '../../../composables/useBookCompletionOverlay'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
@@ -25,6 +26,8 @@ const { user } = storeToRefs(authStore)
 const { library } = storeToRefs(booksStore)
 const { selectedBookId, sessionBookId, startPage, elapsedSeconds, running, hasActiveSession, sessionStartedAt } =
   storeToRefs(readingStore)
+
+const { showBookCompletion } = useBookCompletionOverlay()
 
 const saving = ref(false)
 const localError = ref<string | null>(null)
@@ -201,6 +204,9 @@ function finishSessionQueuedOffline(
   totalPages: number | null,
 ) {
   const status = totalPages !== null && end >= totalPages ? ('finished' as const) : ('reading' as const)
+  const bookTitle = effectiveSessionBook.value?.title
+  const bookAuthors = effectiveSessionBook.value?.authors ?? []
+  const bookCoverUrl = effectiveSessionBook.value?.coverUrl ?? null
 
   enqueueOfflineFinishReadingSession(uid, {
     transactionId: createTransactionId(),
@@ -227,6 +233,15 @@ function finishSessionQueuedOffline(
       status,
     })
     .catch(() => {})
+
+  if (status === 'finished') {
+    showBookCompletion({
+      bookId,
+      title: bookTitle ?? '',
+      authors: bookAuthors,
+      coverUrl: bookCoverUrl,
+    })
+  }
 
   void router.push({ name: 'book-detail', params: { id: bookId } }).catch(() => {})
 }
@@ -285,6 +300,10 @@ async function onConfirmFinish() {
     const status =
       totalPages !== null && end >= totalPages ? ('finished' as const) : ('reading' as const)
 
+    const bookTitle = effectiveSessionBook.value?.title
+    const bookAuthors = effectiveSessionBook.value?.authors ?? []
+    const bookCoverUrl = effectiveSessionBook.value?.coverUrl ?? null
+
     await withTimeout(
       booksStore.updateBookMetadata(bookId, {
         totalPages,
@@ -294,6 +313,15 @@ async function onConfirmFinish() {
       5000,
       'network_timeout',
     )
+
+    if (status === 'finished') {
+      showBookCompletion({
+        bookId,
+        title: bookTitle ?? '',
+        authors: bookAuthors,
+        coverUrl: bookCoverUrl,
+      })
+    }
 
     readingStore.resetSession()
     showFinishModal.value = false

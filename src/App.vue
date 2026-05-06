@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from './components/layout/AppShell.vue'
 import AppNotifications from './components/AppNotifications.vue'
+import BookCompletionOverlay from './components/BookCompletionOverlay.vue'
 import ConfirmModal from './components/ConfirmModal.vue'
 import { setAppLocale } from './i18n'
 import { exportUserData } from './services/accountService'
@@ -22,9 +23,11 @@ import { logAppEvent } from './services/observabilityService'
 import type { AppLocale } from './types/i18n'
 import { useAuthStore } from './stores/auth'
 import { useNotificationsStore } from './stores/notifications'
+import { bookCompletionOverlay } from './composables/useBookCompletionOverlay'
 
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
+const { isVisible: bookCompletionVisible, payload: bookCompletionPayload, hideBookCompletion } = bookCompletionOverlay
 const router = useRouter()
 const route = useRoute()
 const { t, locale } = useI18n()
@@ -360,6 +363,14 @@ onBeforeUnmount(() => {
       danger
       @cancel="onCancelDeleteAccountConfirm"
       @confirm="onConfirmDeleteAccount"
+    />
+
+    <BookCompletionOverlay
+      :visible="bookCompletionVisible"
+      :title="bookCompletionPayload?.title"
+      :authors="bookCompletionPayload?.authors"
+      :cover-url="bookCompletionPayload?.coverUrl"
+      @close="hideBookCompletion"
     />
   </AppShell>
 </template>

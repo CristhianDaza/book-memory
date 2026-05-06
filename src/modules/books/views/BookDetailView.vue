@@ -5,6 +5,7 @@ import { BookOpen, Heart, Pencil, Play, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ConfirmModal from '../../../components/ConfirmModal.vue'
+import { useBookCompletionOverlay } from '../../../composables/useBookCompletionOverlay'
 import StatusBadge from '../../../components/ui/StatusBadge.vue'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
@@ -22,6 +23,7 @@ const notificationsStore = useNotificationsStore()
 
 const { favoriteUpdatingIds, metadataUpdatingIds, deletingIds, syncQueuedMessageKey } = storeToRefs(booksStore)
 const { user } = storeToRefs(authStore)
+const { showBookCompletion } = useBookCompletionOverlay()
 
 const bookId = computed(() => String(route.params.id ?? ''))
 const book = computed(() => booksStore.getLibraryBookById(bookId.value))
@@ -152,7 +154,7 @@ function onCancelEdit() {
 async function onSaveMetadata() {
   if (!book.value) return
 
-  const parsedTotalPages = formTotalPages.value.trim() === '' ? null : Number(formTotalPages.value)
+  const parsedTotalPages = String(formTotalPages.value).trim() === '' ? null : Number(formTotalPages.value)
   const parsedCurrentPage = Number(formCurrentPage.value)
   const safeCurrentPage = Number.isFinite(parsedCurrentPage) && parsedCurrentPage >= 0 ? parsedCurrentPage : 0
   const safeTotalPages = parsedTotalPages !== null && Number.isFinite(parsedTotalPages) && parsedTotalPages > 0
@@ -164,6 +166,8 @@ async function onSaveMetadata() {
   const nextCurrentPage =
     formStatus.value === 'finished' && safeTotalPages !== null ? safeTotalPages : currentPageCapped
 
+  const previousStatus = book.value.status
+
   await booksStore.updateBookMetadata(book.value.id, {
     totalPages: safeTotalPages,
     currentPage: nextCurrentPage,
@@ -172,6 +176,15 @@ async function onSaveMetadata() {
   if (booksStore.errorKey) {
     notificationsStore.error(t(booksStore.errorKey))
     return
+  }
+
+  if (previousStatus !== 'finished' && formStatus.value === 'finished') {
+    showBookCompletion({
+      bookId: book.value.id,
+      title: book.value.title,
+      authors: book.value.authors,
+      coverUrl: book.value.coverUrl ?? null,
+    })
   }
 
   showQueuedFeedbackIfAny()

@@ -356,6 +356,9 @@ export const es = {
     empty: 'No hay sesiones registradas para este rango.',
   },
   notifications: {
+    bookCompleted: 'Libro completado!',
+    bookCompletedTitle: 'Felicitaciones!',
+    bookCompletedSubtitle: 'Has terminado de leer este libro',
     bookAdded: 'Libro agregado a tu biblioteca.',
     bookAddedQueuedOffline: 'Sin conexión: libro encolado para agregarse al recuperar internet.',
     bookRemoved: 'Libro eliminado de tu biblioteca.',
