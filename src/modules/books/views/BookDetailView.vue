@@ -53,9 +53,15 @@ function isMetadataUpdating() {
   return metadataUpdatingIds.value.includes(bookId.value)
 }
 
+const displayCurrentPage = computed(() => {
+  if (!book.value) return 0
+  if (book.value.status === 'finished' && book.value.totalPages !== null) return book.value.totalPages
+  return book.value.currentPage
+})
+
 const remainingPages = computed(() => {
   if (!book.value?.totalPages) return null
-  return Math.max(0, book.value.totalPages - book.value.currentPage)
+  return Math.max(0, book.value.totalPages - displayCurrentPage.value)
 })
 const visibleSessions = computed(() => sessions.value.slice(0, visibleSessionsCount.value))
 const canLoadMoreSessions = computed(() => sessions.value.length > visibleSessionsCount.value)
@@ -122,8 +128,15 @@ async function loadSessions() {
 function syncFormFromBook() {
   if (!book.value) return
   formTotalPages.value = book.value.totalPages?.toString() ?? ''
-  formCurrentPage.value = String(book.value.currentPage ?? 0)
+  formCurrentPage.value = String(displayCurrentPage.value)
   formStatus.value = book.value.status
+}
+
+function syncFinishedProgressField() {
+  if (formStatus.value !== 'finished') return
+  const parsedTotalPages = Number(formTotalPages.value)
+  if (!Number.isFinite(parsedTotalPages) || parsedTotalPages <= 0) return
+  formCurrentPage.value = String(Math.floor(parsedTotalPages))
 }
 
 function onStartEdit() {
@@ -148,10 +161,12 @@ async function onSaveMetadata() {
 
   const currentPageCapped =
     safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
+  const nextCurrentPage =
+    formStatus.value === 'finished' && safeTotalPages !== null ? safeTotalPages : currentPageCapped
 
   await booksStore.updateBookMetadata(book.value.id, {
     totalPages: safeTotalPages,
-    currentPage: currentPageCapped,
+    currentPage: nextCurrentPage,
     status: formStatus.value,
   })
   if (booksStore.errorKey) {
@@ -266,6 +281,8 @@ watch(
   { immediate: true },
 )
 
+watch([formStatus, formTotalPages], syncFinishedProgressField)
+
 onMounted(async () => {
   await booksStore.ensureLibraryLoaded()
   if (bookId.value) booksStore.selectLibraryBook(bookId.value)
@@ -316,7 +333,7 @@ onMounted(async () => {
               <div>
                 <p class="bm-stat-label">{{ t('books.progress') }}</p>
                 <p class="bm-stat-value">
-                  {{ book.currentPage }}
+                  {{ displayCurrentPage }}
                   <span class="text-base font-semibold text-(--app-text-muted)">
                     / {{ book.totalPages ?? t('books.unknownPages') }}
                   </span>
@@ -334,7 +351,7 @@ onMounted(async () => {
             >
               <div
                 class="bm-progress-fill"
-                :style="{ width: `${Math.min(100, Math.round((book.currentPage / book.totalPages) * 100))}%` }"
+                :style="{ width: `${Math.min(100, Math.round((displayCurrentPage / book.totalPages) * 100))}%` }"
               />
             </div>
             <p class="bm-muted mt-2 text-sm">
