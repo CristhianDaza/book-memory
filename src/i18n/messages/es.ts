@@ -220,6 +220,7 @@ export const es = {
     addBook: 'Agregar',
     addWithPagesTitle: 'Agregar libro',
     addWithPagesMessage: 'Puedes definir las páginas ahora o continuar sin este dato.',
+    addAnotherBook: 'Agregar otro libro después',
     addedBook: 'Agregado',
     addedBookReason: 'Este libro ya está en tu biblioteca.',
     addingBook: 'Guardando...',

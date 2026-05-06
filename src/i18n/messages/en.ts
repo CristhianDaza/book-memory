@@ -220,6 +220,7 @@ export const en = {
     addBook: 'Add',
     addWithPagesTitle: 'Add book',
     addWithPagesMessage: 'You can set pages now or continue without this data.',
+    addAnotherBook: 'Add another book after this',
     addedBook: 'Added',
     addedBookReason: 'This book is already in your library.',
     addingBook: 'Saving...',

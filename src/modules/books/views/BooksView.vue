@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { Heart, Plus, Search, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import type { BookSearchResult } from '../../../types/books'
 import type { AppLocale } from '../../../types/i18n'
 import type { LibraryStatusFilter, SearchLanguageMode } from '../../../types/books-store'
@@ -16,6 +17,7 @@ import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
 
 const { t, locale } = useI18n()
+const router = useRouter()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
@@ -25,6 +27,7 @@ const searchInputRef = ref<HTMLInputElement | null>(null)
 const pendingBookToAdd = ref<BookSearchResult | null>(null)
 const showAddBookPagesModal = ref(false)
 const pendingManualPages = ref<string>('')
+const addAnotherBook = ref(false)
 const addMode = ref<'search' | 'manual'>('search')
 const manualTitle = ref('')
 const manualAuthors = ref('')
@@ -148,6 +151,15 @@ function onCancelAddBookWithPages() {
   showAddBookPagesModal.value = false
   pendingBookToAdd.value = null
   pendingManualPages.value = ''
+  addAnotherBook.value = false
+}
+
+function findAddedBook(book: BookSearchResult) {
+  return (
+    booksStore.getLibraryBookById(book.id) ??
+    booksStore.getLibraryBookById(book.id.replace(':', '_')) ??
+    (booksStore.selectedLibraryBookId ? booksStore.getLibraryBookById(booksStore.selectedLibraryBookId) : null)
+  )
 }
 
 async function onConfirmAddBookWithPages() {
@@ -169,7 +181,22 @@ async function onConfirmAddBookWithPages() {
     notificationsStore.success(t('notifications.bookAdded'))
   }
   showQueuedFeedbackIfAny()
+
+  const shouldAddAnotherBook = addAnotherBook.value
+  const addedBook = findAddedBook(payload)
+
   onCancelAddBookWithPages()
+
+  if (shouldAddAnotherBook) {
+    queryInput.value = ''
+    booksStore.clearSearch()
+    addMode.value = 'search'
+  } else {
+    closeAddModal()
+    if (addedBook) {
+      router.push({ name: 'book-detail', params: { id: addedBook.id } })
+    }
+  }
 }
 
 async function onToggleFavorite(bookId: string) {
@@ -336,7 +363,7 @@ withBodyScrollLock(showAddModal)
           class="bm-book-card animate-pulse"
         >
           <div class="aspect-2/3 w-full bg-(--app-surface-muted)" />
-          <div class="space-y-2 p-3">
+          <div class="space-y-2 p-2 sm:p-3">
             <div class="h-4 w-5/6 rounded bg-(--app-border)" />
             <div class="h-3 w-2/3 rounded bg-(--app-border)" />
           </div>
@@ -350,13 +377,12 @@ withBodyScrollLock(showAddModal)
         <article
           v-for="item in filteredSortedLibrary"
           :key="item.id"
-          class="bm-book-card"
+          class="bm-book-card overflow-visible"
         >
-          <RouterLink
-            class="block"
-            :to="{ name: 'book-detail', params: { id: item.id } }"
-          >
-            <div class="bm-book-cover">
+          <div class="bm-book-cover relative">
+            <RouterLink
+              :to="{ name: 'book-detail', params: { id: item.id } }"
+            >
               <img
                 v-if="item.coverUrl"
                 :src="item.coverUrl"
@@ -369,35 +395,41 @@ withBodyScrollLock(showAddModal)
               >
                 {{ t('books.noCover') }}
               </div>
+            </RouterLink>
 
-              <button
-                type="button"
-                class="absolute right-2 top-2 cursor-pointer rounded-full border bg-(--app-surface) p-1.5 shadow transition disabled:cursor-not-allowed disabled:opacity-60"
-                :class="
-                  item.favorite
-                    ? 'border-(--app-danger) text-(--app-danger)'
-                    : 'border-(--app-border) text-(--app-text-muted) hover:text-(--app-danger)'
-                "
-                :disabled="isFavoriteUpdating(item.id)"
-                @click.prevent.stop="onToggleFavorite(item.id)"
-              >
-                <Heart
-                  :size="16"
-                  :fill="item.favorite ? 'currentColor' : 'none'"
-                  aria-hidden="true"
-                />
-              </button>
-            </div>
+            <button
+              type="button"
+              class="absolute -right-1 -top-1 z-10 cursor-pointer rounded-full border bg-(--app-surface) p-0.5 shadow-sm transition sm:right-2 sm:top-2 sm:p-1 sm:shadow disabled:cursor-not-allowed disabled:opacity-60"
+              :class="
+                item.favorite
+                  ? 'border-(--app-danger) text-(--app-danger)'
+                  : 'border-(--app-border) text-(--app-text-muted) hover:text-(--app-danger)'
+              "
+              :disabled="isFavoriteUpdating(item.id)"
+              @click.prevent.stop="onToggleFavorite(item.id)"
+            >
+              <Heart
+                :size="12"
+                class="sm:size-4"
+                :fill="item.favorite ? 'currentColor' : 'none'"
+                aria-hidden="true"
+              />
+            </button>
+          </div>
 
-            <div class="space-y-1 p-3">
-              <p class="line-clamp-2 min-h-10 font-serif text-sm font-semibold text-(--app-text)">
+          <div class="space-y-1 p-2 sm:p-3">
+            <RouterLink
+              class="block"
+              :to="{ name: 'book-detail', params: { id: item.id } }"
+            >
+              <p class="line-clamp-2 min-h-9 font-serif text-[13px] font-semibold text-(--app-text) sm:text-sm">
                 {{ item.title }}
               </p>
-              <p class="bm-muted line-clamp-1 text-[11px]">
+              <p class="bm-muted line-clamp-1 text-[10px] sm:text-[11px]">
                 {{ t('books.by') }} {{ item.authors.join(', ') || t('books.unknownAuthor') }}
               </p>
-            </div>
-          </RouterLink>
+            </RouterLink>
+          </div>
         </article>
       </div>
 
@@ -627,12 +659,13 @@ withBodyScrollLock(showAddModal)
             >
               <div class="flex gap-3">
                 <div class="h-24 w-16 rounded-md bg-(--app-surface-muted)" />
-                <div class="flex-1 space-y-2">
-                  <div class="h-4 w-2/3 rounded bg-(--app-border)" />
-                  <div class="h-3 w-1/2 rounded bg-(--app-border)" />
-                  <div class="h-3 w-1/3 rounded bg-(--app-border)" />
+                <div class="min-w-0 flex-1 space-y-2">
+                  <div class="h-4 w-full rounded bg-(--app-border) sm:w-2/3" />
+                  <div class="h-3 w-3/4 rounded bg-(--app-border) sm:w-1/2" />
+                  <div class="h-3 w-1/2 rounded bg-(--app-border) sm:w-1/3" />
+                  <div class="h-8 w-full rounded bg-(--app-border) sm:hidden" />
                 </div>
-                <div class="h-8 w-20 rounded bg-(--app-border)" />
+                <div class="hidden h-8 w-20 rounded bg-(--app-border) sm:block" />
               </div>
             </article>
           </div>
@@ -689,39 +722,41 @@ withBodyScrollLock(showAddModal)
                   {{ t('books.noCover') }}
                 </div>
 
-                <div class="min-w-0 flex-1">
-                  <p class="line-clamp-2 font-serif text-base font-semibold text-(--app-text)">
-                    {{ book.title }}
-                  </p>
-                  <p class="bm-muted text-xs">
-                    {{ t('books.by') }} {{ book.authors.join(', ') || t('books.unknownAuthor') }}
-                  </p>
-                  <div class="bm-muted mt-1 flex flex-wrap gap-2 text-[11px]">
-                    <span class="rounded bg-(--app-surface-muted) px-2 py-0.5">
-                      {{ t('books.source') }}: {{ book.source }}
-                    </span>
-                    <span class="rounded bg-(--app-surface-muted) px-2 py-0.5">
-                      {{ t('books.pages') }}:
-                      {{ book.totalPages ?? t('books.unknownPages') }}
-                    </span>
+                <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-start">
+                  <div class="min-w-0 flex-1">
+                    <p class="line-clamp-2 font-serif text-base font-semibold text-(--app-text)">
+                      {{ book.title }}
+                    </p>
+                    <p class="bm-muted text-xs">
+                      {{ t('books.by') }} {{ book.authors.join(', ') || t('books.unknownAuthor') }}
+                    </p>
+                    <div class="bm-muted mt-1 flex flex-wrap gap-2 text-[11px]">
+                      <span class="rounded bg-(--app-surface-muted) px-2 py-0.5">
+                        {{ t('books.source') }}: {{ book.source }}
+                      </span>
+                      <span class="rounded bg-(--app-surface-muted) px-2 py-0.5">
+                        {{ t('books.pages') }}:
+                        {{ book.totalPages ?? t('books.unknownPages') }}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                <div class="h-fit w-28 text-right">
-                  <button
-                    type="button"
-                    class="bm-button bm-button-success w-full text-xs"
-                    :disabled="isAddDisabled(book)"
-                    @click="onAddBook(book.id)"
-                  >
-                    {{ addButtonLabel(book) }}
-                  </button>
-                  <p
-                    v-if="addDisabledReason(book)"
-                    class="bm-muted mt-1 text-[10px] leading-tight"
-                  >
-                    {{ addDisabledReason(book) }}
-                  </p>
+                  <div class="h-fit w-full text-right sm:w-28">
+                    <button
+                      type="button"
+                      class="bm-button bm-button-success w-full text-xs"
+                      :disabled="isAddDisabled(book)"
+                      @click="onAddBook(book.id)"
+                    >
+                      {{ addButtonLabel(book) }}
+                    </button>
+                    <p
+                      v-if="addDisabledReason(book)"
+                      class="bm-muted mt-1 text-left text-[10px] leading-tight sm:text-right"
+                    >
+                      {{ addDisabledReason(book) }}
+                    </p>
+                  </div>
                 </div>
               </div>
             </article>
@@ -754,6 +789,17 @@ withBodyScrollLock(showAddModal)
       @cancel="onCancelAddBookWithPages"
       @confirm="onConfirmAddBookWithPages"
       @update:value="pendingManualPages = $event"
-    />
+    >
+      <template #details>
+        <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-(--app-text)">
+          <input
+            v-model="addAnotherBook"
+            type="checkbox"
+            class="h-4 w-4 rounded border-(--app-border) text-(--app-primary) accent-(--app-primary)"
+          >
+          {{ t('books.addAnotherBook') }}
+        </label>
+      </template>
+    </PromptModal>
   </div>
 </template>
