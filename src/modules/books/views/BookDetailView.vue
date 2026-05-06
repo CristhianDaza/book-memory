@@ -163,10 +163,17 @@ async function onSaveMetadata() {
 
   const currentPageCapped =
     safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
-  const nextCurrentPage =
-    formStatus.value === 'finished' && safeTotalPages !== null ? safeTotalPages : currentPageCapped
 
   const previousStatus = book.value.status
+
+  let nextCurrentPage: number
+  if (formStatus.value === 'finished' && safeTotalPages !== null) {
+    nextCurrentPage = safeTotalPages
+  } else if (previousStatus === 'finished' && formStatus.value !== 'finished' && safeTotalPages !== null && currentPageCapped >= safeTotalPages) {
+    nextCurrentPage = Math.max(0, safeTotalPages - 1)
+  } else {
+    nextCurrentPage = currentPageCapped
+  }
 
   await booksStore.updateBookMetadata(book.value.id, {
     totalPages: safeTotalPages,
@@ -177,6 +184,8 @@ async function onSaveMetadata() {
     notificationsStore.error(t(booksStore.errorKey))
     return
   }
+
+  syncFormFromBook()
 
   if (previousStatus !== 'finished' && formStatus.value === 'finished') {
     showBookCompletion({
@@ -192,7 +201,15 @@ async function onSaveMetadata() {
   notificationsStore.success(t('notifications.metadataSaved'))
 }
 
+const canStartReadingSession = computed(() => {
+  if (!book.value) return false
+  if (book.value.status === 'finished') return false
+  if (book.value.totalPages !== null && book.value.currentPage >= book.value.totalPages) return false
+  return true
+})
+
 async function onStartReadingSession() {
+  if (!canStartReadingSession.value) return
   if (!book.value) return
   await router.push({ name: 'reading', query: { bookId: book.value.id } })
 }
@@ -375,6 +392,7 @@ onMounted(async () => {
 
           <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
+              v-if="canStartReadingSession"
               type="button"
               class="bm-button bm-button-primary"
               @click="onStartReadingSession"

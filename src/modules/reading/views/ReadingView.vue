@@ -41,6 +41,19 @@ const activeSessionBook = computed(() =>
   sessionBookId.value ? library.value.find((book) => book.id === sessionBookId.value) ?? null : null,
 )
 const effectiveSessionBook = computed(() => activeSessionBook.value ?? selectedBook.value)
+
+const availableBooksForReading = computed(() =>
+  library.value.filter(
+    (book) =>
+      book.status === 'reading' &&
+      (book.totalPages === null || book.currentPage < book.totalPages),
+  ),
+)
+
+const isSelectedBookAvailable = computed(() => {
+  if (!selectedBook.value) return false
+  return availableBooksForReading.value.some((book) => book.id === selectedBook.value!.id)
+})
 const formattedElapsed = computed(() => {
   const total = elapsedSeconds.value
   const mins = Math.floor(total / 60)
@@ -64,6 +77,14 @@ const remainingPercent = computed(() => {
   if (total <= 0) return null
   const remaining = Math.max(0, total - finishEndPageNumber.value)
   return Math.max(0, Math.min(100, Math.round((remaining / total) * 100)))
+})
+
+const canStartReading = computed(() => {
+  const book = selectedBook.value
+  if (!book) return false
+  if (book.status === 'finished') return false
+  if (book.totalPages !== null && book.currentPage >= book.totalPages) return false
+  return true
 })
 
 watch(selectedBook, (book) => {
@@ -365,7 +386,7 @@ onMounted(async () => {
             @change="onSelectBook(selectedBookId)"
           >
             <option
-              v-for="book in library"
+              v-for="book in availableBooksForReading"
               :key="book.id"
               :value="book.id"
             >
@@ -381,7 +402,7 @@ onMounted(async () => {
         </label>
 
         <button
-          v-if="effectiveSessionBook"
+          v-if="effectiveSessionBook && (bookSelectionLockedByRoute || isSelectedBookAvailable)"
           type="button"
           class="bm-subtle-panel flex w-full cursor-pointer items-center gap-3 text-left transition hover:border-(--app-primary) hover:bg-(--app-surface-raised)"
           @click="onOpenBookDetail(effectiveSessionBook.id)"
@@ -419,6 +440,13 @@ onMounted(async () => {
           </div>
         </button>
 
+        <p
+          v-else-if="!bookSelectionLockedByRoute"
+          class="bm-soft mt-2 text-sm"
+        >
+          {{ t('reading.selectBook') }}
+        </p>
+
         <label class="bm-label">
           {{ t('reading.startPage') }}
           <input
@@ -453,7 +481,7 @@ onMounted(async () => {
       <button
         type="button"
         class="bm-button bm-button-primary"
-        :disabled="running"
+        :disabled="running || !canStartReading"
         @click="onStart"
       >
         <Play
