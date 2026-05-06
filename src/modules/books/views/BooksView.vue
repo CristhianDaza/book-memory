@@ -402,7 +402,7 @@ withBodyScrollLock(showAddModal)
 
             <button
               type="button"
-              class="absolute -right-1 -top-1 z-10 cursor-pointer rounded-full border bg-(--app-surface) p-0.5 shadow-sm transition sm:right-2 sm:top-2 sm:p-1 sm:shadow disabled:cursor-not-allowed disabled:opacity-60"
+              class="absolute right-2 top-2 z-10 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border bg-(--app-surface) shadow transition disabled:cursor-not-allowed disabled:opacity-60"
               :class="
                 item.favorite
                   ? 'border-(--app-danger) text-(--app-danger)'
@@ -412,8 +412,7 @@ withBodyScrollLock(showAddModal)
               @click.prevent.stop="onToggleFavorite(item.id)"
             >
               <Heart
-                :size="12"
-                class="sm:size-4"
+                :size="16"
                 :fill="item.favorite ? 'currentColor' : 'none'"
                 aria-hidden="true"
               />
