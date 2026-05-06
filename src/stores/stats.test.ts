@@ -7,6 +7,7 @@ import { useStatsStore } from './stats'
 import { fetchLibraryBooks } from '../services/libraryService'
 import { fetchUserSessions } from '../services/readingSessionService'
 import { fetchStatsGoals, saveStatsGoals } from '../services/statsGoalsService'
+import { fetchStreakDays, markStreakDay } from '../services/streakService'
 
 vi.mock('../i18n', () => ({
   i18n: {
@@ -29,10 +30,31 @@ vi.mock('../services/statsGoalsService', () => ({
   saveStatsGoals: vi.fn(),
 }))
 
+vi.mock('../services/streakService', () => ({
+  fetchStreakDays: vi.fn(),
+  markStreakDay: vi.fn(),
+}))
+
+vi.mock('../services/offlineQueueService', () => ({
+  enqueueOfflineStreakDay: vi.fn(),
+}))
+
 describe('stats store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    vi.mocked(fetchStreakDays).mockResolvedValue([])
+    vi.mocked(markStreakDay).mockImplementation(async (_uid, payload) => ({
+      created: true,
+      record: {
+        id: payload.dayId,
+        dayId: payload.dayId,
+        actions: [payload.action],
+        firstAction: payload.action,
+        lastAction: payload.action,
+        activityCount: 1,
+      },
+    }))
   })
 
   it('builds top books and computes averages', async () => {

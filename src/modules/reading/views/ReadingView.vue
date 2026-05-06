@@ -12,6 +12,7 @@ import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
 import { useReadingStore } from '../../../stores/reading'
 import { useSessionsStore } from '../../../stores/sessions'
+import { useStreakStore } from '../../../stores/streak'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -21,6 +22,7 @@ const booksStore = useBooksStore()
 const readingStore = useReadingStore()
 const sessionsStore = useSessionsStore()
 const notificationsStore = useNotificationsStore()
+const streakStore = useStreakStore()
 
 const { user } = storeToRefs(authStore)
 const { library } = storeToRefs(booksStore)
@@ -258,6 +260,7 @@ function finishSessionQueuedOffline(
     currentPage: end,
     status,
   })
+  void streakStore.markTodayActivity('reading_session_finished')
 
   readingStore.resetSession()
   showFinishModal.value = false

@@ -49,6 +49,11 @@ export interface QueuedLibraryDeletePayload {
   bookId: string
 }
 
+export interface QueuedStreakDayPayload {
+  dayId: string
+  action: 'book_added' | 'status_changed' | 'book_finished' | 'reading_session_finished'
+}
+
 export type OfflineQueueAction =
   | 'save_reading_state'
   | 'clear_reading_state'
@@ -57,6 +62,7 @@ export type OfflineQueueAction =
   | 'library_update_favorite'
   | 'library_update_metadata'
   | 'library_delete_book'
+  | 'streak_mark_day'
 
 export interface OfflineQueueItem {
   id: string
@@ -69,6 +75,7 @@ export interface OfflineQueueItem {
     | QueuedLibraryFavoritePayload
     | QueuedLibraryMetadataPayload
     | QueuedLibraryDeletePayload
+    | QueuedStreakDayPayload
     | null
   createdAt: string
 }
@@ -84,6 +91,7 @@ export interface OfflineConflictItem {
     | QueuedLibraryFavoritePayload
     | QueuedLibraryMetadataPayload
     | QueuedLibraryDeletePayload
+    | QueuedStreakDayPayload
     | null
   createdAt: string
   failedAt: string

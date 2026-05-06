@@ -30,7 +30,7 @@ const conflictCount = computed(() => getOfflineConflictCount())
 const hasConflicts = computed(() => conflictCount.value > 0)
 const hasPending = computed(() => pendingCount.value > 0)
 
-type SyncCategory = 'sessions' | 'books' | 'favorites' | 'reading_state' | 'other'
+type SyncCategory = 'sessions' | 'books' | 'favorites' | 'reading_state' | 'streak' | 'other'
 
 interface GroupedSyncItems<T> {
   key: SyncCategory
@@ -81,6 +81,7 @@ function mapActionToCategory(action: OfflineQueueItem['action']): SyncCategory {
     return 'books'
   }
   if (action === 'save_reading_state' || action === 'clear_reading_state') return 'reading_state'
+  if (action === 'streak_mark_day') return 'streak'
   return 'other'
 }
 
@@ -89,6 +90,7 @@ function categoryLabel(category: SyncCategory): string {
   if (category === 'books') return t('sync.groupBooks')
   if (category === 'favorites') return t('sync.groupFavorites')
   if (category === 'reading_state') return t('sync.groupReadingState')
+  if (category === 'streak') return t('sync.groupStreak')
   return t('sync.groupOther')
 }
 
@@ -103,6 +105,7 @@ function describeQueueItem(item: OfflineQueueItem): string {
   if (item.action === 'library_update_favorite') return t('sync.favoriteUpdated')
   if (item.action === 'library_update_metadata') return t('sync.bookUpdated')
   if (item.action === 'library_delete_book') return t('sync.bookRemoved')
+  if (item.action === 'streak_mark_day') return t('sync.streakUpdated')
   return t('sync.unknownChange')
 }
 

@@ -8,6 +8,7 @@ import {
 } from '../services/readingSessionService'
 import type { CreateReadingSessionInput, ReadingSessionRecord } from '../types/reading'
 import { useAuthStore } from './auth'
+import { useStreakStore } from './streak'
 
 export const useSessionsStore = defineStore('sessions', () => {
   const allSessions = ref<ReadingSessionRecord[]>([])
@@ -79,6 +80,12 @@ export const useSessionsStore = defineStore('sessions', () => {
     if (!uid) return
     await createReadingSession(uid, payload)
     await refreshSessions()
+    try {
+      const streakStore = useStreakStore()
+      await streakStore.markTodayActivity('reading_session_finished')
+    } catch {
+      // Streak tracking must not block session persistence.
+    }
   }
 
   async function updateSession(

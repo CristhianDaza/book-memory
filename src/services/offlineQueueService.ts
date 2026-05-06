@@ -6,6 +6,7 @@ import {
 } from './libraryService'
 import { createReadingSessionWithId, deleteSessionsForBook } from './readingSessionService'
 import { clearReadingState, saveReadingState } from './readingStateService'
+import { markStreakDay } from './streakService'
 import type {
   OfflineConflictItem,
   OfflineQueueItem,
@@ -15,6 +16,7 @@ import type {
   QueuedLibraryFavoritePayload,
   QueuedLibraryMetadataPayload,
   QueuedReadingStatePayload,
+  QueuedStreakDayPayload,
 } from '../types/offline-queue'
 
 const STORAGE_KEY = 'book-memory-offline-queue'
@@ -330,6 +332,27 @@ export function enqueueOfflineLibraryDeleteBook(uid: string, payload: QueuedLibr
   writeQueue(items)
 }
 
+export function enqueueOfflineStreakDay(uid: string, payload: QueuedStreakDayPayload) {
+  const items = readQueue()
+  const existing = items.some(
+    (item) =>
+      item.action === 'streak_mark_day' &&
+      item.uid === uid &&
+      item.payload &&
+      (item.payload as QueuedStreakDayPayload).dayId === payload.dayId &&
+      (item.payload as QueuedStreakDayPayload).action === payload.action,
+  )
+  if (existing) return
+  items.push({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    action: 'streak_mark_day',
+    uid,
+    payload,
+    createdAt: new Date().toISOString(),
+  })
+  writeQueue(items)
+}
+
 export async function replayOfflineQueue() {
   if (replaying) return
   replaying = true
@@ -414,6 +437,10 @@ export async function replayOfflineQueue() {
           const payload = item.payload as QueuedLibraryDeletePayload
           await deleteSessionsForBook(item.uid, payload.bookId)
           await deleteLibraryBook(item.uid, payload.bookId)
+        }
+        if (item.action === 'streak_mark_day' && item.payload) {
+          const payload = item.payload as QueuedStreakDayPayload
+          await markStreakDay(item.uid, payload)
         }
       } catch (error) {
         if (item.action === 'finish_reading_session') {

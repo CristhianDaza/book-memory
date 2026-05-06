@@ -26,6 +26,12 @@ const mockNotificationsStore = vi.hoisted(() => ({
   error: vi.fn(),
 }))
 
+const mockStreakStore = vi.hoisted(() => ({
+  overlayVisible: false,
+  overlayPayload: null,
+  hideOverlay: vi.fn(),
+}))
+
 const mockOfflineQueueService = vi.hoisted(() => ({
   clearOfflineConflicts: vi.fn(),
   getOfflineConflicts: vi.fn(),
@@ -48,6 +54,10 @@ vi.mock('./stores/auth', () => ({
 
 vi.mock('./stores/notifications', () => ({
   useNotificationsStore: () => mockNotificationsStore,
+}))
+
+vi.mock('./stores/streak', () => ({
+  useStreakStore: () => mockStreakStore,
 }))
 
 vi.mock('./services/offlineQueueService', () => mockOfflineQueueService)
