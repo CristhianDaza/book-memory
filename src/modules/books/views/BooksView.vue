@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { Heart, Plus, Search, X } from 'lucide-vue-next'
+import { Check, Heart, Plus, Search, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import type { BookSearchResult } from '../../../types/books'
@@ -404,6 +404,17 @@ withBodyScrollLock(showAddModal)
                 {{ t('books.noCover') }}
               </div>
             </RouterLink>
+
+            <span
+              v-if="item.status === 'finished'"
+              class="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full border border-white/80 bg-(--app-success) px-2 py-1 text-[10px] font-bold leading-none text-white shadow-lg"
+            >
+              <Check
+                :size="12"
+                aria-hidden="true"
+              />
+              {{ t('books.readBadge') }}
+            </span>
 
             <button
               type="button"

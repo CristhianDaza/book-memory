@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
-import { BookOpen, Heart, Pencil, Play, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, BookOpen, Heart, Pencil, Play, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ConfirmModal from '../../../components/ConfirmModal.vue'
@@ -326,9 +326,21 @@ onMounted(async () => {
 <template>
   <section class="bm-panel">
     <template v-if="book">
-      <p class="bm-eyebrow">
-        {{ t('books.detailTitle') }}
-      </p>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p class="bm-eyebrow">
+          {{ t('books.detailTitle') }}
+        </p>
+        <RouterLink
+          class="bm-button w-full sm:w-fit"
+          :to="{ name: 'books' }"
+        >
+          <ArrowLeft
+            :size="17"
+            aria-hidden="true"
+          />
+          {{ t('books.backToLibrary') }}
+        </RouterLink>
+      </div>
       <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
         <div class="mx-auto w-48 lg:mx-0">
           <div class="overflow-hidden rounded-2xl border border-(--app-border) bg-(--app-surface-muted) shadow-lg">
