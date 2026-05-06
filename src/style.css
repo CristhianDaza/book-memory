@@ -531,6 +531,14 @@ a {
   opacity: 0.58;
 }
 
+.bm-library-search-input {
+  padding-left: 2.35rem;
+}
+
+.bm-library-search-icon {
+  display: block;
+}
+
 .bm-label {
   display: block;
   color: var(--app-text-muted);

@@ -299,58 +299,61 @@ withBodyScrollLock(showAddModal)
         {{ mappedError }}
       </p>
 
-      <div class="bm-toolbar">
-        <div class="flex flex-wrap items-center gap-3">
-          <label class="bm-label flex cursor-pointer items-center gap-2 text-sm">
+      <div class="bm-toolbar grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(8rem,0.85fr)_minmax(10rem,1fr)_minmax(14rem,1.4fr)_minmax(10rem,1fr)]">
+        <label class="bm-label grid gap-1">
+          <span>{{ t('books.favoritesFilter') }}</span>
+          <span class="flex min-h-10 cursor-pointer items-center gap-2 rounded-[0.85rem] border border-(--app-border-strong) bg-(--app-surface-raised) px-3 text-sm text-(--app-text)">
             <input
               v-model="showOnlyFavorites"
               type="checkbox"
               class="h-4 w-4 cursor-pointer accent-(--app-primary)"
             >
             {{ t('books.onlyFavorites') }}
-          </label>
+          </span>
+        </label>
 
-          <label class="bm-label flex items-center gap-2 text-sm">
-            <span>{{ t('books.filterStatus') }}</span>
-            <select
-              :value="libraryStatusFilter"
-              class="bm-select w-auto py-1 text-sm"
-              @change="onChangeLibraryStatusFilter(($event.target as HTMLSelectElement).value as LibraryStatusFilter)"
-            >
-              <option value="all">{{ t('books.status_all') }}</option>
-              <option value="reading">{{ t('books.status_reading') }}</option>
-              <option value="finished">{{ t('books.status_finished') }}</option>
-              <option value="wishlist">{{ t('books.status_wishlist') }}</option>
-            </select>
-          </label>
-        </div>
+        <label class="bm-label grid gap-1">
+          <span>{{ t('books.filterStatus') }}</span>
+          <select
+            :value="libraryStatusFilter"
+            class="bm-select min-h-10 py-2 text-sm"
+            @change="onChangeLibraryStatusFilter(($event.target as HTMLSelectElement).value as LibraryStatusFilter)"
+          >
+            <option value="all">{{ t('books.status_all') }}</option>
+            <option value="reading">{{ t('books.status_reading') }}</option>
+            <option value="finished">{{ t('books.status_finished') }}</option>
+            <option value="wishlist">{{ t('books.status_wishlist') }}</option>
+          </select>
+        </label>
 
-        <div class="flex flex-wrap items-center gap-2">
-          <label class="relative block w-full sm:w-64">
+        <label class="bm-label grid gap-1">
+          <span>{{ t('books.librarySearchLabel') }}</span>
+          <span class="relative block">
             <Search
               :size="15"
-              class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-(--app-text-soft)"
+              class="bm-library-search-icon pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-(--app-text-soft)"
               aria-hidden="true"
             />
             <input
               v-model="librarySearchQuery"
               type="text"
               :placeholder="t('books.librarySearchPlaceholder')"
-              class="bm-input py-1 pl-9 text-sm"
+              class="bm-input bm-library-search-input min-h-10 py-2 text-sm"
             >
-          </label>
-          <label class="bm-label flex items-center gap-2 text-sm">
-            <span>{{ t('books.sortBy') }}</span>
-            <select
-              v-model="librarySortMode"
-              class="bm-select w-auto py-1 text-sm"
-            >
-              <option value="favorite_first">{{ t('books.sortFavoriteFirst') }}</option>
-              <option value="recent">{{ t('books.sortRecent') }}</option>
-              <option value="title_asc">{{ t('books.sortTitleAsc') }}</option>
-            </select>
-          </label>
-        </div>
+          </span>
+        </label>
+
+        <label class="bm-label grid gap-1">
+          <span>{{ t('books.sortBy') }}</span>
+          <select
+            v-model="librarySortMode"
+            class="bm-select min-h-10 py-2 text-sm"
+          >
+            <option value="favorite_first">{{ t('books.sortFavoriteFirst') }}</option>
+            <option value="recent">{{ t('books.sortRecent') }}</option>
+            <option value="title_asc">{{ t('books.sortTitleAsc') }}</option>
+          </select>
+        </label>
       </div>
 
       <div

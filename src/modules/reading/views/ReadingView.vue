@@ -109,14 +109,25 @@ async function loadContext() {
     return
   }
 
-  const initialBookId = routeBookId.value || library.value[0]?.id || ''
-  if (initialBookId) readingStore.setSelectedBook(initialBookId)
+  if (routeBookId.value) {
+    readingStore.setSelectedBook(routeBookId.value)
+    return
+  }
+
+  if (selectedBookId.value) readingStore.setSelectedBook('')
+  if (startPage.value !== 0) readingStore.setStartPage(0)
+  readingStore.setEndPage(0)
 }
 
 function onSelectBook(bookId: string) {
   if (hasActiveSession.value) return
   readingStore.setSelectedBook(bookId)
   const selected = library.value.find((book) => book.id === bookId)
+  if (!selected) {
+    readingStore.setStartPage(0)
+    readingStore.setEndPage(0)
+    return
+  }
   if (!hasActiveSession.value && selected) {
     readingStore.setStartPage(selected.currentPage)
     readingStore.setEndPage(selected.currentPage)
@@ -390,6 +401,12 @@ onMounted(async () => {
             :disabled="hasActiveSession"
             @change="onSelectBook(selectedBookId)"
           >
+            <option
+              disabled
+              value=""
+            >
+              {{ t('reading.selectBookPlaceholder') }}
+            </option>
             <option
               v-for="book in availableBooksForReading"
               :key="book.id"
