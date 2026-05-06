@@ -117,6 +117,7 @@ describe('books store', () => {
     store.library = [createBook({ id: 'book-1', totalPages: 320, currentPage: 12, status: 'reading' })]
 
     await store.updateBookMetadata('book-1', {
+      coverUrl: null,
       totalPages: 320,
       currentPage: 12,
       status: 'finished',
@@ -125,9 +126,33 @@ describe('books store', () => {
     expect(store.library[0]?.currentPage).toBe(320)
     expect(store.library[0]?.status).toBe('finished')
     expect(updateLibraryBookMetadata).toHaveBeenCalledWith('user-1', 'book-1', {
+      coverUrl: null,
       totalPages: 320,
       currentPage: 320,
       status: 'finished',
+    })
+  })
+
+  it('updates a missing cover URL through metadata', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useBooksStore()
+    const coverUrl = 'https://example.com/cover.jpg'
+    store.library = [createBook({ id: 'book-1', coverUrl: null, totalPages: 320, currentPage: 12 })]
+
+    await store.updateBookMetadata('book-1', {
+      coverUrl,
+      totalPages: 320,
+      currentPage: 12,
+      status: 'reading',
+    })
+
+    expect(store.library[0]?.coverUrl).toBe(coverUrl)
+    expect(updateLibraryBookMetadata).toHaveBeenCalledWith('user-1', 'book-1', {
+      coverUrl,
+      totalPages: 320,
+      currentPage: 12,
+      status: 'reading',
     })
   })
 

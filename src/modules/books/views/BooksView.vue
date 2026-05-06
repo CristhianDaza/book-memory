@@ -27,6 +27,7 @@ const searchInputRef = ref<HTMLInputElement | null>(null)
 const pendingBookToAdd = ref<BookSearchResult | null>(null)
 const showAddBookPagesModal = ref(false)
 const pendingManualPages = ref<string>('')
+const pendingManualCoverUrl = ref<string>('')
 const addAnotherBook = ref(false)
 const addMode = ref<'search' | 'manual'>('search')
 const manualTitle = ref('')
@@ -144,6 +145,7 @@ async function onAddBook(bookId: string) {
   if (!target) return
   pendingBookToAdd.value = target
   pendingManualPages.value = target.totalPages ? String(target.totalPages) : ''
+  pendingManualCoverUrl.value = ''
   showAddBookPagesModal.value = true
 }
 
@@ -151,6 +153,7 @@ function onCancelAddBookWithPages() {
   showAddBookPagesModal.value = false
   pendingBookToAdd.value = null
   pendingManualPages.value = ''
+  pendingManualCoverUrl.value = ''
   addAnotherBook.value = false
 }
 
@@ -167,8 +170,10 @@ async function onConfirmAddBookWithPages() {
 
   const parsed = Number(pendingManualPages.value)
   const safePages = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null
+  const manualCoverUrl = pendingManualCoverUrl.value.trim()
   const payload: BookSearchResult = {
     ...pendingBookToAdd.value,
+    coverUrl: pendingBookToAdd.value.coverUrl ?? (manualCoverUrl || null),
     totalPages: safePages,
   }
 
@@ -793,6 +798,18 @@ withBodyScrollLock(showAddModal)
       @update:value="pendingManualPages = $event"
     >
       <template #details>
+        <label
+          v-if="pendingBookToAdd && !pendingBookToAdd.coverUrl"
+          class="bm-label mt-3 block"
+        >
+          {{ t('books.manualCoverUrl') }}
+          <input
+            v-model="pendingManualCoverUrl"
+            type="url"
+            :placeholder="t('books.manualCoverUrlPlaceholder')"
+            class="bm-input mt-1 text-sm"
+          >
+        </label>
         <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-(--app-text)">
           <input
             v-model="addAnotherBook"

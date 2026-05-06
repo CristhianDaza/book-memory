@@ -30,6 +30,7 @@ const book = computed(() => booksStore.getLibraryBookById(bookId.value))
 const editMode = ref(false)
 const formTotalPages = ref<string>('')
 const formCurrentPage = ref<string>('0')
+const formCoverUrl = ref<string>('')
 const formStatus = ref<'reading' | 'finished' | 'wishlist'>('reading')
 const sessions = ref<ReadingSessionRecord[]>([])
 const loadingSessions = ref(false)
@@ -131,6 +132,7 @@ function syncFormFromBook() {
   if (!book.value) return
   formTotalPages.value = book.value.totalPages?.toString() ?? ''
   formCurrentPage.value = String(displayCurrentPage.value)
+  formCoverUrl.value = book.value.coverUrl ?? ''
   formStatus.value = book.value.status
 }
 
@@ -160,6 +162,7 @@ async function onSaveMetadata() {
   const safeTotalPages = parsedTotalPages !== null && Number.isFinite(parsedTotalPages) && parsedTotalPages > 0
     ? Math.floor(parsedTotalPages)
     : null
+  const safeCoverUrl = book.value.coverUrl ?? (formCoverUrl.value.trim() || null)
 
   const currentPageCapped =
     safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
@@ -176,6 +179,7 @@ async function onSaveMetadata() {
   }
 
   await booksStore.updateBookMetadata(book.value.id, {
+    coverUrl: safeCoverUrl,
     totalPages: safeTotalPages,
     currentPage: nextCurrentPage,
     status: formStatus.value,
@@ -491,6 +495,20 @@ onMounted(async () => {
                   <option value="finished">{{ t('books.status_finished') }}</option>
                   <option value="wishlist">{{ t('books.status_wishlist') }}</option>
                 </select>
+              </label>
+
+              <label
+                v-if="!book.coverUrl"
+                class="bm-label sm:col-span-3"
+              >
+                {{ t('books.manualCoverUrl') }}
+                <input
+                  v-model="formCoverUrl"
+                  type="url"
+                  :placeholder="t('books.manualCoverUrlPlaceholder')"
+                  :disabled="!editMode || isMetadataUpdating()"
+                  class="bm-input mt-1 py-1.5 text-sm"
+                >
               </label>
             </div>
 

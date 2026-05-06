@@ -394,11 +394,21 @@ export async function replayOfflineQueue() {
         }
         if (item.action === 'library_update_metadata' && item.payload) {
           const payload = item.payload as QueuedLibraryMetadataPayload
-          await updateLibraryBookMetadata(item.uid, payload.bookId, {
+          const metadataPayload = {
             totalPages: payload.totalPages,
             currentPage: payload.currentPage,
             status: payload.status,
-          })
+          }
+          await updateLibraryBookMetadata(
+            item.uid,
+            payload.bookId,
+            payload.coverUrl === undefined
+              ? metadataPayload
+              : {
+                  ...metadataPayload,
+                  coverUrl: payload.coverUrl ?? null,
+                },
+          )
         }
         if (item.action === 'library_delete_book' && item.payload) {
           const payload = item.payload as QueuedLibraryDeletePayload

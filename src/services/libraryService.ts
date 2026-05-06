@@ -86,13 +86,17 @@ export async function deleteLibraryBook(uid: string, bookId: string) {
 export async function updateLibraryBookMetadata(
   uid: string,
   bookId: string,
-  payload: Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'>,
+  payload: Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'> & Partial<Pick<LibraryBook, 'coverUrl'>>,
 ) {
   const db = await ensureFirestore()
   const { doc, serverTimestamp, updateDoc } = await getFirestoreSdk()
   const ref = doc(db, 'users', uid, 'library', bookId)
-  await updateDoc(ref, {
+  const updatePayload = {
     ...payload,
     updatedAt: serverTimestamp(),
-  })
+  }
+  if (payload.coverUrl === undefined) {
+    delete updatePayload.coverUrl
+  }
+  await updateDoc(ref, updatePayload)
 }

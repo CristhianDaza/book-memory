@@ -39,6 +39,7 @@ export interface QueuedLibraryFavoritePayload {
 
 export interface QueuedLibraryMetadataPayload {
   bookId: string
+  coverUrl?: string | null
   totalPages: number | null
   currentPage: number
   status: 'reading' | 'finished' | 'wishlist'

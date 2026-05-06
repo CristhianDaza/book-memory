@@ -60,8 +60,8 @@ export const useBooksStore = defineStore('books', () => {
   }
 
   function normalizeMetadataPayload(
-    payload: Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'>,
-  ): Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'> {
+    payload: Pick<LibraryBook, 'coverUrl' | 'totalPages' | 'currentPage' | 'status'>,
+  ): Pick<LibraryBook, 'coverUrl' | 'totalPages' | 'currentPage' | 'status'> {
     return {
       ...payload,
       currentPage:
@@ -391,7 +391,7 @@ export const useBooksStore = defineStore('books', () => {
 
   async function updateBookMetadata(
     bookId: string,
-    payload: Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'>,
+    payload: Pick<LibraryBook, 'coverUrl' | 'totalPages' | 'currentPage' | 'status'>,
   ) {
     clearError()
     clearSyncQueuedMessage()
@@ -420,6 +420,7 @@ export const useBooksStore = defineStore('books', () => {
       if (isOfflineQueueCandidate(error)) {
         enqueueOfflineLibraryUpdateMetadata(uid, {
           bookId,
+          coverUrl: normalizedPayload.coverUrl,
           totalPages: normalizedPayload.totalPages,
           currentPage: normalizedPayload.currentPage,
           status: normalizedPayload.status,
@@ -430,6 +431,7 @@ export const useBooksStore = defineStore('books', () => {
           book.id === bookId
             ? {
                 ...book,
+                coverUrl: previousBook.coverUrl,
                 totalPages: previousBook.totalPages,
                 currentPage: previousBook.currentPage,
                 status: previousBook.status,
@@ -465,6 +467,7 @@ export const useBooksStore = defineStore('books', () => {
         currentBook.totalPages !== null && latestEndPage >= currentBook.totalPages ? 'finished' : 'reading'
 
       await updateBookMetadata(bookId, {
+        coverUrl: currentBook.coverUrl,
         totalPages: currentBook.totalPages,
         currentPage: latestEndPage,
         status: nextStatus,

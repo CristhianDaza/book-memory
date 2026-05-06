@@ -22,7 +22,7 @@ export interface PromptModalProps {
   value: string
   inputLabel?: string
   inputPlaceholder?: string
-  inputType?: 'text' | 'number'
+  inputType?: 'text' | 'number' | 'url'
   inputMin?: string
   loading?: boolean
 }
