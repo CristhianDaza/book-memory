@@ -9,7 +9,21 @@ import type { StatsActivityMetric, StatsRange } from '../../../types/stats'
 
 const { t, locale } = useI18n()
 const statsStore = useStatsStore()
-const { loading, errorKey, range, activityMetric, summary, filteredSessions, activitySeries, topBooks, goalsProgress } =
+const {
+  loading,
+  errorKey,
+  range,
+  activityMetric,
+  summary,
+  filteredSessions,
+  activitySeries,
+  topBooks,
+  goalsProgress,
+  selectedTimelineYear,
+  timelineYears,
+  timelineMonthlyBySelectedYear,
+  selectedYearSummary,
+} =
   storeToRefs(statsStore)
 const weeklyGoalInput = ref(100)
 const monthlyGoalInput = ref(600)
@@ -30,6 +44,12 @@ const peakActivity = computed(() => {
   if (activitySeries.value.length === 0) return null
   return [...activitySeries.value].sort((a, b) => b.sessionCount - a.sessionCount)[0] ?? null
 })
+const maxTimelineMonthValue = computed(() =>
+  timelineMonthlyBySelectedYear.value.reduce(
+    (max, entry) => Math.max(max, entry.purchasedCount, entry.finishedCount),
+    0,
+  ),
+)
 
 function onChangeRange(nextRange: StatsRange) {
   statsStore.setRange(nextRange)
@@ -37,6 +57,12 @@ function onChangeRange(nextRange: StatsRange) {
 
 function onChangeMetric(nextMetric: StatsActivityMetric) {
   statsStore.setActivityMetric(nextMetric)
+}
+
+function onChangeTimelineYear(event: Event) {
+  const value = Number((event.target as HTMLSelectElement).value)
+  if (Number.isNaN(value)) return
+  statsStore.setSelectedTimelineYear(value)
 }
 
 function getActivityValue(point: { sessionCount: number; pagesRead: number; minutesRead: number }): number {
@@ -67,6 +93,17 @@ function formatDayTitle(dayStart: number): string {
 
 function formatDecimal(value: number): string {
   return value.toFixed(1)
+}
+
+function formatMonthLabel(month: number): string {
+  const date = new Date(2020, month - 1, 1)
+  return new Intl.DateTimeFormat(locale.value, { month: 'short' }).format(date)
+}
+
+function timelineBarHeight(value: number): string {
+  const max = maxTimelineMonthValue.value
+  if (max <= 0) return '8%'
+  return `${Math.max(8, Math.round((value / max) * 100))}%`
 }
 
 function isToday(dayStart: number): boolean {
@@ -266,6 +303,103 @@ onMounted(async () => {
         </p>
       </article>
     </div>
+
+    <section
+      v-if="!loading"
+      class="bm-subtle-panel mt-4"
+    >
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p class="bm-section-title">
+          {{ t('stats.timelineTitle') }}
+        </p>
+        <label class="bm-label text-xs">
+          {{ t('stats.timelineYearLabel') }}
+          <select
+            class="bm-input mt-1 py-1 text-xs"
+            :value="selectedTimelineYear ?? ''"
+            :disabled="timelineYears.length === 0"
+            @change="onChangeTimelineYear"
+          >
+            <option
+              v-for="year in timelineYears"
+              :key="year"
+              :value="year"
+            >
+              {{ year }}
+            </option>
+          </select>
+        </label>
+      </div>
+
+      <div
+        v-if="selectedYearSummary"
+        class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
+      >
+        <article class="bm-card p-2">
+          <p class="bm-stat-label text-[10px]">
+            {{ t('stats.timelinePurchasedYear') }}
+          </p>
+          <p class="mt-1 text-sm font-semibold text-(--app-text)">
+            {{ selectedYearSummary.purchasedCount }}
+          </p>
+        </article>
+        <article class="bm-card p-2">
+          <p class="bm-stat-label text-[10px]">
+            {{ t('stats.timelineFinishedYear') }}
+          </p>
+          <p class="mt-1 text-sm font-semibold text-(--app-text)">
+            {{ selectedYearSummary.finishedCount }}
+          </p>
+        </article>
+      </div>
+
+      <p
+        v-if="timelineMonthlyBySelectedYear.length === 0"
+        class="bm-muted text-sm"
+      >
+        {{ t('stats.timelineEmpty') }}
+      </p>
+
+      <div
+        v-else
+        class="-mx-1 overflow-x-auto px-1"
+      >
+        <div class="flex h-48 min-w-max items-end gap-3 border-b border-(--app-border) pb-2">
+          <article
+            v-for="point in timelineMonthlyBySelectedYear"
+            :key="point.monthKey"
+            class="flex w-10 flex-col items-center gap-1"
+          >
+            <div class="flex h-36 w-full items-end gap-1 rounded-md border border-(--app-border) bg-(--app-surface) p-1">
+              <div
+                class="w-1/2 rounded-sm bg-(--app-accent)"
+                :title="`${t('stats.timelinePurchased')}: ${point.purchasedCount}`"
+                :style="{ height: timelineBarHeight(point.purchasedCount) }"
+              />
+              <div
+                class="w-1/2 rounded-sm bg-(--app-secondary)"
+                :title="`${t('stats.timelineFinished')}: ${point.finishedCount}`"
+                :style="{ height: timelineBarHeight(point.finishedCount) }"
+              />
+            </div>
+            <span class="text-[10px] text-(--app-text-muted)">
+              {{ formatMonthLabel(point.month) }}
+            </span>
+          </article>
+        </div>
+      </div>
+
+      <div class="mt-3 flex items-center gap-3 text-[11px] text-(--app-text-muted)">
+        <span class="inline-flex items-center gap-1">
+          <span class="h-2 w-2 rounded-full bg-(--app-accent)" />
+          {{ t('stats.timelinePurchased') }}
+        </span>
+        <span class="inline-flex items-center gap-1">
+          <span class="h-2 w-2 rounded-full bg-(--app-secondary)" />
+          {{ t('stats.timelineFinished') }}
+        </span>
+      </div>
+    </section>
 
     <section
       v-if="!loading"

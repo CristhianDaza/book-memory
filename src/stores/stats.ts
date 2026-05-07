@@ -1,9 +1,12 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { fetchStatsGoals, saveStatsGoals } from '../services/statsGoalsService'
+import type { LibraryBook } from '../types/books'
 import type { ReadingSessionRecord } from '../types/reading'
 import type {
   BookStatsEntry,
+  BooksTimelineMonthPoint,
+  BooksTimelineYearSummary,
   FirestoreDateLike,
   StatsGoalsProgress,
   StatsActivityMetric,
@@ -39,8 +42,15 @@ function startOfWeek(date: Date): Date {
   return target
 }
 
+function monthKeyFromDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${year}-${month}`
+}
+
 export const useStatsStore = defineStore('stats', () => {
   const sessions = ref<ReadingSessionRecord[]>([])
+  const library = ref<LibraryBook[]>([])
   const libraryTitles = ref<Record<string, string>>({})
   const loading = ref(false)
   const errorKey = ref<string | null>(null)
@@ -189,6 +199,76 @@ export const useStatsStore = defineStore('stats', () => {
         : 0,
   }))
 
+  const timelineMonths = computed<BooksTimelineMonthPoint[]>(() => {
+    const bucket = new Map<string, BooksTimelineMonthPoint>()
+
+    function ensureMonth(date: Date): BooksTimelineMonthPoint {
+      const monthKey = monthKeyFromDate(date)
+      const existing = bucket.get(monthKey)
+      if (existing) return existing
+      const entry: BooksTimelineMonthPoint = {
+        monthKey,
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+        purchasedCount: 0,
+        finishedCount: 0,
+      }
+      bucket.set(monthKey, entry)
+      return entry
+    }
+
+    library.value.forEach((book) => {
+      const createdAt = parseDate(book.createdAt)
+      if (createdAt) {
+        const monthEntry = ensureMonth(createdAt)
+        monthEntry.purchasedCount += 1
+      }
+
+      if (book.status !== 'finished') return
+      const finishedAt = parseDate(book.updatedAt)
+      if (!finishedAt) return
+      const monthEntry = ensureMonth(finishedAt)
+      monthEntry.finishedCount += 1
+    })
+
+    return Array.from(bucket.values()).sort((a, b) => a.monthKey.localeCompare(b.monthKey))
+  })
+
+  const timelineYears = computed<number[]>(() => {
+    const years = new Set<number>()
+    timelineMonths.value.forEach((entry) => {
+      years.add(entry.year)
+    })
+    return Array.from(years).sort((a, b) => a - b)
+  })
+
+  const selectedTimelineYear = ref<number | null>(null)
+
+  const timelineMonthlyBySelectedYear = computed<BooksTimelineMonthPoint[]>(() => {
+    if (selectedTimelineYear.value === null) return []
+    return timelineMonths.value.filter((entry) => entry.year === selectedTimelineYear.value)
+  })
+
+  const timelineYearlySummary = computed<BooksTimelineYearSummary[]>(() => {
+    const summaryMap = new Map<number, BooksTimelineYearSummary>()
+    timelineMonths.value.forEach((entry) => {
+      const current = summaryMap.get(entry.year) ?? {
+        year: entry.year,
+        purchasedCount: 0,
+        finishedCount: 0,
+      }
+      current.purchasedCount += entry.purchasedCount
+      current.finishedCount += entry.finishedCount
+      summaryMap.set(entry.year, current)
+    })
+    return Array.from(summaryMap.values()).sort((a, b) => a.year - b.year)
+  })
+
+  const selectedYearSummary = computed<BooksTimelineYearSummary | null>(() => {
+    if (selectedTimelineYear.value === null) return null
+    return timelineYearlySummary.value.find((entry) => entry.year === selectedTimelineYear.value) ?? null
+  })
+
   function queueSaveGoals() {
     if (goalsSaveTimer) {
       clearTimeout(goalsSaveTimer)
@@ -242,10 +322,23 @@ export const useStatsStore = defineStore('stats', () => {
       await Promise.all([booksStore.ensureLibraryLoaded(), sessionsStore.ensureSessionsLoaded()])
       await streakStore.migrateFromSessions(sessionsStore.allSessions)
       sessions.value = sessionsStore.allSessions
+      library.value = booksStore.library
       libraryTitles.value = booksStore.library.reduce<Record<string, string>>((acc, book) => {
         acc[book.id] = book.title
         return acc
       }, {})
+
+      const currentYear = new Date().getFullYear()
+      if (timelineYears.value.length === 0) {
+        selectedTimelineYear.value = null
+      } else if (
+        selectedTimelineYear.value === null ||
+        !timelineYears.value.includes(selectedTimelineYear.value)
+      ) {
+        selectedTimelineYear.value = timelineYears.value.includes(currentYear)
+          ? currentYear
+          : timelineYears.value[timelineYears.value.length - 1] ?? null
+      }
 
       if (goalsLoadedForUid.value !== uid) {
         const loadedGoals = await fetchStatsGoals(uid)
@@ -257,11 +350,17 @@ export const useStatsStore = defineStore('stats', () => {
       }
     } catch {
       sessions.value = []
+      library.value = []
       libraryTitles.value = {}
       errorKey.value = 'stats.loadError'
     } finally {
       loading.value = false
     }
+  }
+
+  function setSelectedTimelineYear(year: number) {
+    if (!timelineYears.value.includes(year)) return
+    selectedTimelineYear.value = year
   }
 
   return {
@@ -273,12 +372,18 @@ export const useStatsStore = defineStore('stats', () => {
     summary,
     topBooks,
     goalsProgress,
+    selectedTimelineYear,
+    timelineYears,
+    timelineMonthlyBySelectedYear,
+    timelineYearlySummary,
+    selectedYearSummary,
     filteredSessions,
     activitySeries,
     setRange,
     setActivityMetric,
     setWeeklyPagesGoal,
     setMonthlyMinutesGoal,
+    setSelectedTimelineYear,
     loadStats,
   }
 })

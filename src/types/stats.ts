@@ -50,3 +50,17 @@ export interface StatsGoalsProgress {
   weeklyPagesProgress: number
   monthlyMinutesProgress: number
 }
+
+export interface BooksTimelineMonthPoint {
+  monthKey: string
+  year: number
+  month: number
+  purchasedCount: number
+  finishedCount: number
+}
+
+export interface BooksTimelineYearSummary {
+  year: number
+  purchasedCount: number
+  finishedCount: number
+}

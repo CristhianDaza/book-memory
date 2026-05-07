@@ -143,4 +143,162 @@ describe('stats store', () => {
     await store.loadStats()
     expect(store.activitySeries.length).toBeGreaterThan(30)
   })
+
+  it('aggregates purchased and finished books by month and year', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const books = useBooksStore()
+    const sessions = useSessionsStore()
+
+    vi.mocked(fetchLibraryBooks).mockResolvedValue([
+      {
+        id: 'book-1',
+        source: 'google',
+        externalId: '1',
+        title: 'Book One',
+        authors: ['A'],
+        coverUrl: null,
+        totalPages: 100,
+        favorite: false,
+        currentPage: 100,
+        status: 'finished',
+        rating: null,
+        note: null,
+        createdAt: { toDate: () => new Date('2026-01-10T00:00:00.000Z') },
+        updatedAt: { toDate: () => new Date('2026-02-15T00:00:00.000Z') },
+      },
+      {
+        id: 'book-2',
+        source: 'google',
+        externalId: '2',
+        title: 'Book Two',
+        authors: ['B'],
+        coverUrl: null,
+        totalPages: 200,
+        favorite: false,
+        currentPage: 20,
+        status: 'reading',
+        rating: null,
+        note: null,
+        createdAt: { toDate: () => new Date('2026-02-02T00:00:00.000Z') },
+        updatedAt: { toDate: () => new Date('2026-02-20T00:00:00.000Z') },
+      },
+      {
+        id: 'book-3',
+        source: 'google',
+        externalId: '3',
+        title: 'Book Three',
+        authors: ['C'],
+        coverUrl: null,
+        totalPages: 220,
+        favorite: false,
+        currentPage: 220,
+        status: 'finished',
+        rating: null,
+        note: null,
+        createdAt: { toDate: () => new Date('2025-12-28T00:00:00.000Z') },
+        updatedAt: { toDate: () => new Date('2026-01-03T00:00:00.000Z') },
+      },
+    ])
+    vi.mocked(fetchUserSessions).mockResolvedValue([])
+    vi.mocked(fetchStatsGoals).mockResolvedValue(null)
+
+    await books.ensureLibraryLoaded()
+    await sessions.ensureSessionsLoaded()
+    const store = useStatsStore()
+    await store.loadStats()
+
+    expect(store.timelineYears).toEqual([2025, 2026])
+    expect(store.selectedTimelineYear).toBe(2026)
+    expect(store.timelineMonthlyBySelectedYear.map((entry) => entry.monthKey)).toEqual(['2026-01', '2026-02'])
+    expect(store.timelineMonthlyBySelectedYear[0]).toMatchObject({
+      purchasedCount: 1,
+      finishedCount: 1,
+    })
+    expect(store.timelineMonthlyBySelectedYear[1]).toMatchObject({
+      purchasedCount: 1,
+      finishedCount: 1,
+    })
+    expect(store.selectedYearSummary).toMatchObject({
+      year: 2026,
+      purchasedCount: 2,
+      finishedCount: 2,
+    })
+  })
+
+  it('ignores invalid timeline dates and keeps chronological month ordering', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const books = useBooksStore()
+    const sessions = useSessionsStore()
+
+    vi.mocked(fetchLibraryBooks).mockResolvedValue([
+      {
+        id: 'book-a',
+        source: 'google',
+        externalId: 'a',
+        title: 'Book A',
+        authors: ['A'],
+        coverUrl: null,
+        totalPages: 100,
+        favorite: false,
+        currentPage: 10,
+        status: 'reading',
+        rating: null,
+        note: null,
+        createdAt: null,
+        updatedAt: null,
+      },
+      {
+        id: 'book-b',
+        source: 'google',
+        externalId: 'b',
+        title: 'Book B',
+        authors: ['B'],
+        coverUrl: null,
+        totalPages: 300,
+        favorite: false,
+        currentPage: 300,
+        status: 'finished',
+        rating: null,
+        note: null,
+        createdAt: { toDate: () => new Date('2026-11-05T00:00:00.000Z') },
+        updatedAt: null,
+      },
+      {
+        id: 'book-c',
+        source: 'google',
+        externalId: 'c',
+        title: 'Book C',
+        authors: ['C'],
+        coverUrl: null,
+        totalPages: 250,
+        favorite: false,
+        currentPage: 250,
+        status: 'finished',
+        rating: null,
+        note: null,
+        createdAt: { toDate: () => new Date('2026-01-20T00:00:00.000Z') },
+        updatedAt: { toDate: () => new Date('2026-02-10T00:00:00.000Z') },
+      },
+    ])
+    vi.mocked(fetchUserSessions).mockResolvedValue([])
+    vi.mocked(fetchStatsGoals).mockResolvedValue(null)
+
+    await books.ensureLibraryLoaded()
+    await sessions.ensureSessionsLoaded()
+    const store = useStatsStore()
+    await store.loadStats()
+    store.setSelectedTimelineYear(2026)
+
+    expect(store.timelineMonthlyBySelectedYear.map((entry) => entry.monthKey)).toEqual([
+      '2026-01',
+      '2026-02',
+      '2026-11',
+    ])
+    expect(store.timelineMonthlyBySelectedYear.find((entry) => entry.monthKey === '2026-11')).toMatchObject({
+      purchasedCount: 1,
+      finishedCount: 0,
+    })
+  })
 })
