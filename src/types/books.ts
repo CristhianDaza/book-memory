@@ -21,10 +21,11 @@ export interface LibraryBook {
   favorite: boolean
   currentPage: number
   status: 'reading' | 'finished' | 'wishlist'
+  rating: 1 | 2 | 3 | 4 | 5 | null
+  note: string | null
   createdAt?: unknown
   updatedAt?: unknown
 }
 
 export type LibraryBookMetadataUpdate = Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'> &
-  Partial<Pick<LibraryBook, 'coverUrl'>>
-
+  Partial<Pick<LibraryBook, 'coverUrl' | 'rating' | 'note'>>

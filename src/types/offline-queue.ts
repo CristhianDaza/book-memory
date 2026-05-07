@@ -43,6 +43,8 @@ export interface QueuedLibraryMetadataPayload {
   totalPages: number | null
   currentPage: number
   status: 'reading' | 'finished' | 'wishlist'
+  rating?: 1 | 2 | 3 | 4 | 5 | null
+  note?: string | null
 }
 
 export interface QueuedLibraryDeletePayload {

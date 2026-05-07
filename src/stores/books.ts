@@ -138,6 +138,8 @@ export const useBooksStore = defineStore('books', () => {
       favorite: false,
       currentPage: 0,
       status: 'wishlist',
+      rating: null,
+      note: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -435,6 +437,8 @@ export const useBooksStore = defineStore('books', () => {
             ...book,
             ...normalizedPayload,
             coverUrl: normalizedPayload.coverUrl === undefined ? book.coverUrl : normalizedPayload.coverUrl,
+            rating: normalizedPayload.rating === undefined ? book.rating : normalizedPayload.rating,
+            note: normalizedPayload.note === undefined ? book.note : normalizedPayload.note,
           }
         : book,
     )
@@ -451,6 +455,8 @@ export const useBooksStore = defineStore('books', () => {
           totalPages: normalizedPayload.totalPages,
           currentPage: normalizedPayload.currentPage,
           status: normalizedPayload.status,
+          rating: normalizedPayload.rating,
+          note: normalizedPayload.note,
         })
         syncQueuedMessageKey.value = 'notifications.bookMetadataQueuedOffline'
         if (streakAction) void markStreakActivity(streakAction)
@@ -463,6 +469,8 @@ export const useBooksStore = defineStore('books', () => {
                 totalPages: previousBook.totalPages,
                 currentPage: previousBook.currentPage,
                 status: previousBook.status,
+                rating: previousBook.rating,
+                note: previousBook.note,
               }
             : book,
         )

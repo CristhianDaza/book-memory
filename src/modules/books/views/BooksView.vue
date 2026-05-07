@@ -11,6 +11,7 @@ import EmptyState from '../../../components/ui/EmptyState.vue'
 import PageHeader from '../../../components/ui/PageHeader.vue'
 import PromptModal from '../../../components/PromptModal.vue'
 import SurfaceCard from '../../../components/ui/SurfaceCard.vue'
+import StarRating from '../../../components/ui/StarRating.vue'
 import { withBodyScrollLock } from '../../../composables/useBodyScrollLock'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
@@ -446,6 +447,16 @@ withBodyScrollLock(showAddModal)
               <p class="bm-muted line-clamp-1 text-[10px] sm:text-[11px]">
                 {{ t('books.by') }} {{ item.authors.join(', ') || t('books.unknownAuthor') }}
               </p>
+              <div
+                v-if="item.rating"
+                class="mt-1"
+              >
+                <StarRating
+                  :model-value="item.rating"
+                  readonly
+                  :size="14"
+                />
+              </div>
             </RouterLink>
           </div>
         </article>

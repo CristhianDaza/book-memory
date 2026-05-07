@@ -25,6 +25,10 @@ service cloud.firestore {
       return value == null || value is string;
     }
 
+    function isValidRating(value) {
+      return value == null || (value is int && value >= 1 && value <= 5);
+    }
+
     function isValidLibraryBookData(data) {
       return data.keys().hasOnly([
         'source',
@@ -36,6 +40,8 @@ service cloud.firestore {
         'favorite',
         'currentPage',
         'status',
+        'rating',
+        'note',
         'createdAt',
         'updatedAt',
       ])
@@ -49,6 +55,8 @@ service cloud.firestore {
         'favorite',
         'currentPage',
         'status',
+        'rating',
+        'note',
         'createdAt',
         'updatedAt',
       ])
@@ -61,6 +69,8 @@ service cloud.firestore {
       && data.favorite is bool
       && isNonNegativeInt(data.currentPage)
       && isValidStatus(data.status)
+      && isValidRating(data.rating)
+      && isStringOrNull(data.note)
       && data.createdAt is timestamp
       && data.updatedAt is timestamp
       && (data.totalPages == null || data.currentPage <= data.totalPages);
@@ -72,6 +82,8 @@ service cloud.firestore {
         'currentPage',
         'totalPages',
         'status',
+        'rating',
+        'note',
         'updatedAt',
       ])
       && request.resource.data.updatedAt is timestamp
@@ -79,6 +91,8 @@ service cloud.firestore {
       && (!('currentPage' in request.resource.data) || isNonNegativeInt(request.resource.data.currentPage))
       && (!('totalPages' in request.resource.data) || isPositiveIntOrNull(request.resource.data.totalPages))
       && (!('status' in request.resource.data) || isValidStatus(request.resource.data.status))
+      && (!('rating' in request.resource.data) || isValidRating(request.resource.data.rating))
+      && (!('note' in request.resource.data) || isStringOrNull(request.resource.data.note))
       && (request.resource.data.totalPages == null || request.resource.data.currentPage <= request.resource.data.totalPages);
     }
 

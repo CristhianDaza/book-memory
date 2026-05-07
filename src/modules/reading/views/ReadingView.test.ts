@@ -46,6 +46,8 @@ const mocks = vi.hoisted(() => {
           totalPages: 300,
           favorite: false,
           status: 'reading',
+          rating: null,
+          note: null,
         },
         {
           id: 'book-2',
@@ -58,6 +60,8 @@ const mocks = vi.hoisted(() => {
           totalPages: 400,
           favorite: false,
           status: 'reading',
+          rating: null,
+          note: null,
         },
       ],
     },

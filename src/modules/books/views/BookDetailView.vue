@@ -7,6 +7,7 @@ import { useRoute, useRouter } from 'vue-router'
 import ConfirmModal from '../../../components/ConfirmModal.vue'
 import { useBookCompletionOverlay } from '../../../composables/useBookCompletionOverlay'
 import StatusBadge from '../../../components/ui/StatusBadge.vue'
+import StarRating from '../../../components/ui/StarRating.vue'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
@@ -32,6 +33,8 @@ const formTotalPages = ref<string>('')
 const formCurrentPage = ref<string>('0')
 const formCoverUrl = ref<string>('')
 const formStatus = ref<'reading' | 'finished' | 'wishlist'>('reading')
+const formRating = ref<1 | 2 | 3 | 4 | 5 | null>(null)
+const formNote = ref<string>('')
 const sessions = ref<ReadingSessionRecord[]>([])
 const loadingSessions = ref(false)
 const visibleSessionsCount = ref(5)
@@ -43,6 +46,11 @@ const savingSessionEdit = ref(false)
 const deletingSessionId = ref<string | null>(null)
 const removingBookModalOpen = ref(false)
 const removingSessionId = ref<string | null>(null)
+const showCompletionRatingModal = ref(false)
+const completionRating = ref<1 | 2 | 3 | 4 | 5 | null>(null)
+const completionNote = ref('')
+const completionRatingError = ref('')
+const canEditRating = computed(() => formStatus.value === 'finished')
 
 function isFavoriteUpdating() {
   return favoriteUpdatingIds.value.includes(bookId.value)
@@ -134,6 +142,8 @@ function syncFormFromBook() {
   formCurrentPage.value = String(displayCurrentPage.value)
   formCoverUrl.value = book.value.coverUrl ?? ''
   formStatus.value = book.value.status
+  formRating.value = book.value.rating
+  formNote.value = book.value.note ?? ''
 }
 
 function syncFinishedProgressField() {
@@ -178,11 +188,23 @@ async function onSaveMetadata() {
     nextCurrentPage = currentPageCapped
   }
 
+  const isTransitionToFinished = previousStatus !== 'finished' && formStatus.value === 'finished'
+
+  if (isTransitionToFinished) {
+    completionRating.value = formRating.value ?? book.value.rating
+    completionNote.value = formNote.value || book.value.note || ''
+    completionRatingError.value = ''
+    showCompletionRatingModal.value = true
+    return
+  }
+
   await booksStore.updateBookMetadata(book.value.id, {
     coverUrl: safeCoverUrl,
     totalPages: safeTotalPages,
     currentPage: nextCurrentPage,
     status: formStatus.value,
+    rating: formRating.value,
+    note: formNote.value.trim() || null,
   })
   if (booksStore.errorKey) {
     notificationsStore.error(t(booksStore.errorKey))
@@ -190,18 +212,59 @@ async function onSaveMetadata() {
   }
 
   syncFormFromBook()
-
-  if (previousStatus !== 'finished' && formStatus.value === 'finished') {
-    showBookCompletion({
-      bookId: book.value.id,
-      title: book.value.title,
-      authors: book.value.authors,
-      coverUrl: book.value.coverUrl ?? null,
-    })
-  }
-
   showQueuedFeedbackIfAny()
   editMode.value = false
+  notificationsStore.success(t('notifications.metadataSaved'))
+}
+
+function onCancelCompletionRating() {
+  showCompletionRatingModal.value = false
+  completionRatingError.value = ''
+}
+
+async function onConfirmCompletionRating() {
+  if (!book.value) return
+  if (!completionRating.value) {
+    completionRatingError.value = t('books.ratingRequired')
+    return
+  }
+
+  const parsedTotalPages = String(formTotalPages.value).trim() === '' ? null : Number(formTotalPages.value)
+  const parsedCurrentPage = Number(formCurrentPage.value)
+  const safeCurrentPage = Number.isFinite(parsedCurrentPage) && parsedCurrentPage >= 0 ? parsedCurrentPage : 0
+  const safeTotalPages = parsedTotalPages !== null && Number.isFinite(parsedTotalPages) && parsedTotalPages > 0
+    ? Math.floor(parsedTotalPages)
+    : null
+  const safeCoverUrl = book.value.coverUrl ?? (formCoverUrl.value.trim() || null)
+  const currentPageCapped =
+    safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
+
+  await booksStore.updateBookMetadata(book.value.id, {
+    coverUrl: safeCoverUrl,
+    totalPages: safeTotalPages,
+    currentPage: safeTotalPages ?? currentPageCapped,
+    status: 'finished',
+    rating: completionRating.value,
+    note: completionNote.value.trim() || null,
+  })
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
+
+  formRating.value = completionRating.value
+  formNote.value = completionNote.value
+  formStatus.value = 'finished'
+  syncFormFromBook()
+  showQueuedFeedbackIfAny()
+  showCompletionRatingModal.value = false
+  editMode.value = false
+  showBookCompletion({
+    bookId: book.value.id,
+    title: book.value.title,
+    authors: book.value.authors,
+    coverUrl: book.value.coverUrl ?? null,
+  })
   notificationsStore.success(t('notifications.metadataSaved'))
 }
 
@@ -373,6 +436,14 @@ onMounted(async () => {
               {{ book.favorite ? t('books.favorite') : t('books.notFavorite') }}
             </StatusBadge>
           </div>
+          <div class="mt-2 flex items-center gap-2">
+            <span class="bm-muted text-sm">{{ t('books.ratingLabel') }}:</span>
+            <StarRating
+              :model-value="book.rating"
+              readonly
+              :size="16"
+            />
+          </div>
 
           <div class="bm-subtle-panel mt-4">
             <div class="flex items-center justify-between gap-3">
@@ -510,6 +581,32 @@ onMounted(async () => {
               </label>
 
               <label
+                v-if="canEditRating"
+                class="bm-label sm:col-span-3"
+              >
+                {{ t('books.ratingLabel') }}
+                <div class="mt-2">
+                  <StarRating
+                    v-model="formRating"
+                    :readonly="!editMode || isMetadataUpdating()"
+                  />
+                </div>
+              </label>
+
+              <label
+                v-if="canEditRating"
+                class="bm-label sm:col-span-3"
+              >
+                {{ t('books.noteLabel') }}
+                <textarea
+                  v-model="formNote"
+                  :disabled="!editMode || isMetadataUpdating()"
+                  :placeholder="t('books.notePlaceholder')"
+                  class="bm-input mt-1 min-h-20 py-1.5 text-sm"
+                />
+              </label>
+
+              <label
                 v-if="!book.coverUrl"
                 class="bm-label sm:col-span-3"
               >
@@ -545,6 +642,14 @@ onMounted(async () => {
                 {{ t('books.cancelEdit') }}
               </button>
             </div>
+          </div>
+
+          <div
+            v-if="book.note"
+            class="bm-subtle-panel mt-4"
+          >
+            <p class="bm-eyebrow">{{ t('books.noteLabel') }}</p>
+            <p class="bm-muted mt-2 whitespace-pre-line text-sm">{{ book.note }}</p>
           </div>
 
           <div class="bm-subtle-panel mt-4">
@@ -702,4 +807,51 @@ onMounted(async () => {
     @cancel="onCancelDeleteSession"
     @confirm="onConfirmDeleteSession"
   />
+
+  <div
+    v-if="showCompletionRatingModal"
+    class="bm-modal-backdrop z-50"
+  >
+    <section class="bm-modal-sheet w-full max-w-lg p-5 sm:p-6">
+      <h3 class="bm-section-title">{{ t('books.ratingModalTitle') }}</h3>
+      <p class="bm-muted mt-1 text-sm">{{ t('books.ratingModalSubtitle') }}</p>
+      <div class="mt-4">
+        <p class="bm-label">{{ t('books.ratingLabel') }}</p>
+        <StarRating
+          v-model="completionRating"
+          class="mt-2"
+        />
+        <p
+          v-if="completionRatingError"
+          class="mt-2 text-xs text-(--app-danger)"
+        >
+          {{ completionRatingError }}
+        </p>
+      </div>
+      <label class="bm-label mt-4 block">
+        {{ t('books.noteLabel') }}
+        <textarea
+          v-model="completionNote"
+          :placeholder="t('books.notePlaceholder')"
+          class="bm-input mt-1 min-h-24 text-sm"
+        />
+      </label>
+      <div class="mt-4 flex justify-end gap-2">
+        <button
+          type="button"
+          class="bm-button"
+          @click="onCancelCompletionRating"
+        >
+          {{ t('common.cancel') }}
+        </button>
+        <button
+          type="button"
+          class="bm-button bm-button-primary"
+          @click="onConfirmCompletionRating"
+        >
+          {{ t('books.saveRatingAction') }}
+        </button>
+      </div>
+    </section>
+  </div>
 </template>

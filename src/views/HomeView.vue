@@ -7,6 +7,7 @@ import EmptyState from '../components/ui/EmptyState.vue'
 import PageHeader from '../components/ui/PageHeader.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
 import SurfaceCard from '../components/ui/SurfaceCard.vue'
+import StarRating from '../components/ui/StarRating.vue'
 import { useAuthStore } from '../stores/auth'
 import { useBooksStore } from '../stores/books'
 import { useSessionsStore } from '../stores/sessions'
@@ -344,6 +345,13 @@ onUnmounted(() => {
             <p class="bm-muted line-clamp-1 text-[11px]">
               {{ t('books.by') }} {{ item.authors.join(', ') || t('books.unknownAuthor') }}
             </p>
+            <div v-if="item.rating">
+              <StarRating
+                :model-value="item.rating"
+                readonly
+                :size="14"
+              />
+            </div>
           </div>
         </RouterLink>
       </div>

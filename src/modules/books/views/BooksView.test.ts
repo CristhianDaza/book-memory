@@ -80,6 +80,8 @@ const savedBook: LibraryBook = {
   favorite: false,
   currentPage: 0,
   status: 'wishlist',
+  rating: null,
+  note: null,
 }
 
 function mountView() {
