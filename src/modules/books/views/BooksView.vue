@@ -65,7 +65,9 @@ const { isAuthenticated } = storeToRefs(authStore)
 const mappedError = computed(() => (errorKey.value ? t(errorKey.value) : null))
 const hasSearchExecuted = computed(() => query.value.trim().length > 0)
 const readingCandidates = computed(() =>
-  filteredSortedLibrary.value.filter((book) => book.status === 'reading'),
+  filteredSortedLibrary.value.filter(
+    (book) => book.status === 'reading' && book.status !== 'paused' && book.status !== 'abandoned',
+  ),
 )
 const skeletonKeys = [1, 2, 3, 4, 5]
 const librarySkeletonKeys = [1, 2, 3, 4, 5, 6]

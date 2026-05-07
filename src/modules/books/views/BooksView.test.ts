@@ -95,6 +95,8 @@ const readingBookA: LibraryBook = {
   favorite: false,
   currentPage: 80,
   status: 'reading',
+  rating: null,
+  note: null,
 }
 
 const readingBookB: LibraryBook = {
@@ -108,6 +110,39 @@ const readingBookB: LibraryBook = {
   favorite: true,
   currentPage: 40,
   status: 'reading',
+  rating: null,
+  note: null,
+}
+
+const pausedBook: LibraryBook = {
+  id: 'paused-book',
+  source: 'google',
+  externalId: 'paused-book',
+  title: 'Paused Book',
+  authors: ['Paused Author'],
+  coverUrl: null,
+  totalPages: 220,
+  favorite: false,
+  currentPage: 90,
+  status: 'paused',
+  rating: null,
+  note: null,
+}
+
+const abandonedBook: LibraryBook = {
+  id: 'abandoned-book',
+  source: 'google',
+  externalId: 'abandoned-book',
+  title: 'Abandoned Book',
+  authors: ['Abandoned Author'],
+  coverUrl: null,
+  totalPages: 180,
+  favorite: false,
+  currentPage: 45,
+  status: 'abandoned',
+  rating: null,
+  note: null,
+  abandonedReason: 'not_for_me',
 }
 
 function mountView() {
@@ -268,7 +303,7 @@ describe('BooksView random picker flow', () => {
   })
 
   it('shows empty state when there are no reading books and does not navigate', async () => {
-    vi.mocked(fetchLibraryBooks).mockResolvedValue([{ ...readingBookA, id: 'finished-1', status: 'finished' }])
+    vi.mocked(fetchLibraryBooks).mockResolvedValue([pausedBook, abandonedBook])
     const wrapper = mountView()
     await flushPromises()
 
