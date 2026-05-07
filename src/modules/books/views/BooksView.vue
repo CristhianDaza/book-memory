@@ -152,7 +152,7 @@ function onPickAnotherRandomBook() {
 function onConfirmRandomBook() {
   if (!selectedRandomBook.value) return
   closeRandomPickerModal()
-  void router.push({ name: 'book-detail', params: { id: selectedRandomBook.value.id } }).catch(() => {})
+  void Promise.resolve(router.push({ name: 'book-detail', params: { id: selectedRandomBook.value.id } })).catch(() => {})
 }
 
 function onOpenAddFromRandomEmpty() {

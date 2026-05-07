@@ -236,9 +236,6 @@ async function onSaveMetadata() {
     rating: formRating.value,
     note: formNote.value.trim() || null,
     abandonedReason: nextAbandonedReason,
-    rating: formRating.value,
-    note: formNote.value.trim() || null,
-    abandonedReason: nextAbandonedReason,
   })
   if (booksStore.errorKey) {
     notificationsStore.error(t(booksStore.errorKey))

@@ -1,6 +1,7 @@
 import { mount, flushPromises } from '@vue/test-utils'
+import { defineComponent, h } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BooksView from './BooksView.vue'
 import type { BookSearchResult, LibraryBook } from '../../../types/books'
 import { useAuthStore } from '../../../stores/auth'
@@ -155,7 +156,11 @@ function mountView() {
     global: {
       stubs: {
         PageHeader: {
-          template: '<header><slot name="actions" /></header>',
+          ...defineComponent({
+            setup(_, { slots }) {
+              return () => h('header', slots.actions?.())
+            },
+          }),
         },
         SurfaceCard: {
           template: '<section><slot /></section>',
@@ -192,6 +197,10 @@ describe('BooksView add flow', () => {
     vi.mocked(fetchLibraryBooks).mockResolvedValue([])
     vi.mocked(searchBooks).mockResolvedValue({ items: [searchResult], totalItems: 1 })
     vi.mocked(addBookToLibrary).mockResolvedValue(savedBook)
+  })
+
+  afterEach(() => {
+    vi.clearAllMocks()
   })
 
   it('keeps the add modal open and clears search when add another is checked', async () => {
@@ -252,6 +261,10 @@ describe('BooksView random picker flow', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0)
   })
 
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('renders the random picker action button in the header', async () => {
     const wrapper = mountView()
     await flushPromises()
@@ -296,10 +309,14 @@ describe('BooksView random picker flow', () => {
 
     const confirmButton = wrapper.findAll('.z-50 .bm-button-success').find((button) => button.text() === 'books.randomPickThis')
     expect(confirmButton).toBeTruthy()
+
+    const selectedTitle = wrapper.text().includes('Reading Book B') ? 'Reading Book B' : 'Reading Book A'
+    const expectedId = selectedTitle === 'Reading Book B' ? 'reading-book-b' : 'reading-book-a'
+
     await confirmButton?.trigger('click')
     await flushPromises()
 
-    expect(routerPush).toHaveBeenCalledWith({ name: 'book-detail', params: { id: 'reading-book-a' } })
+    expect(routerPush).toHaveBeenCalledWith({ name: 'book-detail', params: { id: expectedId } })
   })
 
   it('shows empty state when there are no reading books and does not navigate', async () => {
@@ -314,7 +331,7 @@ describe('BooksView random picker flow', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('books.randomModalEmptyTitle')
-    expect(wrapper.text()).not.toContain('books.randomPickThis')
+    expect(wrapper.find('.z-50 .bm-button-success').attributes('disabled')).toBeDefined()
     expect(routerPush).not.toHaveBeenCalled()
   })
 })

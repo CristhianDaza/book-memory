@@ -87,12 +87,6 @@ vi.mock('../../../stores/notifications', () => ({
   }),
 }))
 
-vi.mock('../../../composables/useBookCompletionOverlay', () => ({
-  useBookCompletionOverlay: () => ({
-    showBookCompletion: vi.fn(),
-  }),
-}))
-
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: mocks.routeParams }),
   useRouter: () => ({ push: mocks.routerPush }),
@@ -120,6 +114,7 @@ function mountView() {
         IconButton: true,
         StatusBadge: true,
         StarRating: true,
+        RouterLink: true,
       },
     },
   })
