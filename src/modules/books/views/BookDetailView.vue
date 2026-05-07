@@ -602,7 +602,6 @@ onMounted(async () => {
                   aria-hidden="true"
                 />
               </IconButton>
-              </IconButton>
             </div>
 
             <div

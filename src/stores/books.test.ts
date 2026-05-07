@@ -203,6 +203,7 @@ describe('books store', () => {
       totalPages: 320,
       currentPage: 40,
       status: 'reading',
+      abandonedReason: null,
       rating: 5,
       note: 'Great ending',
     })
@@ -230,6 +231,7 @@ describe('books store', () => {
       totalPages: 300,
       currentPage: 20,
       status: 'reading',
+      abandonedReason: null,
       rating: 4,
       note: 'Nice book',
     })
