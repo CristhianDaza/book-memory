@@ -424,9 +424,6 @@ export async function replayOfflineQueue() {
             rating: payload.rating,
             note: payload.note,
             abandonedReason: payload.abandonedReason,
-            rating: payload.rating,
-            note: payload.note,
-            abandonedReason: payload.abandonedReason,
           }
           await updateLibraryBookMetadata(
             item.uid,

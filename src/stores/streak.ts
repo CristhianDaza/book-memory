@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { enqueueOfflineStreakDay } from '../services/offlineQueueService'
+import { isOfflineQueueCandidate } from '../utils/offline'
 import { fetchStreakDays, markStreakDay } from '../services/streakService'
 import type { ReadingSessionRecord } from '../types/reading'
 import type { StreakActivityAction, StreakDayRecord, StreakOverlayPayload } from '../types/streak'
@@ -28,7 +29,7 @@ function dayIdToLocalStart(dayId: string): number {
 function parseSessionDate(value: unknown): Date | null {
   if (!value) return null
   if (value instanceof Date) return value
-  if (typeof value === 'object' && value !== null && 'toDate' in value) {
+  if (typeof value === 'object' && 'toDate' in value) {
     return (value as { toDate: () => Date }).toDate()
   }
   return null
@@ -41,58 +42,43 @@ function countCurrentStreakDays(dayIdsDesc: string[], todayId: string): number {
   if (todayStart === 0 || latestStart === 0) return 0
   const latestDiff = Math.round((todayStart - latestStart) / DAY_MS)
   if (latestDiff > 1) return 0
-
-  let streak = 1
-  for (let index = 1; index < dayIdsDesc.length; index += 1) {
-    const previousStart = dayIdToLocalStart(dayIdsDesc[index - 1] ?? '')
-    const currentStart = dayIdToLocalStart(dayIdsDesc[index] ?? '')
-    if (previousStart === 0 || currentStart === 0) continue
-    const diffDays = Math.round((previousStart - currentStart) / DAY_MS)
-    if (diffDays === 0) continue
-    if (diffDays === 1) {
-      streak += 1
-      continue
-    }
-    break
-  }
-  return streak
+  const runs = computeConsecutiveRuns(dayIdsDesc)
+  return runs[0] ?? 0
 }
 
 function bestStreakDays(dayIdsDesc: string[]): number {
   if (dayIdsDesc.length === 0) return 0
-  let best = 1
-  let current = 1
-  for (let index = 1; index < dayIdsDesc.length; index += 1) {
-    const previousStart = dayIdToLocalStart(dayIdsDesc[index - 1] ?? '')
-    const currentStart = dayIdToLocalStart(dayIdsDesc[index] ?? '')
-    if (previousStart === 0 || currentStart === 0) continue
-    const diffDays = Math.round((previousStart - currentStart) / DAY_MS)
-    if (diffDays === 0) continue
-    if (diffDays === 1) {
-      current += 1
-      best = Math.max(best, current)
-      continue
-    }
-    current = 1
-  }
-  return best
+  const runs = computeConsecutiveRuns(dayIdsDesc)
+  return runs.length === 0 ? 0 : Math.max(...runs)
 }
 
-function isOfflineQueueCandidate(error: unknown): boolean {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) return true
-  if (!error || typeof error !== 'object') return false
-  const candidate = error as { code?: string; message?: string }
-  const code = (candidate.code ?? '').toLowerCase()
-  const message = (candidate.message ?? '').toLowerCase()
-  return (
-    code.includes('unavailable') ||
-    code.includes('network') ||
-    code.includes('timeout') ||
-    code.includes('deadline-exceeded') ||
-    message.includes('network') ||
-    message.includes('offline') ||
-    message.includes('timeout')
-  )
+function computeConsecutiveRuns(dayIdsDesc: string[]): number[] {
+  if (dayIdsDesc.length === 0) return []
+  const starts: number[] = []
+  for (const dayId of dayIdsDesc) {
+    const s = dayIdToLocalStart(dayId ?? '')
+    if (s === 0) continue
+    if (starts.length > 0 && starts[starts.length - 1] === s) continue
+    starts.push(s)
+  }
+  if (starts.length === 0) return []
+
+  const runs: number[] = []
+  let current = 1
+  for (let i = 1; i < starts.length; i += 1) {
+    const diffDays = Math.round((starts[i - 1] - starts[i]) / DAY_MS)
+    if (diffDays === 0) {
+      continue
+    }
+    if (diffDays === 1) {
+      current += 1
+      continue
+    }
+    runs.push(current)
+    current = 1
+  }
+  runs.push(current)
+  return runs
 }
 
 export const useStreakStore = defineStore('streak', () => {

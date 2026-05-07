@@ -100,21 +100,6 @@ const readingBookA: LibraryBook = {
   note: null,
 }
 
-const readingBookB: LibraryBook = {
-  id: 'reading-book-b',
-  source: 'google',
-  externalId: 'reading-book-b',
-  title: 'Reading Book B',
-  authors: ['Author B'],
-  coverUrl: null,
-  totalPages: 280,
-  favorite: true,
-  currentPage: 40,
-  status: 'reading',
-  rating: null,
-  note: null,
-}
-
 const wishlistBookA: LibraryBook = {
   id: 'wishlist-book-a',
   source: 'google',

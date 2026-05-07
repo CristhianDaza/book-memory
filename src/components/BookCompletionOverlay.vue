@@ -135,6 +135,11 @@ function onClose() {
 
 .bco-confetti {
   position: absolute;
+  --bco-confetti-delay: 0s;
+  --bco-confetti-x: 50%;
+  --bco-confetti-color: var(--app-primary);
+  --bco-confetti-rotate: 0deg;
+  --bco-confetti-size: 8px;
   width: var(--bco-confetti-size);
   height: var(--bco-confetti-size);
   background: var(--bco-confetti-color);

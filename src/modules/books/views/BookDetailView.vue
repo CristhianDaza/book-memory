@@ -302,15 +302,13 @@ async function onConfirmCompletionRating() {
 const canStartReadingSession = computed(() => {
   if (!book.value) return false
   if (book.value.status !== 'reading') return false
-  if (book.value.totalPages !== null && book.value.currentPage >= book.value.totalPages) return false
-  return true
+  return !(book.value.totalPages !== null && book.value.currentPage >= book.value.totalPages)
 })
 
 const canStartReadingFromPendingOrPaused = computed(() => {
   if (!book.value) return false
   if (!['wishlist', 'paused'].includes(book.value.status)) return false
-  if (book.value.totalPages !== null && book.value.currentPage >= book.value.totalPages) return false
-  return true
+  return !(book.value.totalPages !== null && book.value.currentPage >= book.value.totalPages);
 })
 
 async function onStartReadingSession() {
@@ -745,12 +743,12 @@ onMounted(async () => {
                   class="bm-label sm:col-span-3"
                 >
                   {{ t('books.ratingLabel') }}
-                  <div class="mt-2">
+                  <span class="mt-2">
                     <StarRating
                       v-model="formRating"
                       :readonly="isMetadataUpdating()"
                     />
-                  </div>
+                  </span>
                 </label>
 
                 <label

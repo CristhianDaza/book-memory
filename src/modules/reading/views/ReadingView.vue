@@ -90,8 +90,7 @@ const canStartReading = computed(() => {
   const book = selectedBook.value
   if (!book) return false
   if (book.status !== 'reading') return false
-  if (book.totalPages !== null && book.currentPage >= book.totalPages) return false
-  return true
+  return !(book.totalPages !== null && book.currentPage >= book.totalPages)
 })
 
 watch(selectedBook, (book) => {
@@ -432,37 +431,38 @@ onMounted(async () => {
           class="bm-subtle-panel flex w-full cursor-pointer items-center gap-3 text-left transition hover:border-(--app-primary) hover:bg-(--app-surface-raised)"
           @click="onOpenBookDetail(effectiveSessionBook.id)"
         >
-          <div class="h-24 w-16 flex-none overflow-hidden rounded-lg border border-(--app-border) bg-(--app-surface-raised)">
+          <span class="h-24 w-16 flex-none overflow-hidden rounded-lg border border-(--app-border) bg-(--app-surface-raised)">
             <img
               v-if="effectiveSessionBook.coverUrl"
               :src="effectiveSessionBook.coverUrl"
               :alt="effectiveSessionBook.title"
               class="h-full w-full object-cover"
             >
-            <div
+            <span
               v-else
               class="grid h-full w-full place-items-center text-(--app-text-soft)"
               :aria-label="t('books.noCover')"
+              role="img"
             >
               <BookOpen
                 :size="24"
                 aria-hidden="true"
               />
-            </div>
-          </div>
+            </span>
+          </span>
 
-          <div class="min-w-0">
-            <p class="text-sm font-extrabold leading-tight text-(--app-text)">
+          <span class="min-w-0">
+            <span class="block text-sm font-extrabold leading-tight text-(--app-text)">
               {{ effectiveSessionBook.title }}
-            </p>
-            <p class="mt-1 truncate text-xs text-(--app-text-muted)">
+            </span>
+            <span class="mt-1 block truncate text-xs text-(--app-text-muted)">
               {{ effectiveSessionBook.authors.join(', ') || t('books.unknownAuthor') }}
-            </p>
-            <p class="mt-2 text-[11px] font-bold text-(--app-text-soft)">
+            </span>
+            <span class="mt-2 block text-[11px] font-bold text-(--app-text-soft)">
               {{ t('books.progress') }}: {{ effectiveSessionBook.currentPage }} /
               {{ effectiveSessionBook.totalPages ?? t('reading.unknownRemaining') }}
-            </p>
-          </div>
+            </span>
+          </span>
         </button>
 
         <p

@@ -21,6 +21,7 @@ import type { AppLocale } from '../types/i18n'
 import { useAuthStore } from './auth'
 import { useSessionsStore } from './sessions'
 import { useStreakStore } from './streak'
+import { isOfflineQueueCandidate } from '../utils/offline'
 
 export const useBooksStore = defineStore('books', () => {
   const LIBRARY_CACHE_MAX_AGE_MS = 2 * 60_000
@@ -112,21 +113,6 @@ export const useBooksStore = defineStore('books', () => {
 
   function clearSyncQueuedMessage() {
     syncQueuedMessageKey.value = null
-  }
-
-  function isOfflineQueueCandidate(error: unknown): boolean {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) return true
-    if (!error || typeof error !== 'object') return false
-    const candidate = error as { code?: string; message?: string }
-    const code = (candidate.code ?? '').toLowerCase()
-    const message = (candidate.message ?? '').toLowerCase()
-    return (
-      code.includes('unavailable') ||
-      code.includes('network') ||
-      code.includes('deadline-exceeded') ||
-      message.includes('network') ||
-      message.includes('offline')
-    )
   }
 
   function toLibraryDocId(sourceId: string): string {
@@ -470,9 +456,6 @@ export const useBooksStore = defineStore('books', () => {
           rating: normalizedPayload.rating,
           note: normalizedPayload.note,
           abandonedReason: normalizedPayload.abandonedReason,
-          rating: normalizedPayload.rating,
-          note: normalizedPayload.note,
-          abandonedReason: normalizedPayload.abandonedReason,
         })
         syncQueuedMessageKey.value = 'notifications.bookMetadataQueuedOffline'
         if (streakAction) void markStreakActivity(streakAction)
@@ -485,9 +468,6 @@ export const useBooksStore = defineStore('books', () => {
                 totalPages: previousBook.totalPages,
                 currentPage: previousBook.currentPage,
                 status: previousBook.status,
-                rating: previousBook.rating,
-                note: previousBook.note,
-                abandonedReason: previousBook.abandonedReason ?? null,
                 rating: previousBook.rating,
                 note: previousBook.note,
                 abandonedReason: previousBook.abandonedReason ?? null,

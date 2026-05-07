@@ -288,7 +288,7 @@ async function onConfirmAddBookWithPages() {
   } else {
     closeAddModal()
     if (addedBook) {
-      router.push({ name: 'book-detail', params: { id: addedBook.id } })
+      await router.push({name: 'book-detail', params: {id: addedBook.id}})
     }
   }
 }

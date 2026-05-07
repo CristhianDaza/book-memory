@@ -20,7 +20,7 @@ import { useStreakStore } from './streak'
 function parseDate(value: unknown): Date | null {
   if (!value) return null
   if (value instanceof Date) return value
-  if (typeof value === 'object' && value !== null && 'toDate' in value) {
+  if (typeof value === 'object' && 'toDate' in value) {
     return (value as FirestoreDateLike).toDate()
   }
   return null

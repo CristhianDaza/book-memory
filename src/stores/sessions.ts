@@ -1,14 +1,14 @@
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import {defineStore} from 'pinia'
+import {computed, ref} from 'vue'
 import {
   createReadingSession,
   deleteReadingSession,
   fetchUserSessions,
   updateReadingSession,
 } from '../services/readingSessionService'
-import type { CreateReadingSessionInput, ReadingSessionRecord } from '../types/reading'
-import { useAuthStore } from './auth'
-import { useStreakStore } from './streak'
+import type {CreateReadingSessionInput, ReadingSessionRecord} from '../types/reading'
+import {useAuthStore} from './auth'
+import {useStreakStore} from './streak'
 
 export const useSessionsStore = defineStore('sessions', () => {
   const allSessions = ref<ReadingSessionRecord[]>([])
@@ -96,10 +96,9 @@ export const useSessionsStore = defineStore('sessions', () => {
     const uid = authStore.user?.uid
     if (!uid) return
     await updateReadingSession(uid, sessionId, payload)
-    const next = allSessions.value.map((session) =>
-      session.id === sessionId ? { ...session, ...payload } : session,
+    allSessions.value = allSessions.value.map((session) =>
+      session.id === sessionId ? {...session, ...payload} : session,
     )
-    allSessions.value = next
   }
 
   async function deleteSession(sessionId: string): Promise<void> {
@@ -136,13 +135,11 @@ export const useSessionsStore = defineStore('sessions', () => {
     loading,
     latestSessionMillisByBook,
     ensureSessionsLoaded,
-    refreshSessions,
     getSessionsForBook,
     ensureBookSessionsLoaded,
     createSession,
     updateSession,
     deleteSession,
     removeSessionsForBookFromCache,
-    resetCache,
   }
 })
