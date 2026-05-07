@@ -267,6 +267,7 @@ export const en = {
     readingPaceEstimatedRemaining: 'Estimated remaining time',
     readingMinutesUnit: 'min',
     startSession: 'Start reading session',
+    startReading: 'Start Reading',
     recentSessions: 'Recent sessions',
     loadingSessions: 'Loading sessions...',
     noSessions: 'No sessions yet for this book.',

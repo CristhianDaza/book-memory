@@ -306,9 +306,38 @@ const canStartReadingSession = computed(() => {
   return true
 })
 
+const canStartReadingFromPendingOrPaused = computed(() => {
+  if (!book.value) return false
+  if (!['wishlist', 'paused'].includes(book.value.status)) return false
+  if (book.value.totalPages !== null && book.value.currentPage >= book.value.totalPages) return false
+  return true
+})
+
 async function onStartReadingSession() {
   if (!canStartReadingSession.value) return
   if (!book.value) return
+  await router.push({ name: 'reading', query: { bookId: book.value.id } })
+}
+
+async function onStartReadingFromPendingOrPaused() {
+  if (!canStartReadingFromPendingOrPaused.value) return
+  if (!book.value) return
+
+  await booksStore.updateBookMetadata(book.value.id, {
+    coverUrl: book.value.coverUrl,
+    totalPages: book.value.totalPages,
+    currentPage: book.value.currentPage,
+    status: 'reading',
+    rating: book.value.rating,
+    note: book.value.note,
+    abandonedReason: null,
+  })
+
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
+
   await router.push({ name: 'reading', query: { bookId: book.value.id } })
 }
 
@@ -548,6 +577,19 @@ onMounted(async () => {
                 aria-hidden="true"
               />
               {{ t('books.startSession') }}
+            </button>
+            <button
+              v-else-if="canStartReadingFromPendingOrPaused"
+              type="button"
+              class="bm-button bm-button-primary"
+              :disabled="isMetadataUpdating()"
+              @click="onStartReadingFromPendingOrPaused"
+            >
+              <Play
+                :size="17"
+                aria-hidden="true"
+              />
+              {{ t('books.startReading') }}
             </button>
 
             <button

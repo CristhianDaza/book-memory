@@ -37,6 +37,7 @@ const mocks = vi.hoisted(() => {
     notificationsInfo: vi.fn(),
     notificationsSuccess: vi.fn(),
     notificationsError: vi.fn(),
+    booksErrorKey: { value: null as string | null },
     activeBook,
     sessionsByBook,
     favoriteUpdatingIds: { value: [] as string[] },
@@ -60,7 +61,9 @@ vi.mock('../../../stores/books', () => ({
     removeFromLibrary: mocks.removeFromLibrary,
     recalculateBookProgressFromSessions: mocks.recalculateBookProgressFromSessions,
     clearSyncQueuedMessage: mocks.clearSyncQueuedMessage,
-    errorKey: null,
+    get errorKey() {
+      return mocks.booksErrorKey.value
+    },
   }),
 }))
 
@@ -145,6 +148,7 @@ describe('BookDetailView reading pace', () => {
     mocks.removeFromLibrary.mockResolvedValue(undefined)
     mocks.toggleFavorite.mockResolvedValue(undefined)
     mocks.routerPush.mockResolvedValue(undefined)
+    mocks.booksErrorKey.value = null
   })
 
   afterEach(() => {
@@ -194,5 +198,83 @@ describe('BookDetailView reading pace', () => {
     const text = wrapper.text()
     expect(text).toContain('Pace: 1.5 min/page')
     expect(text).not.toContain('Estimated remaining time:')
+  })
+
+  it('keeps start reading session action for books already in reading status', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Start reading session')
+    expect(wrapper.text()).not.toContain('Start Reading')
+  })
+
+  it('shows Start Reading and updates status for wishlist books before navigating', async () => {
+    mocks.activeBook.value = {
+      ...mocks.activeBook.value!,
+      status: 'wishlist',
+    }
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const startReadingButton = wrapper.findAll('button').find((button) => button.text().includes('Start Reading'))
+    expect(startReadingButton).toBeDefined()
+    await startReadingButton!.trigger('click')
+
+    expect(mocks.updateBookMetadata).toHaveBeenCalledWith('book-1', {
+      coverUrl: null,
+      totalPages: 300,
+      currentPage: 120,
+      status: 'reading',
+      rating: null,
+      note: null,
+      abandonedReason: null,
+    })
+    expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'reading', query: { bookId: 'book-1' } })
+  })
+
+  it('shows Start Reading and updates status for paused books before navigating', async () => {
+    mocks.activeBook.value = {
+      ...mocks.activeBook.value!,
+      status: 'paused',
+    }
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const startReadingButton = wrapper.findAll('button').find((button) => button.text().includes('Start Reading'))
+    expect(startReadingButton).toBeDefined()
+    await startReadingButton!.trigger('click')
+
+    expect(mocks.updateBookMetadata).toHaveBeenCalledWith('book-1', {
+      coverUrl: null,
+      totalPages: 300,
+      currentPage: 120,
+      status: 'reading',
+      rating: null,
+      note: null,
+      abandonedReason: null,
+    })
+    expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'reading', query: { bookId: 'book-1' } })
+  })
+
+  it('does not navigate and shows error when status update fails before Start Reading', async () => {
+    mocks.activeBook.value = {
+      ...mocks.activeBook.value!,
+      status: 'wishlist',
+    }
+    mocks.updateBookMetadata.mockImplementation(async () => {
+      mocks.booksErrorKey.value = 'books.updateBookError'
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const startReadingButton = wrapper.findAll('button').find((button) => button.text().includes('Start Reading'))
+    expect(startReadingButton).toBeDefined()
+    await startReadingButton!.trigger('click')
+
+    expect(mocks.routerPush).not.toHaveBeenCalledWith({ name: 'reading', query: { bookId: 'book-1' } })
+    expect(mocks.notificationsError).toHaveBeenCalled()
   })
 })
