@@ -76,6 +76,31 @@ const remainingPages = computed(() => {
   if (!book.value?.totalPages) return null
   return Math.max(0, book.value.totalPages - displayCurrentPage.value)
 })
+const validSessionsForPace = computed(() =>
+  sessions.value.filter((session) => (session.pagesRead ?? 0) > 0 && (session.durationSeconds ?? 0) > 0),
+)
+const totalPagesRead = computed(() =>
+  validSessionsForPace.value.reduce((acc, session) => acc + Math.max(0, session.pagesRead ?? 0), 0),
+)
+const totalMinutesRead = computed(() =>
+  Math.floor(validSessionsForPace.value.reduce((acc, session) => acc + Math.max(0, session.durationSeconds ?? 0), 0) / 60),
+)
+const minutesPerPage = computed(() => {
+  if (totalPagesRead.value <= 0) return null
+  return totalMinutesRead.value / totalPagesRead.value
+})
+const minutesPerPageDisplay = computed(() => {
+  if (minutesPerPage.value === null) return null
+  return (Math.round(minutesPerPage.value * 10) / 10).toFixed(1)
+})
+const minutesPerTenPagesDisplay = computed(() => {
+  if (minutesPerPage.value === null) return null
+  return (Math.round(minutesPerPage.value * 100) / 10).toFixed(1)
+})
+const estimatedRemainingMinutesDisplay = computed(() => {
+  if (minutesPerPage.value === null || remainingPages.value === null) return null
+  return (Math.round(remainingPages.value * minutesPerPage.value * 10) / 10).toFixed(1)
+})
 const visibleSessions = computed(() => sessions.value.slice(0, visibleSessionsCount.value))
 const canLoadMoreSessions = computed(() => sessions.value.length > visibleSessionsCount.value)
 
@@ -480,6 +505,31 @@ onMounted(async () => {
               {{ t('books.remainingPages') }}:
               {{ remainingPages === null ? t('books.unknownPages') : remainingPages }}
             </p>
+          </div>
+
+          <div class="bm-subtle-panel mt-4">
+            <p class="bm-eyebrow">{{ t('books.readingPaceTitle') }}</p>
+            <p
+              v-if="minutesPerPageDisplay === null"
+              class="bm-muted mt-2 text-sm"
+            >
+              {{ t('books.readingPaceNoData') }}
+            </p>
+            <template v-else>
+              <p class="bm-muted mt-2 text-sm">
+                {{ t('books.readingPaceMetric') }}: {{ minutesPerPageDisplay }} {{ t('books.readingPaceUnit') }}
+              </p>
+              <p class="bm-muted mt-1 text-sm">
+                {{ t('books.readingPaceTenPages') }}: {{ minutesPerTenPagesDisplay }} {{ t('books.readingMinutesUnit') }}
+              </p>
+              <p
+                v-if="estimatedRemainingMinutesDisplay !== null"
+                class="bm-muted mt-1 text-sm"
+              >
+                {{ t('books.readingPaceEstimatedRemaining') }}:
+                {{ estimatedRemainingMinutesDisplay }} {{ t('books.readingMinutesUnit') }}
+              </p>
+            </template>
           </div>
 
           <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
