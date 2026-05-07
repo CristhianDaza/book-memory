@@ -77,6 +77,8 @@ describe('stats store', () => {
         favorite: false,
         currentPage: 20,
         status: 'reading',
+        rating: null,
+        note: null
       },
       {
         id: 'book-2',
@@ -89,6 +91,8 @@ describe('stats store', () => {
         favorite: false,
         currentPage: 40,
         status: 'reading',
+        rating: null,
+        note: null
       },
     ])
     vi.mocked(fetchUserSessions).mockResolvedValue([

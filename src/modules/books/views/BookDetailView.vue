@@ -6,7 +6,9 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ConfirmModal from '../../../components/ConfirmModal.vue'
 import { useBookCompletionOverlay } from '../../../composables/useBookCompletionOverlay'
+import IconButton from '../../../components/ui/IconButton.vue'
 import StatusBadge from '../../../components/ui/StatusBadge.vue'
+import StarRating from '../../../components/ui/StarRating.vue'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
@@ -31,7 +33,10 @@ const editMode = ref(false)
 const formTotalPages = ref<string>('')
 const formCurrentPage = ref<string>('0')
 const formCoverUrl = ref<string>('')
-const formStatus = ref<'reading' | 'finished' | 'wishlist'>('reading')
+const formStatus = ref<'reading' | 'finished' | 'wishlist' | 'paused' | 'abandoned'>('reading')
+const formRating = ref<1 | 2 | 3 | 4 | 5 | null>(null)
+const formNote = ref<string>('')
+const formAbandonedReason = ref<string>('')
 const sessions = ref<ReadingSessionRecord[]>([])
 const loadingSessions = ref(false)
 const visibleSessionsCount = ref(5)
@@ -43,6 +48,12 @@ const savingSessionEdit = ref(false)
 const deletingSessionId = ref<string | null>(null)
 const removingBookModalOpen = ref(false)
 const removingSessionId = ref<string | null>(null)
+const showCompletionRatingModal = ref(false)
+const completionRating = ref<1 | 2 | 3 | 4 | 5 | null>(null)
+const completionNote = ref('')
+const completionRatingError = ref('')
+const canEditRating = computed(() => formStatus.value === 'finished')
+const showRatingDisplay = computed(() => Boolean(book.value && book.value.status === 'finished' && book.value.rating))
 
 function isFavoriteUpdating() {
   return favoriteUpdatingIds.value.includes(bookId.value)
@@ -65,6 +76,31 @@ const displayCurrentPage = computed(() => {
 const remainingPages = computed(() => {
   if (!book.value?.totalPages) return null
   return Math.max(0, book.value.totalPages - displayCurrentPage.value)
+})
+const validSessionsForPace = computed(() =>
+  sessions.value.filter((session) => (session.pagesRead ?? 0) > 0 && (session.durationSeconds ?? 0) > 0),
+)
+const totalPagesRead = computed(() =>
+  validSessionsForPace.value.reduce((acc, session) => acc + Math.max(0, session.pagesRead ?? 0), 0),
+)
+const totalMinutesRead = computed(() =>
+  Math.floor(validSessionsForPace.value.reduce((acc, session) => acc + Math.max(0, session.durationSeconds ?? 0), 0) / 60),
+)
+const minutesPerPage = computed(() => {
+  if (totalPagesRead.value <= 0) return null
+  return totalMinutesRead.value / totalPagesRead.value
+})
+const minutesPerPageDisplay = computed(() => {
+  if (minutesPerPage.value === null) return null
+  return (Math.round(minutesPerPage.value * 10) / 10).toFixed(1)
+})
+const minutesPerTenPagesDisplay = computed(() => {
+  if (minutesPerPage.value === null) return null
+  return (Math.round(minutesPerPage.value * 100) / 10).toFixed(1)
+})
+const estimatedRemainingMinutesDisplay = computed(() => {
+  if (minutesPerPage.value === null || remainingPages.value === null) return null
+  return (Math.round(remainingPages.value * minutesPerPage.value * 10) / 10).toFixed(1)
 })
 const visibleSessions = computed(() => sessions.value.slice(0, visibleSessionsCount.value))
 const canLoadMoreSessions = computed(() => sessions.value.length > visibleSessionsCount.value)
@@ -134,6 +170,9 @@ function syncFormFromBook() {
   formCurrentPage.value = String(displayCurrentPage.value)
   formCoverUrl.value = book.value.coverUrl ?? ''
   formStatus.value = book.value.status
+  formRating.value = book.value.rating
+  formNote.value = book.value.note ?? ''
+  formAbandonedReason.value = book.value.abandonedReason ?? ''
 }
 
 function syncFinishedProgressField() {
@@ -168,6 +207,7 @@ async function onSaveMetadata() {
     safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
 
   const previousStatus = book.value.status
+  const nextAbandonedReason = formStatus.value === 'abandoned' ? (formAbandonedReason.value.trim() || null) : null
 
   let nextCurrentPage: number
   if (formStatus.value === 'finished' && safeTotalPages !== null) {
@@ -178,11 +218,24 @@ async function onSaveMetadata() {
     nextCurrentPage = currentPageCapped
   }
 
+  const isTransitionToFinished = previousStatus !== 'finished' && formStatus.value === 'finished'
+
+  if (isTransitionToFinished) {
+    completionRating.value = formRating.value ?? book.value.rating
+    completionNote.value = formNote.value || book.value.note || ''
+    completionRatingError.value = ''
+    showCompletionRatingModal.value = true
+    return
+  }
+
   await booksStore.updateBookMetadata(book.value.id, {
     coverUrl: safeCoverUrl,
     totalPages: safeTotalPages,
     currentPage: nextCurrentPage,
     status: formStatus.value,
+    rating: formRating.value,
+    note: formNote.value.trim() || null,
+    abandonedReason: nextAbandonedReason,
   })
   if (booksStore.errorKey) {
     notificationsStore.error(t(booksStore.errorKey))
@@ -190,31 +243,99 @@ async function onSaveMetadata() {
   }
 
   syncFormFromBook()
-
-  if (previousStatus !== 'finished' && formStatus.value === 'finished') {
-    showBookCompletion({
-      bookId: book.value.id,
-      title: book.value.title,
-      authors: book.value.authors,
-      coverUrl: book.value.coverUrl ?? null,
-    })
-  }
-
   showQueuedFeedbackIfAny()
   editMode.value = false
   notificationsStore.success(t('notifications.metadataSaved'))
 }
 
+function onCancelCompletionRating() {
+  showCompletionRatingModal.value = false
+  completionRatingError.value = ''
+}
+
+async function onConfirmCompletionRating() {
+  if (!book.value) return
+  if (!completionRating.value) {
+    completionRatingError.value = t('books.ratingRequired')
+    return
+  }
+
+  const parsedTotalPages = String(formTotalPages.value).trim() === '' ? null : Number(formTotalPages.value)
+  const parsedCurrentPage = Number(formCurrentPage.value)
+  const safeCurrentPage = Number.isFinite(parsedCurrentPage) && parsedCurrentPage >= 0 ? parsedCurrentPage : 0
+  const safeTotalPages = parsedTotalPages !== null && Number.isFinite(parsedTotalPages) && parsedTotalPages > 0
+    ? Math.floor(parsedTotalPages)
+    : null
+  const safeCoverUrl = book.value.coverUrl ?? (formCoverUrl.value.trim() || null)
+  const currentPageCapped =
+    safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
+
+  await booksStore.updateBookMetadata(book.value.id, {
+    coverUrl: safeCoverUrl,
+    totalPages: safeTotalPages,
+    currentPage: safeTotalPages ?? currentPageCapped,
+    status: 'finished',
+    rating: completionRating.value,
+    note: completionNote.value.trim() || null,
+  })
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
+
+  formRating.value = completionRating.value
+  formNote.value = completionNote.value
+  formStatus.value = 'finished'
+  syncFormFromBook()
+  showQueuedFeedbackIfAny()
+  showCompletionRatingModal.value = false
+  editMode.value = false
+  showBookCompletion({
+    bookId: book.value.id,
+    title: book.value.title,
+    authors: book.value.authors,
+    coverUrl: book.value.coverUrl ?? null,
+  })
+  notificationsStore.success(t('notifications.metadataSaved'))
+}
+
 const canStartReadingSession = computed(() => {
   if (!book.value) return false
-  if (book.value.status === 'finished') return false
-  if (book.value.totalPages !== null && book.value.currentPage >= book.value.totalPages) return false
-  return true
+  if (book.value.status !== 'reading') return false
+  return !(book.value.totalPages !== null && book.value.currentPage >= book.value.totalPages)
+})
+
+const canStartReadingFromPendingOrPaused = computed(() => {
+  if (!book.value) return false
+  if (!['wishlist', 'paused'].includes(book.value.status)) return false
+  return !(book.value.totalPages !== null && book.value.currentPage >= book.value.totalPages);
 })
 
 async function onStartReadingSession() {
   if (!canStartReadingSession.value) return
   if (!book.value) return
+  await router.push({ name: 'reading', query: { bookId: book.value.id } })
+}
+
+async function onStartReadingFromPendingOrPaused() {
+  if (!canStartReadingFromPendingOrPaused.value) return
+  if (!book.value) return
+
+  await booksStore.updateBookMetadata(book.value.id, {
+    coverUrl: book.value.coverUrl,
+    totalPages: book.value.totalPages,
+    currentPage: book.value.currentPage,
+    status: 'reading',
+    rating: book.value.rating,
+    note: book.value.note,
+    abandonedReason: null,
+  })
+
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
+
   await router.push({ name: 'reading', query: { bookId: book.value.id } })
 }
 
@@ -373,6 +494,17 @@ onMounted(async () => {
               {{ book.favorite ? t('books.favorite') : t('books.notFavorite') }}
             </StatusBadge>
           </div>
+          <div
+            v-if="showRatingDisplay"
+            class="mt-2 flex items-center gap-2"
+          >
+            <span class="bm-muted text-sm">{{ t('books.ratingLabel') }}:</span>
+            <StarRating
+              :model-value="book.rating"
+              readonly
+              :size="16"
+            />
+          </div>
 
           <div class="bm-subtle-panel mt-4">
             <div class="flex items-center justify-between gap-3">
@@ -406,6 +538,31 @@ onMounted(async () => {
             </p>
           </div>
 
+          <div class="bm-subtle-panel mt-4">
+            <p class="bm-eyebrow">{{ t('books.readingPaceTitle') }}</p>
+            <p
+              v-if="minutesPerPageDisplay === null"
+              class="bm-muted mt-2 text-sm"
+            >
+              {{ t('books.readingPaceNoData') }}
+            </p>
+            <template v-else>
+              <p class="bm-muted mt-2 text-sm">
+                {{ t('books.readingPaceMetric') }}: {{ minutesPerPageDisplay }} {{ t('books.readingPaceUnit') }}
+              </p>
+              <p class="bm-muted mt-1 text-sm">
+                {{ t('books.readingPaceTenPages') }}: {{ minutesPerTenPagesDisplay }} {{ t('books.readingMinutesUnit') }}
+              </p>
+              <p
+                v-if="estimatedRemainingMinutesDisplay !== null"
+                class="bm-muted mt-1 text-sm"
+              >
+                {{ t('books.readingPaceEstimatedRemaining') }}:
+                {{ estimatedRemainingMinutesDisplay }} {{ t('books.readingMinutesUnit') }}
+              </p>
+            </template>
+          </div>
+
           <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               v-if="canStartReadingSession"
@@ -418,6 +575,19 @@ onMounted(async () => {
                 aria-hidden="true"
               />
               {{ t('books.startSession') }}
+            </button>
+            <button
+              v-else-if="canStartReadingFromPendingOrPaused"
+              type="button"
+              class="bm-button bm-button-primary"
+              :disabled="isMetadataUpdating()"
+              @click="onStartReadingFromPendingOrPaused"
+            >
+              <Play
+                :size="17"
+                aria-hidden="true"
+              />
+              {{ t('books.startReading') }}
             </button>
 
             <button
@@ -459,92 +629,183 @@ onMounted(async () => {
               <p class="bm-eyebrow">
                 {{ t('books.editMetadata') }}
               </p>
-              <button
+              <IconButton
                 v-if="!editMode"
-                type="button"
-                class="bm-button text-xs"
+                :label="t('books.editAction')"
                 @click="onStartEdit"
               >
                 <Pencil
-                  :size="14"
+                  :size="16"
                   aria-hidden="true"
                 />
-                {{ t('books.editAction') }}
-              </button>
-            </div>
-
-            <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <label class="bm-label">
-                {{ t('books.pages') }}
-                <input
-                  v-model="formTotalPages"
-                  type="number"
-                  min="1"
-                  :disabled="!editMode || isMetadataUpdating()"
-                  class="bm-input mt-1 py-1.5 text-sm"
-                >
-              </label>
-
-              <label class="bm-label">
-                {{ t('books.progress') }}
-                <input
-                  v-model="formCurrentPage"
-                  type="number"
-                  min="0"
-                  :disabled="!editMode || isMetadataUpdating()"
-                  class="bm-input mt-1 py-1.5 text-sm"
-                >
-              </label>
-
-              <label class="bm-label">
-                {{ t('books.status') }}
-                <select
-                  v-model="formStatus"
-                  :disabled="!editMode || isMetadataUpdating()"
-                  class="bm-select mt-1 py-1.5 text-sm"
-                >
-                  <option value="reading">{{ t('books.status_reading') }}</option>
-                  <option value="finished">{{ t('books.status_finished') }}</option>
-                  <option value="wishlist">{{ t('books.status_wishlist') }}</option>
-                </select>
-              </label>
-
-              <label
-                v-if="!book.coverUrl"
-                class="bm-label sm:col-span-3"
-              >
-                {{ t('books.manualCoverUrl') }}
-                <input
-                  v-model="formCoverUrl"
-                  type="url"
-                  :placeholder="t('books.manualCoverUrlPlaceholder')"
-                  :disabled="!editMode || isMetadataUpdating()"
-                  class="bm-input mt-1 py-1.5 text-sm"
-                >
-              </label>
+              </IconButton>
             </div>
 
             <div
-              v-if="editMode"
-              class="mt-3 flex gap-2"
+              v-if="!editMode"
+              class="grid grid-cols-1 gap-3 sm:grid-cols-2"
             >
-              <button
-                type="button"
-                class="bm-button bm-button-primary"
-                :disabled="isMetadataUpdating()"
-                @click="onSaveMetadata"
+              <div class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2">
+                <p class="bm-soft text-[11px]">{{ t('books.pages') }}</p>
+                <p class="bm-muted text-sm">{{ book.totalPages ?? t('books.unknownPages') }}</p>
+              </div>
+              <div class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2">
+                <p class="bm-soft text-[11px]">{{ t('books.progress') }}</p>
+                <p class="bm-muted text-sm">{{ displayCurrentPage }}</p>
+              </div>
+              <div class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2">
+                <p class="bm-soft text-[11px]">{{ t('books.status') }}</p>
+                <p class="bm-muted text-sm">{{ t(`books.status_${book.status}`) }}</p>
+              </div>
+              <div
+                v-if="showRatingDisplay"
+                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2"
               >
-                {{ isMetadataUpdating() ? t('books.savingMetadata') : t('books.saveMetadata') }}
-              </button>
-              <button
-                type="button"
-                class="bm-button"
-                :disabled="isMetadataUpdating()"
-                @click="onCancelEdit"
+                <p class="bm-soft text-[11px]">{{ t('books.ratingLabel') }}</p>
+                <div class="mt-1">
+                  <StarRating
+                    :model-value="book.rating"
+                    readonly
+                    :size="15"
+                  />
+                </div>
+              </div>
+              <div
+                v-if="!book.coverUrl"
+                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2 sm:col-span-2"
               >
-                {{ t('books.cancelEdit') }}
-              </button>
+                <p class="bm-soft text-[11px]">{{ t('books.manualCoverUrl') }}</p>
+                <p class="bm-muted break-all text-sm">{{ t('books.noCover') }}</p>
+              </div>
+              <div
+                v-if="book.note"
+                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2 sm:col-span-2"
+              >
+                <p class="bm-soft text-[11px]">{{ t('books.noteLabel') }}</p>
+                <p class="bm-muted mt-1 whitespace-pre-line text-sm">{{ book.note }}</p>
+              </div>
             </div>
+
+            <template v-else>
+              <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <label class="bm-label">
+                  {{ t('books.pages') }}
+                  <input
+                    v-model="formTotalPages"
+                    type="number"
+                    min="1"
+                    :disabled="isMetadataUpdating()"
+                    class="bm-input mt-1 py-1.5 text-sm"
+                  >
+                </label>
+
+                <label class="bm-label">
+                  {{ t('books.progress') }}
+                  <input
+                    v-model="formCurrentPage"
+                    type="number"
+                    min="0"
+                    :disabled="isMetadataUpdating()"
+                    class="bm-input mt-1 py-1.5 text-sm"
+                  >
+                </label>
+
+                <label class="bm-label">
+                  {{ t('books.status') }}
+                  <select
+                    v-model="formStatus"
+                    :disabled="isMetadataUpdating()"
+                    class="bm-select mt-1 py-1.5 text-sm"
+                  >
+                    <option value="reading">{{ t('books.status_reading') }}</option>
+                    <option value="finished">{{ t('books.status_finished') }}</option>
+                    <option value="wishlist">{{ t('books.status_wishlist') }}</option>
+                    <option value="paused">{{ t('books.status_paused') }}</option>
+                    <option value="abandoned">{{ t('books.status_abandoned') }}</option>
+                  </select>
+                </label>
+
+                <label
+                  v-if="formStatus === 'abandoned'"
+                  class="bm-label sm:col-span-3"
+                >
+                  {{ t('books.abandonedReason') }}
+                  <textarea
+                    v-model="formAbandonedReason"
+                    :disabled="isMetadataUpdating()"
+                    :placeholder="t('books.abandonedReasonPlaceholder')"
+                    class="bm-input mt-1 min-h-20 py-1.5 text-sm"
+                  />
+                </label>
+
+                <label
+                  v-if="canEditRating"
+                  class="bm-label sm:col-span-3"
+                >
+                  {{ t('books.ratingLabel') }}
+                  <span class="mt-2">
+                    <StarRating
+                      v-model="formRating"
+                      :readonly="isMetadataUpdating()"
+                    />
+                  </span>
+                </label>
+
+                <label
+                  v-if="canEditRating"
+                  class="bm-label sm:col-span-3"
+                >
+                  {{ t('books.noteLabel') }}
+                  <textarea
+                    v-model="formNote"
+                    :disabled="isMetadataUpdating()"
+                    :placeholder="t('books.notePlaceholder')"
+                    class="bm-input mt-1 min-h-20 py-1.5 text-sm"
+                  />
+                </label>
+
+                <label
+                  v-if="!book.coverUrl"
+                  class="bm-label sm:col-span-3"
+                >
+                  {{ t('books.manualCoverUrl') }}
+                  <input
+                    v-model="formCoverUrl"
+                    type="url"
+                    :placeholder="t('books.manualCoverUrlPlaceholder')"
+                    :disabled="isMetadataUpdating()"
+                    class="bm-input mt-1 py-1.5 text-sm"
+                  >
+                </label>
+              </div>
+
+              <div class="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  class="bm-button bm-button-primary"
+                  :disabled="isMetadataUpdating()"
+                  @click="onSaveMetadata"
+                >
+                  {{ isMetadataUpdating() ? t('books.savingMetadata') : t('books.saveMetadata') }}
+                </button>
+                <button
+                  type="button"
+                  class="bm-button"
+                  :disabled="isMetadataUpdating()"
+                  @click="onCancelEdit"
+                >
+                  {{ t('books.cancelEdit') }}
+                </button>
+              </div>
+            </template>
+          </div>
+
+          <div
+            v-if="book.note"
+            class="bm-subtle-panel mt-4"
+          >
+            <p class="bm-eyebrow">{{ t('books.noteLabel') }}</p>
+            <p class="bm-muted mt-2 whitespace-pre-line text-sm">{{ book.note }}</p>
           </div>
 
           <div class="bm-subtle-panel mt-4">
@@ -702,4 +963,51 @@ onMounted(async () => {
     @cancel="onCancelDeleteSession"
     @confirm="onConfirmDeleteSession"
   />
+
+  <div
+    v-if="showCompletionRatingModal"
+    class="bm-modal-backdrop z-50"
+  >
+    <section class="bm-modal-sheet w-full max-w-lg p-5 sm:p-6">
+      <h3 class="bm-section-title">{{ t('books.ratingModalTitle') }}</h3>
+      <p class="bm-muted mt-1 text-sm">{{ t('books.ratingModalSubtitle') }}</p>
+      <div class="mt-4">
+        <p class="bm-label">{{ t('books.ratingLabel') }}</p>
+        <StarRating
+          v-model="completionRating"
+          class="mt-2"
+        />
+        <p
+          v-if="completionRatingError"
+          class="mt-2 text-xs text-(--app-danger)"
+        >
+          {{ completionRatingError }}
+        </p>
+      </div>
+      <label class="bm-label mt-4 block">
+        {{ t('books.noteLabel') }}
+        <textarea
+          v-model="completionNote"
+          :placeholder="t('books.notePlaceholder')"
+          class="bm-input mt-1 min-h-24 text-sm"
+        />
+      </label>
+      <div class="mt-4 flex justify-end gap-2">
+        <button
+          type="button"
+          class="bm-button"
+          @click="onCancelCompletionRating"
+        >
+          {{ t('common.cancel') }}
+        </button>
+        <button
+          type="button"
+          class="bm-button bm-button-primary"
+          @click="onConfirmCompletionRating"
+        >
+          {{ t('books.saveRatingAction') }}
+        </button>
+      </div>
+    </section>
+  </div>
 </template>

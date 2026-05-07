@@ -50,10 +50,4 @@ export const bookCompletionOverlay = {
     }, 300)
   },
   isActive: () => isVisible.value,
-  hide: () => {
-    isVisible.value = false
-    setTimeout(() => {
-      payload.value = null
-    }, 300)
-  },
 }

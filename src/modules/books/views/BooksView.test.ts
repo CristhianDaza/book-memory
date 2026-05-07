@@ -1,6 +1,7 @@
 import { mount, flushPromises } from '@vue/test-utils'
+import { defineComponent, h } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BooksView from './BooksView.vue'
 import type { BookSearchResult, LibraryBook } from '../../../types/books'
 import { useAuthStore } from '../../../stores/auth'
@@ -80,6 +81,84 @@ const savedBook: LibraryBook = {
   favorite: false,
   currentPage: 0,
   status: 'wishlist',
+  rating: null,
+  note: null,
+}
+
+const readingBookA: LibraryBook = {
+  id: 'reading-book-a',
+  source: 'google',
+  externalId: 'reading-book-a',
+  title: 'Reading Book A',
+  authors: ['Author A'],
+  coverUrl: null,
+  totalPages: 300,
+  favorite: false,
+  currentPage: 80,
+  status: 'reading',
+  rating: null,
+  note: null,
+}
+
+const wishlistBookA: LibraryBook = {
+  id: 'wishlist-book-a',
+  source: 'google',
+  externalId: 'wishlist-book-a',
+  title: 'Wishlist Book A',
+  authors: ['Wishlist Author A'],
+  coverUrl: null,
+  totalPages: 260,
+  favorite: false,
+  currentPage: 0,
+  status: 'wishlist',
+  rating: null,
+  note: null,
+}
+
+const wishlistBookB: LibraryBook = {
+  id: 'wishlist-book-b',
+  source: 'google',
+  externalId: 'wishlist-book-b',
+  title: 'Wishlist Book B',
+  authors: ['Wishlist Author B'],
+  coverUrl: null,
+  totalPages: 310,
+  favorite: true,
+  currentPage: 0,
+  status: 'wishlist',
+  rating: null,
+  note: null,
+}
+
+const pausedBook: LibraryBook = {
+  id: 'paused-book',
+  source: 'google',
+  externalId: 'paused-book',
+  title: 'Paused Book',
+  authors: ['Paused Author'],
+  coverUrl: null,
+  totalPages: 220,
+  favorite: false,
+  currentPage: 90,
+  status: 'paused',
+  rating: null,
+  note: null,
+}
+
+const abandonedBook: LibraryBook = {
+  id: 'abandoned-book',
+  source: 'google',
+  externalId: 'abandoned-book',
+  title: 'Abandoned Book',
+  authors: ['Abandoned Author'],
+  coverUrl: null,
+  totalPages: 180,
+  favorite: false,
+  currentPage: 45,
+  status: 'abandoned',
+  rating: null,
+  note: null,
+  abandonedReason: 'not_for_me',
 }
 
 function mountView() {
@@ -92,7 +171,11 @@ function mountView() {
     global: {
       stubs: {
         PageHeader: {
-          template: '<header><slot name="actions" /></header>',
+          ...defineComponent({
+            setup(_, { slots }) {
+              return () => h('header', slots.actions?.())
+            },
+          }),
         },
         SurfaceCard: {
           template: '<section><slot /></section>',
@@ -129,6 +212,10 @@ describe('BooksView add flow', () => {
     vi.mocked(fetchLibraryBooks).mockResolvedValue([])
     vi.mocked(searchBooks).mockResolvedValue({ items: [searchResult], totalItems: 1 })
     vi.mocked(addBookToLibrary).mockResolvedValue(savedBook)
+  })
+
+  afterEach(() => {
+    vi.clearAllMocks()
   })
 
   it('keeps the add modal open and clears search when add another is checked', async () => {
@@ -177,5 +264,139 @@ describe('BooksView add flow', () => {
       coverUrl,
       totalPages: 321,
     })
+  })
+})
+
+describe('BooksView random picker flow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(fetchLibraryBooks).mockResolvedValue([wishlistBookA, wishlistBookB, readingBookA])
+    vi.mocked(searchBooks).mockResolvedValue({ items: [], totalItems: 0 })
+    vi.mocked(addBookToLibrary).mockResolvedValue(savedBook)
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+  })
+
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders the random picker action button in the header', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    const randomButton = wrapper
+      .findAll('header .bm-button')
+      .find((button) => button.text().includes('books.pickRandomAction'))
+    expect(randomButton).toBeTruthy()
+  })
+
+  it('opens random picker modal with a valid wishlist candidate and can pick another', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const randomButton = wrapper
+      .findAll('header .bm-button')
+      .find((button) => button.text().includes('books.pickRandomAction'))
+    expect(randomButton).toBeTruthy()
+    await randomButton?.trigger('click')
+    await flushPromises()
+
+    const randomModal = wrapper.find('.bm-random-modal')
+    expect(wrapper.text()).toContain('books.randomModalTitle')
+    expect(
+      randomModal.text().includes('Wishlist Book A') || randomModal.text().includes('Wishlist Book B'),
+    ).toBe(true)
+    expect(randomModal.text()).not.toContain('Reading Book A')
+
+    vi.mocked(Math.random).mockReturnValue(0.99)
+    const pickAnotherButton = wrapper.findAll('.z-50 .bm-button').find((button) => button.text() === 'books.randomPickAnother')
+    expect(pickAnotherButton).toBeTruthy()
+    await pickAnotherButton?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Wishlist Book B')
+  })
+
+  it('navigates to detail when confirming the random pick', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const randomButton = wrapper
+      .findAll('header .bm-button')
+      .find((button) => button.text().includes('books.pickRandomAction'))
+    await randomButton?.trigger('click')
+    await flushPromises()
+
+    const confirmButton = wrapper.findAll('.z-50 .bm-button-success').find((button) => button.text() === 'books.randomPickThis')
+    expect(confirmButton).toBeTruthy()
+
+    const selectedTitle = wrapper.text().includes('Wishlist Book B') ? 'Wishlist Book B' : 'Wishlist Book A'
+    const expectedId = selectedTitle === 'Wishlist Book B' ? 'wishlist-book-b' : 'wishlist-book-a'
+
+    await confirmButton?.trigger('click')
+    await flushPromises()
+
+    expect(routerPush).toHaveBeenCalledWith({ name: 'book-detail', params: { id: expectedId } })
+  })
+
+  it('shows empty state when there are no wishlist books and does not navigate', async () => {
+    vi.mocked(fetchLibraryBooks).mockResolvedValue([pausedBook, abandonedBook])
+    const wrapper = mountView()
+    await flushPromises()
+
+    const randomButton = wrapper
+      .findAll('header .bm-button')
+      .find((button) => button.text().includes('books.pickRandomAction'))
+    await randomButton?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('books.randomModalEmptyTitle')
+    expect(wrapper.find('.z-50 .bm-button-success').attributes('disabled')).toBeDefined()
+    expect(routerPush).not.toHaveBeenCalled()
+  })
+
+  it('includes paused books when the toggle is enabled', async () => {
+    vi.mocked(fetchLibraryBooks).mockResolvedValue([pausedBook, abandonedBook, readingBookA])
+    const wrapper = mountView()
+    await flushPromises()
+
+    const randomButton = wrapper
+      .findAll('header .bm-button')
+      .find((button) => button.text().includes('books.pickRandomAction'))
+    await randomButton?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('books.randomModalEmptyTitle')
+
+    const includePausedCheckbox = wrapper.find('.z-50 input[type="checkbox"]')
+    expect(includePausedCheckbox.exists()).toBe(true)
+    await includePausedCheckbox.setValue(true)
+    await flushPromises()
+
+    const randomModal = wrapper.find('.bm-random-modal')
+    expect(randomModal.text()).toContain('Paused Book')
+    expect(randomModal.text()).not.toContain('Reading Book A')
+  })
+
+  it('navigates to a paused book detail when paused are included and selected', async () => {
+    vi.mocked(fetchLibraryBooks).mockResolvedValue([pausedBook, readingBookA])
+    const wrapper = mountView()
+    await flushPromises()
+
+    const randomButton = wrapper
+      .findAll('header .bm-button')
+      .find((button) => button.text().includes('books.pickRandomAction'))
+    await randomButton?.trigger('click')
+    await flushPromises()
+
+    const includePausedCheckbox = wrapper.find('.z-50 input[type="checkbox"]')
+    await includePausedCheckbox.setValue(true)
+    await flushPromises()
+
+    const confirmButton = wrapper.findAll('.z-50 .bm-button-success').find((button) => button.text() === 'books.randomPickThis')
+    expect(confirmButton).toBeTruthy()
+    await confirmButton?.trigger('click')
+    await flushPromises()
+
+    expect(routerPush).toHaveBeenCalledWith({ name: 'book-detail', params: { id: 'paused-book' } })
   })
 })

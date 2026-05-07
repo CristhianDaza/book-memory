@@ -20,7 +20,7 @@ export interface QueuedFinishSessionPayload {
   pagesRead: number
   totalPages: number | null
   currentPage: number
-  status: 'reading' | 'finished' | 'wishlist'
+  status: 'reading' | 'finished' | 'wishlist' | 'paused' | 'abandoned'
 }
 
 export interface QueuedLibraryAddPayload {
@@ -42,7 +42,10 @@ export interface QueuedLibraryMetadataPayload {
   coverUrl?: string | null
   totalPages: number | null
   currentPage: number
-  status: 'reading' | 'finished' | 'wishlist'
+  status: 'reading' | 'finished' | 'wishlist' | 'paused' | 'abandoned'
+  rating?: 1 | 2 | 3 | 4 | 5 | null
+  note?: string | null
+  abandonedReason?: string | null
 }
 
 export interface QueuedLibraryDeletePayload {

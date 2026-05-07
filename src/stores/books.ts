@@ -21,6 +21,7 @@ import type { AppLocale } from '../types/i18n'
 import { useAuthStore } from './auth'
 import { useSessionsStore } from './sessions'
 import { useStreakStore } from './streak'
+import { isOfflineQueueCandidate } from '../utils/offline'
 
 export const useBooksStore = defineStore('books', () => {
   const LIBRARY_CACHE_MAX_AGE_MS = 2 * 60_000
@@ -63,10 +64,17 @@ export const useBooksStore = defineStore('books', () => {
   function normalizeMetadataPayload(
     payload: LibraryBookMetadataUpdate,
   ): LibraryBookMetadataUpdate {
+    const nextAbandonedReason =
+      payload.status === 'abandoned'
+        ? payload.abandonedReason === undefined
+          ? undefined
+          : (payload.abandonedReason?.trim() || null)
+        : null
     return {
       ...payload,
       currentPage:
         payload.status === 'finished' && payload.totalPages !== null ? payload.totalPages : payload.currentPage,
+      abandonedReason: nextAbandonedReason,
     }
   }
 
@@ -107,21 +115,6 @@ export const useBooksStore = defineStore('books', () => {
     syncQueuedMessageKey.value = null
   }
 
-  function isOfflineQueueCandidate(error: unknown): boolean {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) return true
-    if (!error || typeof error !== 'object') return false
-    const candidate = error as { code?: string; message?: string }
-    const code = (candidate.code ?? '').toLowerCase()
-    const message = (candidate.message ?? '').toLowerCase()
-    return (
-      code.includes('unavailable') ||
-      code.includes('network') ||
-      code.includes('deadline-exceeded') ||
-      message.includes('network') ||
-      message.includes('offline')
-    )
-  }
-
   function toLibraryDocId(sourceId: string): string {
     return sourceId.replace(':', '_')
   }
@@ -138,6 +131,9 @@ export const useBooksStore = defineStore('books', () => {
       favorite: false,
       currentPage: 0,
       status: 'wishlist',
+      rating: null,
+      note: null,
+      abandonedReason: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -435,6 +431,12 @@ export const useBooksStore = defineStore('books', () => {
             ...book,
             ...normalizedPayload,
             coverUrl: normalizedPayload.coverUrl === undefined ? book.coverUrl : normalizedPayload.coverUrl,
+            rating: normalizedPayload.rating === undefined ? book.rating : normalizedPayload.rating,
+            note: normalizedPayload.note === undefined ? book.note : normalizedPayload.note,
+            abandonedReason:
+              normalizedPayload.abandonedReason === undefined
+                ? book.abandonedReason
+                : normalizedPayload.abandonedReason,
           }
         : book,
     )
@@ -451,6 +453,9 @@ export const useBooksStore = defineStore('books', () => {
           totalPages: normalizedPayload.totalPages,
           currentPage: normalizedPayload.currentPage,
           status: normalizedPayload.status,
+          rating: normalizedPayload.rating,
+          note: normalizedPayload.note,
+          abandonedReason: normalizedPayload.abandonedReason,
         })
         syncQueuedMessageKey.value = 'notifications.bookMetadataQueuedOffline'
         if (streakAction) void markStreakActivity(streakAction)
@@ -463,6 +468,9 @@ export const useBooksStore = defineStore('books', () => {
                 totalPages: previousBook.totalPages,
                 currentPage: previousBook.currentPage,
                 status: previousBook.status,
+                rating: previousBook.rating,
+                note: previousBook.note,
+                abandonedReason: previousBook.abandonedReason ?? null,
               }
             : book,
         )

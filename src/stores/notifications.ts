@@ -36,7 +36,6 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
   return {
     items,
-    notify,
     success,
     error,
     info,

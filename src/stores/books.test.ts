@@ -12,6 +12,7 @@ import {
 } from '../services/libraryService'
 import { deleteSessionsForBook, fetchSessionsForBook } from '../services/readingSessionService'
 import { searchBooks } from '../services/bookSearchService'
+import { enqueueOfflineLibraryUpdateMetadata } from '../services/offlineQueueService'
 
 vi.mock('../i18n', () => ({
   i18n: {
@@ -39,6 +40,13 @@ vi.mock('../services/bookSearchService', () => ({
   isSearchBooksError: vi.fn(() => false),
 }))
 
+vi.mock('../services/offlineQueueService', () => ({
+  enqueueOfflineLibraryAddBook: vi.fn(),
+  enqueueOfflineLibraryDeleteBook: vi.fn(),
+  enqueueOfflineLibraryUpdateFavorite: vi.fn(),
+  enqueueOfflineLibraryUpdateMetadata: vi.fn(),
+}))
+
 const streakMocks = vi.hoisted(() => ({
   markTodayActivity: vi.fn(),
 }))
@@ -61,6 +69,8 @@ function createBook(overrides: Partial<LibraryBook>): LibraryBook {
     favorite: false,
     currentPage: 0,
     status: 'reading',
+    rating: null,
+    note: null,
     ...overrides,
   }
 }
@@ -142,6 +152,7 @@ describe('books store', () => {
       totalPages: 320,
       currentPage: 320,
       status: 'finished',
+      abandonedReason: null,
     })
     expect(streakMocks.markTodayActivity).toHaveBeenCalledWith('book_finished')
   })
@@ -166,7 +177,67 @@ describe('books store', () => {
       totalPages: 320,
       currentPage: 12,
       status: 'reading',
+      abandonedReason: null,
     })
+  })
+
+  it('updates rating and note through metadata', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useBooksStore()
+    store.library = [createBook({ id: 'book-1', totalPages: 320, currentPage: 40, status: 'reading' })]
+
+    await store.updateBookMetadata('book-1', {
+      coverUrl: null,
+      totalPages: 320,
+      currentPage: 40,
+      status: 'reading',
+      rating: 5,
+      note: 'Great ending',
+    })
+
+    expect(store.library[0]?.rating).toBe(5)
+    expect(store.library[0]?.note).toBe('Great ending')
+    expect(updateLibraryBookMetadata).toHaveBeenCalledWith('user-1', 'book-1', {
+      coverUrl: null,
+      totalPages: 320,
+      currentPage: 40,
+      status: 'reading',
+      abandonedReason: null,
+      rating: 5,
+      note: 'Great ending',
+    })
+  })
+
+  it('queues rating and note metadata update when offline', async () => {
+    vi.stubGlobal('navigator', { onLine: false })
+    vi.mocked(updateLibraryBookMetadata).mockRejectedValue(new Error('offline'))
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useBooksStore()
+    store.library = [createBook({ id: 'book-1', totalPages: 300, currentPage: 20, status: 'reading' })]
+
+    await store.updateBookMetadata('book-1', {
+      totalPages: 300,
+      currentPage: 20,
+      status: 'reading',
+      rating: 4,
+      note: 'Nice book',
+    })
+
+    expect(enqueueOfflineLibraryUpdateMetadata).toHaveBeenCalledWith('user-1', {
+      bookId: 'book-1',
+      coverUrl: undefined,
+      totalPages: 300,
+      currentPage: 20,
+      status: 'reading',
+      abandonedReason: null,
+      rating: 4,
+      note: 'Nice book',
+    })
+    expect(store.library[0]?.rating).toBe(4)
+    expect(store.library[0]?.note).toBe('Nice book')
+    vi.unstubAllGlobals()
   })
 
   it('normalizes finished book progress when loading existing library data', async () => {
@@ -181,5 +252,106 @@ describe('books store', () => {
 
     expect(store.library[0]?.currentPage).toBe(450)
     expect(store.library[0]?.status).toBe('finished')
+  })
+
+  it('keeps paused books out of reading status while preserving progress', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useBooksStore()
+    store.library = [createBook({ id: 'book-1', totalPages: 320, currentPage: 120, status: 'reading' })]
+
+    await store.updateBookMetadata('book-1', {
+      coverUrl: null,
+      totalPages: 320,
+      currentPage: 120,
+      status: 'paused',
+      abandonedReason: null,
+    })
+
+    expect(store.library[0]?.currentPage).toBe(120)
+    expect(store.library[0]?.status).toBe('paused')
+  })
+
+  it('persists abandoned reason when a book is marked as abandoned', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useBooksStore()
+    store.library = [createBook({ id: 'book-1', totalPages: 320, currentPage: 120, status: 'reading' })]
+
+    await store.updateBookMetadata('book-1', {
+      coverUrl: null,
+      totalPages: 320,
+      currentPage: 120,
+      status: 'abandoned',
+      abandonedReason: 'No conecté con el ritmo.',
+    })
+
+    expect(store.library[0]?.status).toBe('abandoned')
+    expect(store.library[0]?.abandonedReason).toBe('No conecté con el ritmo.')
+    expect(updateLibraryBookMetadata).toHaveBeenCalledWith('user-1', 'book-1', {
+      coverUrl: null,
+      totalPages: 320,
+      currentPage: 120,
+      status: 'abandoned',
+      abandonedReason: 'No conecté con el ritmo.',
+    })
+  })
+
+  it('clears abandoned reason when changing from abandoned to another status', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useBooksStore()
+    store.library = [
+      createBook({
+        id: 'book-1',
+        totalPages: 320,
+        currentPage: 120,
+        status: 'abandoned',
+        abandonedReason: 'No conecté con el ritmo.',
+      }),
+    ]
+
+    await store.updateBookMetadata('book-1', {
+      coverUrl: null,
+      totalPages: 320,
+      currentPage: 120,
+      status: 'wishlist',
+      abandonedReason: 'debe limpiarse',
+    })
+
+    expect(store.library[0]?.status).toBe('wishlist')
+    expect(store.library[0]?.abandonedReason).toBeNull()
+    expect(updateLibraryBookMetadata).toHaveBeenCalledWith('user-1', 'book-1', {
+      coverUrl: null,
+      totalPages: 320,
+      currentPage: 120,
+      status: 'wishlist',
+      abandonedReason: null,
+    })
+  })
+
+  it('queues abandoned reason in offline metadata updates', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useBooksStore()
+    store.library = [createBook({ id: 'book-1', totalPages: 320, currentPage: 120, status: 'reading' })]
+    vi.mocked(updateLibraryBookMetadata).mockRejectedValueOnce(new Error('network offline'))
+
+    await store.updateBookMetadata('book-1', {
+      coverUrl: null,
+      totalPages: 320,
+      currentPage: 120,
+      status: 'abandoned',
+      abandonedReason: 'No conecté con el ritmo.',
+    })
+
+    expect(enqueueOfflineLibraryUpdateMetadata).toHaveBeenCalledWith('user-1', {
+      bookId: 'book-1',
+      coverUrl: null,
+      totalPages: 320,
+      currentPage: 120,
+      status: 'abandoned',
+      abandonedReason: 'No conecté con el ritmo.',
+    })
   })
 })
