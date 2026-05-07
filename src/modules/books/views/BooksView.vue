@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { Check, Heart, Plus, Search, X } from 'lucide-vue-next'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Check, Heart, Plus, Search, Shuffle, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import type { BookSearchResult } from '../../../types/books'
+import type { BookSearchResult, LibraryBook } from '../../../types/books'
 import type { AppLocale } from '../../../types/i18n'
 import type { LibraryStatusFilter, SearchLanguageMode } from '../../../types/books-store'
 import EmptyState from '../../../components/ui/EmptyState.vue'
@@ -35,6 +35,12 @@ const manualTitle = ref('')
 const manualAuthors = ref('')
 const manualPages = ref('')
 const manualCoverUrl = ref('')
+const showRandomPickerModal = ref(false)
+const selectedRandomBook = ref<LibraryBook | null>(null)
+const isAnimating = ref(false)
+const randomAnimationKey = ref(0)
+const randomAnimationTimeoutId = ref<number | null>(null)
+const randomConfirmButtonRef = ref<HTMLButtonElement | null>(null)
 
 const {
   query,
@@ -58,6 +64,9 @@ const { isAuthenticated } = storeToRefs(authStore)
 
 const mappedError = computed(() => (errorKey.value ? t(errorKey.value) : null))
 const hasSearchExecuted = computed(() => query.value.trim().length > 0)
+const readingCandidates = computed(() =>
+  filteredSortedLibrary.value.filter((book) => book.status === 'reading'),
+)
 const skeletonKeys = [1, 2, 3, 4, 5]
 const librarySkeletonKeys = [1, 2, 3, 4, 5, 6]
 
@@ -83,6 +92,70 @@ function onClearSearch() {
 function openAddModal() {
   addMode.value = 'search'
   showAddModal.value = true
+}
+
+function selectRandomReadingBook(previousBookId?: string | null): LibraryBook | null {
+  const candidates = readingCandidates.value
+  if (candidates.length === 0) return null
+  if (candidates.length === 1) return candidates[0]
+
+  let nextBook = candidates[Math.floor(Math.random() * candidates.length)]
+  if (previousBookId && nextBook.id === previousBookId) {
+    const alternatives = candidates.filter((candidate) => candidate.id !== previousBookId)
+    nextBook = alternatives[Math.floor(Math.random() * alternatives.length)] ?? nextBook
+  }
+  return nextBook
+}
+
+function clearRandomAnimationTimeout() {
+  if (randomAnimationTimeoutId.value === null) return
+  window.clearTimeout(randomAnimationTimeoutId.value)
+  randomAnimationTimeoutId.value = null
+}
+
+function triggerRandomSelectionAnimation() {
+  clearRandomAnimationTimeout()
+  isAnimating.value = true
+  randomAnimationKey.value += 1
+  randomAnimationTimeoutId.value = window.setTimeout(() => {
+    isAnimating.value = false
+    randomAnimationTimeoutId.value = null
+  }, 420)
+}
+
+function openRandomPickerModal() {
+  selectedRandomBook.value = selectRandomReadingBook()
+  isAnimating.value = false
+  randomAnimationKey.value = 0
+  showRandomPickerModal.value = true
+  if (selectedRandomBook.value) {
+    triggerRandomSelectionAnimation()
+  }
+}
+
+function closeRandomPickerModal() {
+  clearRandomAnimationTimeout()
+  isAnimating.value = false
+  showRandomPickerModal.value = false
+}
+
+function onPickAnotherRandomBook() {
+  const previousBookId = selectedRandomBook.value?.id ?? null
+  selectedRandomBook.value = selectRandomReadingBook(previousBookId)
+  if (selectedRandomBook.value) {
+    triggerRandomSelectionAnimation()
+  }
+}
+
+function onConfirmRandomBook() {
+  if (!selectedRandomBook.value) return
+  closeRandomPickerModal()
+  void router.push({ name: 'book-detail', params: { id: selectedRandomBook.value.id } }).catch(() => {})
+}
+
+function onOpenAddFromRandomEmpty() {
+  closeRandomPickerModal()
+  openAddModal()
 }
 
 function closeAddModal() {
@@ -272,7 +345,18 @@ watch(showAddModal, async (isOpen) => {
   searchInputRef.value?.focus()
 })
 
+watch(showRandomPickerModal, async (isOpen) => {
+  if (!isOpen) return
+  await nextTick()
+  randomConfirmButtonRef.value?.focus()
+})
+
 withBodyScrollLock(showAddModal)
+withBodyScrollLock(showRandomPickerModal)
+
+onBeforeUnmount(() => {
+  clearRandomAnimationTimeout()
+})
 </script>
 
 <template>
@@ -293,6 +377,17 @@ withBodyScrollLock(showAddModal)
             aria-hidden="true"
           />
           {{ t('books.openAddModal') }}
+        </button>
+        <button
+          type="button"
+          class="bm-button"
+          @click="openRandomPickerModal"
+        >
+          <Shuffle
+            :size="17"
+            aria-hidden="true"
+          />
+          {{ t('books.pickRandomAction') }}
         </button>
       </template>
     </PageHeader>
@@ -844,5 +939,148 @@ withBodyScrollLock(showAddModal)
         </label>
       </template>
     </PromptModal>
+
+    <div
+      v-if="showRandomPickerModal"
+      class="bm-modal-backdrop z-50"
+      @click.self="closeRandomPickerModal"
+    >
+      <section
+        class="bm-modal-sheet bm-random-modal flex max-w-md flex-col p-4 sm:p-6"
+        role="dialog"
+        :aria-label="t('books.randomModalTitle')"
+        @keydown.esc="closeRandomPickerModal"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="bm-eyebrow">{{ t('books.randomModalEyebrow') }}</p>
+            <h2 class="bm-section-title mt-1">
+              {{ t('books.randomModalTitle') }}
+            </h2>
+            <p class="bm-muted mt-1 text-sm">
+              {{ t('books.randomModalSubtitle') }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="bm-icon-button"
+            :aria-label="t('common.cancel')"
+            :title="t('common.cancel')"
+            @click="closeRandomPickerModal"
+          >
+            <X
+              :size="18"
+              aria-hidden="true"
+            />
+          </button>
+        </div>
+
+        <div class="mt-4 flex-1 overflow-y-auto pr-1">
+          <div
+            v-if="!selectedRandomBook"
+            class="bm-subtle-panel text-center"
+          >
+            <p class="bm-section-title">{{ t('books.randomModalEmptyTitle') }}</p>
+            <p class="bm-muted mt-1 text-xs">{{ t('books.randomModalEmptySubtitle') }}</p>
+            <button
+              type="button"
+              class="bm-button bm-button-primary mt-3 text-xs"
+              @click="onOpenAddFromRandomEmpty"
+            >
+              {{ t('books.openAddModal') }}
+            </button>
+          </div>
+
+          <Transition
+            v-else
+            name="bm-random-book"
+            mode="out-in"
+          >
+            <article
+              :key="`${selectedRandomBook.id}-${randomAnimationKey}`"
+              class="bm-subtle-panel bm-random-selection"
+              :class="{ 'bm-random-selection--animating': isAnimating }"
+            >
+              <div class="flex gap-3">
+                <div class="h-28 w-20 flex-none overflow-hidden rounded-lg border border-(--app-border) bg-(--app-surface-raised)">
+                  <img
+                    v-if="selectedRandomBook.coverUrl"
+                    :src="selectedRandomBook.coverUrl"
+                    :alt="selectedRandomBook.title"
+                    class="h-full w-full object-cover"
+                  >
+                  <div
+                    v-else
+                    class="grid h-full w-full place-items-center px-2 text-center text-[10px] text-(--app-text-soft)"
+                  >
+                    {{ t('books.noCover') }}
+                  </div>
+                </div>
+                <div class="min-w-0">
+                  <p class="line-clamp-3 text-sm font-bold text-(--app-text)">
+                    {{ selectedRandomBook.title }}
+                  </p>
+                  <p class="bm-muted mt-1 text-xs">
+                    {{ t('books.by') }} {{ selectedRandomBook.authors.join(', ') || t('books.unknownAuthor') }}
+                  </p>
+                  <p class="bm-soft mt-2 text-[11px]">
+                    {{ t('books.randomModalHint') }}
+                  </p>
+                </div>
+              </div>
+            </article>
+          </Transition>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            class="bm-button"
+            :disabled="!selectedRandomBook"
+            @click="onPickAnotherRandomBook"
+          >
+            {{ t('books.randomPickAnother') }}
+          </button>
+          <button
+            ref="randomConfirmButtonRef"
+            type="button"
+            class="bm-button bm-button-success"
+            :disabled="!selectedRandomBook"
+            @click="onConfirmRandomBook"
+          >
+            {{ t('books.randomPickThis') }}
+          </button>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.bm-random-book-enter-active,
+.bm-random-book-leave-active {
+  transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+.bm-random-book-enter-from,
+.bm-random-book-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+}
+
+.bm-random-selection--animating {
+  animation: bm-random-pulse 0.42s ease;
+}
+
+@keyframes bm-random-pulse {
+  0% {
+    transform: rotateX(0deg) scale(1);
+  }
+  40% {
+    transform: rotateX(6deg) scale(1.02);
+  }
+  100% {
+    transform: rotateX(0deg) scale(1);
+  }
+}
+</style>
