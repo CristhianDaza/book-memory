@@ -89,7 +89,7 @@ const remainingPercent = computed(() => {
 const canStartReading = computed(() => {
   const book = selectedBook.value
   if (!book) return false
-  if (book.status === 'finished') return false
+  if (book.status !== 'reading') return false
   if (book.totalPages !== null && book.currentPage >= book.totalPages) return false
   return true
 })

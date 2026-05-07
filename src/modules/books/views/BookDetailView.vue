@@ -33,9 +33,10 @@ const editMode = ref(false)
 const formTotalPages = ref<string>('')
 const formCurrentPage = ref<string>('0')
 const formCoverUrl = ref<string>('')
-const formStatus = ref<'reading' | 'finished' | 'wishlist'>('reading')
+const formStatus = ref<'reading' | 'finished' | 'wishlist' | 'paused' | 'abandoned'>('reading')
 const formRating = ref<1 | 2 | 3 | 4 | 5 | null>(null)
 const formNote = ref<string>('')
+const formAbandonedReason = ref<string>('')
 const sessions = ref<ReadingSessionRecord[]>([])
 const loadingSessions = ref(false)
 const visibleSessionsCount = ref(5)
@@ -171,6 +172,7 @@ function syncFormFromBook() {
   formStatus.value = book.value.status
   formRating.value = book.value.rating
   formNote.value = book.value.note ?? ''
+  formAbandonedReason.value = book.value.abandonedReason ?? ''
 }
 
 function syncFinishedProgressField() {
@@ -205,6 +207,7 @@ async function onSaveMetadata() {
     safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
 
   const previousStatus = book.value.status
+  const nextAbandonedReason = formStatus.value === 'abandoned' ? (formAbandonedReason.value.trim() || null) : null
 
   let nextCurrentPage: number
   if (formStatus.value === 'finished' && safeTotalPages !== null) {
@@ -232,6 +235,10 @@ async function onSaveMetadata() {
     status: formStatus.value,
     rating: formRating.value,
     note: formNote.value.trim() || null,
+    abandonedReason: nextAbandonedReason,
+    rating: formRating.value,
+    note: formNote.value.trim() || null,
+    abandonedReason: nextAbandonedReason,
   })
   if (booksStore.errorKey) {
     notificationsStore.error(t(booksStore.errorKey))
@@ -297,7 +304,7 @@ async function onConfirmCompletionRating() {
 
 const canStartReadingSession = computed(() => {
   if (!book.value) return false
-  if (book.value.status === 'finished') return false
+  if (book.value.status !== 'reading') return false
   if (book.value.totalPages !== null && book.value.currentPage >= book.value.totalPages) return false
   return true
 })
@@ -595,6 +602,7 @@ onMounted(async () => {
                   aria-hidden="true"
                 />
               </IconButton>
+              </IconButton>
             </div>
 
             <div
@@ -676,7 +684,22 @@ onMounted(async () => {
                     <option value="reading">{{ t('books.status_reading') }}</option>
                     <option value="finished">{{ t('books.status_finished') }}</option>
                     <option value="wishlist">{{ t('books.status_wishlist') }}</option>
+                    <option value="paused">{{ t('books.status_paused') }}</option>
+                    <option value="abandoned">{{ t('books.status_abandoned') }}</option>
                   </select>
+                </label>
+
+                <label
+                  v-if="formStatus === 'abandoned'"
+                  class="bm-label sm:col-span-3"
+                >
+                  {{ t('books.abandonedReason') }}
+                  <textarea
+                    v-model="formAbandonedReason"
+                    :disabled="isMetadataUpdating()"
+                    :placeholder="t('books.abandonedReasonPlaceholder')"
+                    class="bm-input mt-1 min-h-20 py-1.5 text-sm"
+                  />
                 </label>
 
                 <label

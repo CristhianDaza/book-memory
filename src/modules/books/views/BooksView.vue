@@ -329,6 +329,8 @@ withBodyScrollLock(showAddModal)
             <option value="reading">{{ t('books.status_reading') }}</option>
             <option value="finished">{{ t('books.status_finished') }}</option>
             <option value="wishlist">{{ t('books.status_wishlist') }}</option>
+            <option value="paused">{{ t('books.status_paused') }}</option>
+            <option value="abandoned">{{ t('books.status_abandoned') }}</option>
           </select>
         </label>
 

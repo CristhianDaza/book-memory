@@ -102,5 +102,8 @@ export async function updateLibraryBookMetadata(
   if (payload.coverUrl === undefined) {
     delete updatePayload.coverUrl
   }
+  if (payload.abandonedReason === undefined) {
+    delete updatePayload.abandonedReason
+  }
   await updateDoc(ref, updatePayload)
 }

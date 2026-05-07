@@ -303,4 +303,30 @@ describe('ReadingView', () => {
 
     expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'book-detail', params: { id: 'book-1' } })
   })
+
+  it('disables start button when selected book status is paused', async () => {
+    mocks.readingStore.hasActiveSession.value = false
+    mocks.readingStore.running.value = false
+    mocks.readingStore.sessionBookId.value = null
+    mocks.readingStore.sessionStartedAt.value = null
+    mocks.booksStore.library.value[0] = {
+      ...mocks.booksStore.library.value[0],
+      status: 'paused',
+    }
+
+    const wrapper = mount(ReadingView, {
+      global: {
+        plugins: [makeI18n()],
+      },
+    })
+    await flushPromises()
+
+    const actionButtons = wrapper.findAll('.mt-5.grid button')
+    const startButton = actionButtons[0]
+    if (!startButton) {
+      throw new Error('missing start button')
+    }
+
+    expect(startButton.attributes('disabled')).toBeDefined()
+  })
 })
