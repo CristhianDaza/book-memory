@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ConfirmModal from '../../../components/ConfirmModal.vue'
 import { useBookCompletionOverlay } from '../../../composables/useBookCompletionOverlay'
+import IconButton from '../../../components/ui/IconButton.vue'
 import StatusBadge from '../../../components/ui/StatusBadge.vue'
 import StarRating from '../../../components/ui/StarRating.vue'
 import { useAuthStore } from '../../../stores/auth'
@@ -51,6 +52,7 @@ const completionRating = ref<1 | 2 | 3 | 4 | 5 | null>(null)
 const completionNote = ref('')
 const completionRatingError = ref('')
 const canEditRating = computed(() => formStatus.value === 'finished')
+const showRatingDisplay = computed(() => Boolean(book.value && book.value.status === 'finished' && book.value.rating))
 
 function isFavoriteUpdating() {
   return favoriteUpdatingIds.value.includes(bookId.value)
@@ -436,7 +438,10 @@ onMounted(async () => {
               {{ book.favorite ? t('books.favorite') : t('books.notFavorite') }}
             </StatusBadge>
           </div>
-          <div class="mt-2 flex items-center gap-2">
+          <div
+            v-if="showRatingDisplay"
+            class="mt-2 flex items-center gap-2"
+          >
             <span class="bm-muted text-sm">{{ t('books.ratingLabel') }}:</span>
             <StarRating
               :model-value="book.rating"
@@ -530,118 +535,160 @@ onMounted(async () => {
               <p class="bm-eyebrow">
                 {{ t('books.editMetadata') }}
               </p>
-              <button
+              <IconButton
                 v-if="!editMode"
-                type="button"
-                class="bm-button text-xs"
+                :label="t('books.editAction')"
                 @click="onStartEdit"
               >
                 <Pencil
-                  :size="14"
+                  :size="16"
                   aria-hidden="true"
                 />
-                {{ t('books.editAction') }}
-              </button>
-            </div>
-
-            <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <label class="bm-label">
-                {{ t('books.pages') }}
-                <input
-                  v-model="formTotalPages"
-                  type="number"
-                  min="1"
-                  :disabled="!editMode || isMetadataUpdating()"
-                  class="bm-input mt-1 py-1.5 text-sm"
-                >
-              </label>
-
-              <label class="bm-label">
-                {{ t('books.progress') }}
-                <input
-                  v-model="formCurrentPage"
-                  type="number"
-                  min="0"
-                  :disabled="!editMode || isMetadataUpdating()"
-                  class="bm-input mt-1 py-1.5 text-sm"
-                >
-              </label>
-
-              <label class="bm-label">
-                {{ t('books.status') }}
-                <select
-                  v-model="formStatus"
-                  :disabled="!editMode || isMetadataUpdating()"
-                  class="bm-select mt-1 py-1.5 text-sm"
-                >
-                  <option value="reading">{{ t('books.status_reading') }}</option>
-                  <option value="finished">{{ t('books.status_finished') }}</option>
-                  <option value="wishlist">{{ t('books.status_wishlist') }}</option>
-                </select>
-              </label>
-
-              <label
-                v-if="canEditRating"
-                class="bm-label sm:col-span-3"
-              >
-                {{ t('books.ratingLabel') }}
-                <div class="mt-2">
-                  <StarRating
-                    v-model="formRating"
-                    :readonly="!editMode || isMetadataUpdating()"
-                  />
-                </div>
-              </label>
-
-              <label
-                v-if="canEditRating"
-                class="bm-label sm:col-span-3"
-              >
-                {{ t('books.noteLabel') }}
-                <textarea
-                  v-model="formNote"
-                  :disabled="!editMode || isMetadataUpdating()"
-                  :placeholder="t('books.notePlaceholder')"
-                  class="bm-input mt-1 min-h-20 py-1.5 text-sm"
-                />
-              </label>
-
-              <label
-                v-if="!book.coverUrl"
-                class="bm-label sm:col-span-3"
-              >
-                {{ t('books.manualCoverUrl') }}
-                <input
-                  v-model="formCoverUrl"
-                  type="url"
-                  :placeholder="t('books.manualCoverUrlPlaceholder')"
-                  :disabled="!editMode || isMetadataUpdating()"
-                  class="bm-input mt-1 py-1.5 text-sm"
-                >
-              </label>
+              </IconButton>
             </div>
 
             <div
-              v-if="editMode"
-              class="mt-3 flex gap-2"
+              v-if="!editMode"
+              class="grid grid-cols-1 gap-3 sm:grid-cols-2"
             >
-              <button
-                type="button"
-                class="bm-button bm-button-primary"
-                :disabled="isMetadataUpdating()"
-                @click="onSaveMetadata"
+              <div class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2">
+                <p class="bm-soft text-[11px]">{{ t('books.pages') }}</p>
+                <p class="bm-muted text-sm">{{ book.totalPages ?? t('books.unknownPages') }}</p>
+              </div>
+              <div class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2">
+                <p class="bm-soft text-[11px]">{{ t('books.progress') }}</p>
+                <p class="bm-muted text-sm">{{ displayCurrentPage }}</p>
+              </div>
+              <div class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2">
+                <p class="bm-soft text-[11px]">{{ t('books.status') }}</p>
+                <p class="bm-muted text-sm">{{ t(`books.status_${book.status}`) }}</p>
+              </div>
+              <div
+                v-if="showRatingDisplay"
+                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2"
               >
-                {{ isMetadataUpdating() ? t('books.savingMetadata') : t('books.saveMetadata') }}
-              </button>
-              <button
-                type="button"
-                class="bm-button"
-                :disabled="isMetadataUpdating()"
-                @click="onCancelEdit"
+                <p class="bm-soft text-[11px]">{{ t('books.ratingLabel') }}</p>
+                <div class="mt-1">
+                  <StarRating
+                    :model-value="book.rating"
+                    readonly
+                    :size="15"
+                  />
+                </div>
+              </div>
+              <div
+                v-if="!book.coverUrl"
+                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2 sm:col-span-2"
               >
-                {{ t('books.cancelEdit') }}
-              </button>
+                <p class="bm-soft text-[11px]">{{ t('books.manualCoverUrl') }}</p>
+                <p class="bm-muted break-all text-sm">{{ t('books.noCover') }}</p>
+              </div>
+              <div
+                v-if="book.note"
+                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2 sm:col-span-2"
+              >
+                <p class="bm-soft text-[11px]">{{ t('books.noteLabel') }}</p>
+                <p class="bm-muted mt-1 whitespace-pre-line text-sm">{{ book.note }}</p>
+              </div>
             </div>
+
+            <template v-else>
+              <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <label class="bm-label">
+                  {{ t('books.pages') }}
+                  <input
+                    v-model="formTotalPages"
+                    type="number"
+                    min="1"
+                    :disabled="isMetadataUpdating()"
+                    class="bm-input mt-1 py-1.5 text-sm"
+                  >
+                </label>
+
+                <label class="bm-label">
+                  {{ t('books.progress') }}
+                  <input
+                    v-model="formCurrentPage"
+                    type="number"
+                    min="0"
+                    :disabled="isMetadataUpdating()"
+                    class="bm-input mt-1 py-1.5 text-sm"
+                  >
+                </label>
+
+                <label class="bm-label">
+                  {{ t('books.status') }}
+                  <select
+                    v-model="formStatus"
+                    :disabled="isMetadataUpdating()"
+                    class="bm-select mt-1 py-1.5 text-sm"
+                  >
+                    <option value="reading">{{ t('books.status_reading') }}</option>
+                    <option value="finished">{{ t('books.status_finished') }}</option>
+                    <option value="wishlist">{{ t('books.status_wishlist') }}</option>
+                  </select>
+                </label>
+
+                <label
+                  v-if="canEditRating"
+                  class="bm-label sm:col-span-3"
+                >
+                  {{ t('books.ratingLabel') }}
+                  <div class="mt-2">
+                    <StarRating
+                      v-model="formRating"
+                      :readonly="isMetadataUpdating()"
+                    />
+                  </div>
+                </label>
+
+                <label
+                  v-if="canEditRating"
+                  class="bm-label sm:col-span-3"
+                >
+                  {{ t('books.noteLabel') }}
+                  <textarea
+                    v-model="formNote"
+                    :disabled="isMetadataUpdating()"
+                    :placeholder="t('books.notePlaceholder')"
+                    class="bm-input mt-1 min-h-20 py-1.5 text-sm"
+                  />
+                </label>
+
+                <label
+                  v-if="!book.coverUrl"
+                  class="bm-label sm:col-span-3"
+                >
+                  {{ t('books.manualCoverUrl') }}
+                  <input
+                    v-model="formCoverUrl"
+                    type="url"
+                    :placeholder="t('books.manualCoverUrlPlaceholder')"
+                    :disabled="isMetadataUpdating()"
+                    class="bm-input mt-1 py-1.5 text-sm"
+                  >
+                </label>
+              </div>
+
+              <div class="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  class="bm-button bm-button-primary"
+                  :disabled="isMetadataUpdating()"
+                  @click="onSaveMetadata"
+                >
+                  {{ isMetadataUpdating() ? t('books.savingMetadata') : t('books.saveMetadata') }}
+                </button>
+                <button
+                  type="button"
+                  class="bm-button"
+                  :disabled="isMetadataUpdating()"
+                  @click="onCancelEdit"
+                >
+                  {{ t('books.cancelEdit') }}
+                </button>
+              </div>
+            </template>
           </div>
 
           <div
