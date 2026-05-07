@@ -46,7 +46,7 @@ const peakActivity = computed(() => {
 })
 const maxTimelineMonthValue = computed(() =>
   timelineMonthlyBySelectedYear.value.reduce(
-    (max, entry) => Math.max(max, entry.purchasedCount, entry.finishedCount),
+    (max, entry) => Math.max(max, entry.finishedCount),
     0,
   ),
 )
@@ -333,16 +333,8 @@ onMounted(async () => {
 
       <div
         v-if="selectedYearSummary"
-        class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
+        class="mb-3 grid grid-cols-1 gap-2"
       >
-        <article class="bm-card p-2">
-          <p class="bm-stat-label text-[10px]">
-            {{ t('stats.timelinePurchasedYear') }}
-          </p>
-          <p class="mt-1 text-sm font-semibold text-(--app-text)">
-            {{ selectedYearSummary.purchasedCount }}
-          </p>
-        </article>
         <article class="bm-card p-2">
           <p class="bm-stat-label text-[10px]">
             {{ t('stats.timelineFinishedYear') }}
@@ -370,14 +362,9 @@ onMounted(async () => {
             :key="point.monthKey"
             class="flex w-10 flex-col items-center gap-1"
           >
-            <div class="flex h-36 w-full items-end gap-1 rounded-md border border-(--app-border) bg-(--app-surface) p-1">
+            <div class="flex h-36 w-full items-end rounded-md border border-(--app-border) bg-(--app-surface) p-1">
               <div
-                class="w-1/2 rounded-sm bg-(--app-accent)"
-                :title="`${t('stats.timelinePurchased')}: ${point.purchasedCount}`"
-                :style="{ height: timelineBarHeight(point.purchasedCount) }"
-              />
-              <div
-                class="w-1/2 rounded-sm bg-(--app-secondary)"
+                class="w-full rounded-sm bg-(--app-secondary)"
                 :title="`${t('stats.timelineFinished')}: ${point.finishedCount}`"
                 :style="{ height: timelineBarHeight(point.finishedCount) }"
               />
@@ -390,10 +377,6 @@ onMounted(async () => {
       </div>
 
       <div class="mt-3 flex items-center gap-3 text-[11px] text-(--app-text-muted)">
-        <span class="inline-flex items-center gap-1">
-          <span class="h-2 w-2 rounded-full bg-(--app-accent)" />
-          {{ t('stats.timelinePurchased') }}
-        </span>
         <span class="inline-flex items-center gap-1">
           <span class="h-2 w-2 rounded-full bg-(--app-secondary)" />
           {{ t('stats.timelineFinished') }}
