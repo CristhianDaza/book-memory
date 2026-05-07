@@ -37,6 +37,7 @@ const manualPages = ref('')
 const manualCoverUrl = ref('')
 const showRandomPickerModal = ref(false)
 const selectedRandomBook = ref<LibraryBook | null>(null)
+const includePausedInRandom = ref(false)
 const isAnimating = ref(false)
 const randomAnimationKey = ref(0)
 const randomAnimationTimeoutId = ref<number | null>(null)
@@ -64,9 +65,9 @@ const { isAuthenticated } = storeToRefs(authStore)
 
 const mappedError = computed(() => (errorKey.value ? t(errorKey.value) : null))
 const hasSearchExecuted = computed(() => query.value.trim().length > 0)
-const readingCandidates = computed(() =>
+const randomCandidates = computed(() =>
   filteredSortedLibrary.value.filter(
-    (book) => book.status === 'reading' && book.status !== 'paused' && book.status !== 'abandoned',
+    (book) => book.status === 'wishlist' || (includePausedInRandom.value && book.status === 'paused'),
   ),
 )
 const skeletonKeys = [1, 2, 3, 4, 5]
@@ -96,8 +97,8 @@ function openAddModal() {
   showAddModal.value = true
 }
 
-function selectRandomReadingBook(previousBookId?: string | null): LibraryBook | null {
-  const candidates = readingCandidates.value
+function selectRandomBook(previousBookId?: string | null): LibraryBook | null {
+  const candidates = randomCandidates.value
   if (candidates.length === 0) return null
   if (candidates.length === 1) return candidates[0]
 
@@ -126,7 +127,8 @@ function triggerRandomSelectionAnimation() {
 }
 
 function openRandomPickerModal() {
-  selectedRandomBook.value = selectRandomReadingBook()
+  includePausedInRandom.value = false
+  selectedRandomBook.value = selectRandomBook()
   isAnimating.value = false
   randomAnimationKey.value = 0
   showRandomPickerModal.value = true
@@ -143,9 +145,20 @@ function closeRandomPickerModal() {
 
 function onPickAnotherRandomBook() {
   const previousBookId = selectedRandomBook.value?.id ?? null
-  selectedRandomBook.value = selectRandomReadingBook(previousBookId)
+  selectedRandomBook.value = selectRandomBook(previousBookId)
   if (selectedRandomBook.value) {
     triggerRandomSelectionAnimation()
+  }
+}
+
+function onToggleIncludePausedInRandom() {
+  const previousBookId = selectedRandomBook.value?.id ?? null
+  selectedRandomBook.value = selectRandomBook(previousBookId)
+  if (selectedRandomBook.value) {
+    triggerRandomSelectionAnimation()
+  } else {
+    clearRandomAnimationTimeout()
+    isAnimating.value = false
   }
 }
 
@@ -960,7 +973,11 @@ onBeforeUnmount(() => {
               {{ t('books.randomModalTitle') }}
             </h2>
             <p class="bm-muted mt-1 text-sm">
-              {{ t('books.randomModalSubtitle') }}
+              {{
+                includePausedInRandom
+                  ? t('books.randomModalSubtitleWithPaused')
+                  : t('books.randomModalSubtitle')
+              }}
             </p>
           </div>
           <button
@@ -978,12 +995,28 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="mt-4 flex-1 overflow-y-auto pr-1">
+          <label class="mb-3 flex cursor-pointer items-center gap-2 text-sm text-(--app-text)">
+            <input
+              v-model="includePausedInRandom"
+              type="checkbox"
+              class="h-4 w-4 rounded border-(--app-border) text-(--app-primary) accent-(--app-primary)"
+              @change="onToggleIncludePausedInRandom"
+            >
+            {{ t('books.includePausedInRandom') }}
+          </label>
+
           <div
             v-if="!selectedRandomBook"
             class="bm-subtle-panel text-center"
           >
             <p class="bm-section-title">{{ t('books.randomModalEmptyTitle') }}</p>
-            <p class="bm-muted mt-1 text-xs">{{ t('books.randomModalEmptySubtitle') }}</p>
+            <p class="bm-muted mt-1 text-xs">
+              {{
+                includePausedInRandom
+                  ? t('books.randomModalEmptySubtitleWithPaused')
+                  : t('books.randomModalEmptySubtitle')
+              }}
+            </p>
             <button
               type="button"
               class="bm-button bm-button-primary mt-3 text-xs"
@@ -1026,7 +1059,11 @@ onBeforeUnmount(() => {
                     {{ t('books.by') }} {{ selectedRandomBook.authors.join(', ') || t('books.unknownAuthor') }}
                   </p>
                   <p class="bm-soft mt-2 text-[11px]">
-                    {{ t('books.randomModalHint') }}
+                    {{
+                      includePausedInRandom
+                        ? t('books.randomModalHintWithPaused')
+                        : t('books.randomModalHint')
+                    }}
                   </p>
                 </div>
               </div>

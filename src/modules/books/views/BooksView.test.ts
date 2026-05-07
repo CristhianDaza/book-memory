@@ -115,6 +115,36 @@ const readingBookB: LibraryBook = {
   note: null,
 }
 
+const wishlistBookA: LibraryBook = {
+  id: 'wishlist-book-a',
+  source: 'google',
+  externalId: 'wishlist-book-a',
+  title: 'Wishlist Book A',
+  authors: ['Wishlist Author A'],
+  coverUrl: null,
+  totalPages: 260,
+  favorite: false,
+  currentPage: 0,
+  status: 'wishlist',
+  rating: null,
+  note: null,
+}
+
+const wishlistBookB: LibraryBook = {
+  id: 'wishlist-book-b',
+  source: 'google',
+  externalId: 'wishlist-book-b',
+  title: 'Wishlist Book B',
+  authors: ['Wishlist Author B'],
+  coverUrl: null,
+  totalPages: 310,
+  favorite: true,
+  currentPage: 0,
+  status: 'wishlist',
+  rating: null,
+  note: null,
+}
+
 const pausedBook: LibraryBook = {
   id: 'paused-book',
   source: 'google',
@@ -255,7 +285,7 @@ describe('BooksView add flow', () => {
 describe('BooksView random picker flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(fetchLibraryBooks).mockResolvedValue([readingBookA, readingBookB])
+    vi.mocked(fetchLibraryBooks).mockResolvedValue([wishlistBookA, wishlistBookB, readingBookA])
     vi.mocked(searchBooks).mockResolvedValue({ items: [], totalItems: 0 })
     vi.mocked(addBookToLibrary).mockResolvedValue(savedBook)
     vi.spyOn(Math, 'random').mockReturnValue(0)
@@ -274,7 +304,7 @@ describe('BooksView random picker flow', () => {
     expect(randomButton).toBeTruthy()
   })
 
-  it('opens random picker modal with a valid reading candidate and can pick another', async () => {
+  it('opens random picker modal with a valid wishlist candidate and can pick another', async () => {
     const wrapper = mountView()
     await flushPromises()
 
@@ -285,8 +315,12 @@ describe('BooksView random picker flow', () => {
     await randomButton?.trigger('click')
     await flushPromises()
 
+    const randomModal = wrapper.find('.bm-random-modal')
     expect(wrapper.text()).toContain('books.randomModalTitle')
-    expect(wrapper.text()).toContain('Reading Book A')
+    expect(
+      randomModal.text().includes('Wishlist Book A') || randomModal.text().includes('Wishlist Book B'),
+    ).toBe(true)
+    expect(randomModal.text()).not.toContain('Reading Book A')
 
     vi.mocked(Math.random).mockReturnValue(0.99)
     const pickAnotherButton = wrapper.findAll('.z-50 .bm-button').find((button) => button.text() === 'books.randomPickAnother')
@@ -294,7 +328,7 @@ describe('BooksView random picker flow', () => {
     await pickAnotherButton?.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Reading Book B')
+    expect(wrapper.text()).toContain('Wishlist Book B')
   })
 
   it('navigates to detail when confirming the random pick', async () => {
@@ -310,8 +344,8 @@ describe('BooksView random picker flow', () => {
     const confirmButton = wrapper.findAll('.z-50 .bm-button-success').find((button) => button.text() === 'books.randomPickThis')
     expect(confirmButton).toBeTruthy()
 
-    const selectedTitle = wrapper.text().includes('Reading Book B') ? 'Reading Book B' : 'Reading Book A'
-    const expectedId = selectedTitle === 'Reading Book B' ? 'reading-book-b' : 'reading-book-a'
+    const selectedTitle = wrapper.text().includes('Wishlist Book B') ? 'Wishlist Book B' : 'Wishlist Book A'
+    const expectedId = selectedTitle === 'Wishlist Book B' ? 'wishlist-book-b' : 'wishlist-book-a'
 
     await confirmButton?.trigger('click')
     await flushPromises()
@@ -319,7 +353,7 @@ describe('BooksView random picker flow', () => {
     expect(routerPush).toHaveBeenCalledWith({ name: 'book-detail', params: { id: expectedId } })
   })
 
-  it('shows empty state when there are no reading books and does not navigate', async () => {
+  it('shows empty state when there are no wishlist books and does not navigate', async () => {
     vi.mocked(fetchLibraryBooks).mockResolvedValue([pausedBook, abandonedBook])
     const wrapper = mountView()
     await flushPromises()
@@ -333,5 +367,51 @@ describe('BooksView random picker flow', () => {
     expect(wrapper.text()).toContain('books.randomModalEmptyTitle')
     expect(wrapper.find('.z-50 .bm-button-success').attributes('disabled')).toBeDefined()
     expect(routerPush).not.toHaveBeenCalled()
+  })
+
+  it('includes paused books when the toggle is enabled', async () => {
+    vi.mocked(fetchLibraryBooks).mockResolvedValue([pausedBook, abandonedBook, readingBookA])
+    const wrapper = mountView()
+    await flushPromises()
+
+    const randomButton = wrapper
+      .findAll('header .bm-button')
+      .find((button) => button.text().includes('books.pickRandomAction'))
+    await randomButton?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('books.randomModalEmptyTitle')
+
+    const includePausedCheckbox = wrapper.find('.z-50 input[type="checkbox"]')
+    expect(includePausedCheckbox.exists()).toBe(true)
+    await includePausedCheckbox.setValue(true)
+    await flushPromises()
+
+    const randomModal = wrapper.find('.bm-random-modal')
+    expect(randomModal.text()).toContain('Paused Book')
+    expect(randomModal.text()).not.toContain('Reading Book A')
+  })
+
+  it('navigates to a paused book detail when paused are included and selected', async () => {
+    vi.mocked(fetchLibraryBooks).mockResolvedValue([pausedBook, readingBookA])
+    const wrapper = mountView()
+    await flushPromises()
+
+    const randomButton = wrapper
+      .findAll('header .bm-button')
+      .find((button) => button.text().includes('books.pickRandomAction'))
+    await randomButton?.trigger('click')
+    await flushPromises()
+
+    const includePausedCheckbox = wrapper.find('.z-50 input[type="checkbox"]')
+    await includePausedCheckbox.setValue(true)
+    await flushPromises()
+
+    const confirmButton = wrapper.findAll('.z-50 .bm-button-success').find((button) => button.text() === 'books.randomPickThis')
+    expect(confirmButton).toBeTruthy()
+    await confirmButton?.trigger('click')
+    await flushPromises()
+
+    expect(routerPush).toHaveBeenCalledWith({ name: 'book-detail', params: { id: 'paused-book' } })
   })
 })
