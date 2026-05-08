@@ -285,6 +285,8 @@ export const en = {
     status_wishlist: 'Wishlist',
     status_paused: 'Paused',
     status_abandoned: 'Abandoned',
+    completedAtLabel: 'Completed date',
+    completedAtFutureError: 'Completed date cannot be in the future.',
     abandonedReason: 'Reason for abandoning (optional)',
     abandonedReasonPlaceholder: 'Ex: I did not connect with the story...',
     editMetadata: 'Edit metadata',

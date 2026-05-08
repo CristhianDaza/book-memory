@@ -162,6 +162,7 @@ describe('stats store', () => {
         favorite: false,
         currentPage: 100,
         status: 'finished',
+        completedAt: { toDate: () => new Date('2026-02-01T12:00:00.000Z') },
         rating: null,
         note: null,
         createdAt: { toDate: () => new Date('2026-01-10T00:00:00.000Z') },
@@ -178,6 +179,7 @@ describe('stats store', () => {
         favorite: false,
         currentPage: 20,
         status: 'reading',
+        completedAt: null,
         rating: null,
         note: null,
         createdAt: { toDate: () => new Date('2026-02-02T00:00:00.000Z') },
@@ -194,6 +196,7 @@ describe('stats store', () => {
         favorite: false,
         currentPage: 220,
         status: 'finished',
+        completedAt: { toDate: () => new Date('2026-01-01T12:00:00.000Z') },
         rating: null,
         note: null,
         createdAt: { toDate: () => new Date('2025-12-28T00:00:00.000Z') },
@@ -244,6 +247,7 @@ describe('stats store', () => {
         favorite: false,
         currentPage: 10,
         status: 'reading',
+        completedAt: null,
         rating: null,
         note: null,
         createdAt: null,
@@ -260,6 +264,7 @@ describe('stats store', () => {
         favorite: false,
         currentPage: 300,
         status: 'finished',
+        completedAt: null,
         rating: null,
         note: null,
         createdAt: { toDate: () => new Date('2026-11-05T00:00:00.000Z') },
@@ -276,6 +281,7 @@ describe('stats store', () => {
         favorite: false,
         currentPage: 250,
         status: 'finished',
+        completedAt: { toDate: () => new Date('2026-02-10T00:00:00.000Z') },
         rating: null,
         note: null,
         createdAt: { toDate: () => new Date('2026-01-20T00:00:00.000Z') },
@@ -300,5 +306,62 @@ describe('stats store', () => {
       purchasedCount: 1,
       finishedCount: 0,
     })
+  })
+
+  it('uses completedAt first and falls back to updatedAt when missing', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const books = useBooksStore()
+    const sessions = useSessionsStore()
+
+    vi.mocked(fetchLibraryBooks).mockResolvedValue([
+      {
+        id: 'book-1',
+        source: 'google',
+        externalId: '1',
+        title: 'Book One',
+        authors: ['A'],
+        coverUrl: null,
+        totalPages: 100,
+        favorite: false,
+        currentPage: 100,
+        status: 'finished',
+        completedAt: { toDate: () => new Date('2026-01-04T12:00:00.000Z') },
+        rating: null,
+        note: null,
+        createdAt: { toDate: () => new Date('2025-12-10T00:00:00.000Z') },
+        updatedAt: { toDate: () => new Date('2026-02-04T00:00:00.000Z') },
+      },
+      {
+        id: 'book-2',
+        source: 'google',
+        externalId: '2',
+        title: 'Book Two',
+        authors: ['B'],
+        coverUrl: null,
+        totalPages: 120,
+        favorite: false,
+        currentPage: 120,
+        status: 'finished',
+        completedAt: null,
+        rating: null,
+        note: null,
+        createdAt: { toDate: () => new Date('2026-01-10T00:00:00.000Z') },
+        updatedAt: { toDate: () => new Date('2026-02-10T00:00:00.000Z') },
+      },
+    ])
+    vi.mocked(fetchUserSessions).mockResolvedValue([])
+    vi.mocked(fetchStatsGoals).mockResolvedValue(null)
+
+    await books.ensureLibraryLoaded()
+    await sessions.ensureSessionsLoaded()
+    const store = useStatsStore()
+    await store.loadStats()
+    store.setSelectedTimelineYear(2026)
+
+    const jan = store.timelineMonthlyBySelectedYear.find((entry) => entry.monthKey === '2026-01')
+    const feb = store.timelineMonthlyBySelectedYear.find((entry) => entry.monthKey === '2026-02')
+    expect(jan?.finishedCount).toBe(1)
+    expect(feb?.finishedCount).toBe(1)
   })
 })

@@ -421,6 +421,7 @@ export async function replayOfflineQueue() {
             totalPages: payload.totalPages,
             currentPage: payload.currentPage,
             status: payload.status,
+            completedAt: payload.completedAt ? new Date(payload.completedAt) : null,
             rating: payload.rating,
             note: payload.note,
             abandonedReason: payload.abandonedReason,

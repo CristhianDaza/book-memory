@@ -43,6 +43,7 @@ export interface QueuedLibraryMetadataPayload {
   totalPages: number | null
   currentPage: number
   status: 'reading' | 'finished' | 'wishlist' | 'paused' | 'abandoned'
+  completedAt?: string | null
   rating?: 1 | 2 | 3 | 4 | 5 | null
   note?: string | null
   abandonedReason?: string | null

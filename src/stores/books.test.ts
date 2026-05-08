@@ -69,6 +69,7 @@ function createBook(overrides: Partial<LibraryBook>): LibraryBook {
     favorite: false,
     currentPage: 0,
     status: 'reading',
+    completedAt: null,
     rating: null,
     note: null,
     ...overrides,
@@ -152,6 +153,7 @@ describe('books store', () => {
       totalPages: 320,
       currentPage: 320,
       status: 'finished',
+      completedAt: expect.any(Date),
       abandonedReason: null,
     })
     expect(streakMocks.markTodayActivity).toHaveBeenCalledWith('book_finished')
@@ -177,6 +179,7 @@ describe('books store', () => {
       totalPages: 320,
       currentPage: 12,
       status: 'reading',
+      completedAt: null,
       abandonedReason: null,
     })
   })
@@ -203,6 +206,7 @@ describe('books store', () => {
       totalPages: 320,
       currentPage: 40,
       status: 'reading',
+      completedAt: null,
       abandonedReason: null,
       rating: 5,
       note: 'Great ending',
@@ -231,6 +235,7 @@ describe('books store', () => {
       totalPages: 300,
       currentPage: 20,
       status: 'reading',
+      completedAt: null,
       abandonedReason: null,
       rating: 4,
       note: 'Nice book',
@@ -293,6 +298,7 @@ describe('books store', () => {
       totalPages: 320,
       currentPage: 120,
       status: 'abandoned',
+      completedAt: null,
       abandonedReason: 'No conecté con el ritmo.',
     })
   })
@@ -326,6 +332,7 @@ describe('books store', () => {
       totalPages: 320,
       currentPage: 120,
       status: 'wishlist',
+      completedAt: null,
       abandonedReason: null,
     })
   })
@@ -351,7 +358,28 @@ describe('books store', () => {
       totalPages: 320,
       currentPage: 120,
       status: 'abandoned',
+      completedAt: null,
       abandonedReason: 'No conecté con el ritmo.',
     })
+  })
+
+  it('rejects future completedAt dates', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useBooksStore()
+    store.library = [createBook({ id: 'book-1', totalPages: 320, currentPage: 40, status: 'reading' })]
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    await store.updateBookMetadata('book-1', {
+      coverUrl: null,
+      totalPages: 320,
+      currentPage: 320,
+      status: 'finished',
+      completedAt: tomorrow,
+    })
+
+    expect(store.errorKey).toBe('books.completedAtFutureError')
+    expect(updateLibraryBookMetadata).not.toHaveBeenCalled()
   })
 })

@@ -22,6 +22,7 @@ export interface LibraryBook {
   favorite: boolean
   currentPage: number
   status: LibraryBookStatus
+  completedAt?: unknown
   rating: 1 | 2 | 3 | 4 | 5 | null
   note: string | null
   abandonedReason?: string | null
@@ -30,4 +31,4 @@ export interface LibraryBook {
 }
 
 export type LibraryBookMetadataUpdate = Pick<LibraryBook, 'totalPages' | 'currentPage' | 'status'> &
-  Partial<Pick<LibraryBook, 'coverUrl' | 'rating' | 'note' | 'abandonedReason'>>
+  Partial<Pick<LibraryBook, 'coverUrl' | 'rating' | 'note' | 'abandonedReason' | 'completedAt'>>

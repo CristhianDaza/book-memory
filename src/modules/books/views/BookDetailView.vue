@@ -34,9 +34,11 @@ const formTotalPages = ref<string>('')
 const formCurrentPage = ref<string>('0')
 const formCoverUrl = ref<string>('')
 const formStatus = ref<'reading' | 'finished' | 'wishlist' | 'paused' | 'abandoned'>('reading')
+const formCompletedAt = ref<string>('')
 const formRating = ref<1 | 2 | 3 | 4 | 5 | null>(null)
 const formNote = ref<string>('')
 const formAbandonedReason = ref<string>('')
+const completedAtError = ref('')
 const sessions = ref<ReadingSessionRecord[]>([])
 const loadingSessions = ref(false)
 const visibleSessionsCount = ref(5)
@@ -54,6 +56,59 @@ const completionNote = ref('')
 const completionRatingError = ref('')
 const canEditRating = computed(() => formStatus.value === 'finished')
 const showRatingDisplay = computed(() => Boolean(book.value && book.value.status === 'finished' && book.value.rating))
+const maxCompletedAtDate = computed(() => {
+  const today = new Date()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  return `${today.getFullYear()}-${month}-${day}`
+})
+
+function formatDateInputValue(value: unknown): string {
+  if (!value) return ''
+  let date: Date | null = null
+  if (value instanceof Date) {
+    date = Number.isNaN(value.getTime()) ? null : value
+  } else if (typeof value === 'string') {
+    const parsed = new Date(value)
+    date = Number.isNaN(parsed.getTime()) ? null : parsed
+  } else if (typeof value === 'object' && 'toDate' in value) {
+    const dateLike = value as { toDate?: () => Date }
+    if (typeof dateLike.toDate !== 'function') return ''
+    const converted = dateLike.toDate()
+    date = converted instanceof Date && !Number.isNaN(converted.getTime()) ? converted : null
+  }
+  if (!date) return ''
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+function parseCompletedAtInput(value: string): Date | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const parsed = new Date(`${trimmed}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed
+}
+
+function isFutureCompletedAtDate(value: Date | null): boolean {
+  if (!value) return false
+  const maxToday = new Date()
+  maxToday.setHours(23, 59, 59, 999)
+  return value.getTime() > maxToday.getTime()
+}
+
+function getValidatedCompletedAtFromForm(): Date | null {
+  completedAtError.value = ''
+  if (formStatus.value !== 'finished') return null
+  const parsedDate = parseCompletedAtInput(formCompletedAt.value)
+  if (!parsedDate) return null
+  if (isFutureCompletedAtDate(parsedDate)) {
+    completedAtError.value = t('books.completedAtFutureError')
+    return null
+  }
+  return parsedDate
+}
 
 function isFavoriteUpdating() {
   return favoriteUpdatingIds.value.includes(bookId.value)
@@ -170,13 +225,18 @@ function syncFormFromBook() {
   formCurrentPage.value = String(displayCurrentPage.value)
   formCoverUrl.value = book.value.coverUrl ?? ''
   formStatus.value = book.value.status
+  formCompletedAt.value = formatDateInputValue(book.value.completedAt)
   formRating.value = book.value.rating
   formNote.value = book.value.note ?? ''
   formAbandonedReason.value = book.value.abandonedReason ?? ''
+  completedAtError.value = ''
 }
 
 function syncFinishedProgressField() {
   if (formStatus.value !== 'finished') return
+  if (!formCompletedAt.value) {
+    formCompletedAt.value = maxCompletedAtDate.value
+  }
   const parsedTotalPages = Number(formTotalPages.value)
   if (!Number.isFinite(parsedTotalPages) || parsedTotalPages <= 0) return
   formCurrentPage.value = String(Math.floor(parsedTotalPages))
@@ -190,6 +250,7 @@ function onStartEdit() {
 function onCancelEdit() {
   editMode.value = false
   syncFormFromBook()
+  completedAtError.value = ''
 }
 
 async function onSaveMetadata() {
@@ -207,6 +268,11 @@ async function onSaveMetadata() {
     safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
 
   const previousStatus = book.value.status
+  const completedAt = getValidatedCompletedAtFromForm()
+  if (completedAtError.value) {
+    notificationsStore.error(completedAtError.value)
+    return
+  }
   const nextAbandonedReason = formStatus.value === 'abandoned' ? (formAbandonedReason.value.trim() || null) : null
 
   let nextCurrentPage: number
@@ -233,6 +299,7 @@ async function onSaveMetadata() {
     totalPages: safeTotalPages,
     currentPage: nextCurrentPage,
     status: formStatus.value,
+    completedAt,
     rating: formRating.value,
     note: formNote.value.trim() || null,
     abandonedReason: nextAbandonedReason,
@@ -269,12 +336,18 @@ async function onConfirmCompletionRating() {
   const safeCoverUrl = book.value.coverUrl ?? (formCoverUrl.value.trim() || null)
   const currentPageCapped =
     safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
+  const completedAt = getValidatedCompletedAtFromForm()
+  if (completedAtError.value) {
+    notificationsStore.error(completedAtError.value)
+    return
+  }
 
   await booksStore.updateBookMetadata(book.value.id, {
     coverUrl: safeCoverUrl,
     totalPages: safeTotalPages,
     currentPage: safeTotalPages ?? currentPageCapped,
     status: 'finished',
+    completedAt,
     rating: completionRating.value,
     note: completionNote.value.trim() || null,
   })
@@ -658,6 +731,13 @@ onMounted(async () => {
                 <p class="bm-muted text-sm">{{ t(`books.status_${book.status}`) }}</p>
               </div>
               <div
+                v-if="book.status === 'finished'"
+                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2"
+              >
+                <p class="bm-soft text-[11px]">{{ t('books.completedAtLabel') }}</p>
+                <p class="bm-muted text-sm">{{ formatDateInputValue(book.completedAt) || '—' }}</p>
+              </div>
+              <div
                 v-if="showRatingDisplay"
                 class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2"
               >
@@ -723,6 +803,26 @@ onMounted(async () => {
                     <option value="paused">{{ t('books.status_paused') }}</option>
                     <option value="abandoned">{{ t('books.status_abandoned') }}</option>
                   </select>
+                </label>
+
+                <label
+                  v-if="formStatus === 'finished'"
+                  class="bm-label"
+                >
+                  {{ t('books.completedAtLabel') }}
+                  <input
+                    v-model="formCompletedAt"
+                    type="date"
+                    :max="maxCompletedAtDate"
+                    :disabled="isMetadataUpdating()"
+                    class="bm-input mt-1 py-1.5 text-sm"
+                  >
+                  <span
+                    v-if="completedAtError"
+                    class="mt-1 block text-xs text-(--app-danger)"
+                  >
+                    {{ completedAtError }}
+                  </span>
                 </label>
 
                 <label

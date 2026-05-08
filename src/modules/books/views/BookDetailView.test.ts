@@ -114,7 +114,10 @@ function mountView() {
       plugins: [makeI18n()],
       stubs: {
         ConfirmModal: true,
-        IconButton: true,
+        IconButton: {
+          props: ['label'],
+          template: '<button type="button" @click="$emit(\'click\')">{{ label }}</button>',
+        },
         StatusBadge: true,
         StarRating: true,
         RouterLink: true,
@@ -137,6 +140,7 @@ describe('BookDetailView reading pace', () => {
       favorite: false,
       currentPage: 120,
       status: 'reading',
+      completedAt: null,
       rating: null,
       note: null,
     }
@@ -275,6 +279,44 @@ describe('BookDetailView reading pace', () => {
     await startReadingButton!.trigger('click')
 
     expect(mocks.routerPush).not.toHaveBeenCalledWith({ name: 'reading', query: { bookId: 'book-1' } })
+    expect(mocks.notificationsError).toHaveBeenCalled()
+  })
+
+  it('shows completed date field only when status is finished in edit mode', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
+    expect(editButton).toBeDefined()
+    await editButton!.trigger('click')
+    expect(wrapper.find('input[type="date"]').exists()).toBe(false)
+
+    const statusSelect = wrapper.find('select')
+    await statusSelect.setValue('finished')
+    expect(wrapper.find('input[type="date"]').exists()).toBe(true)
+  })
+
+  it('blocks metadata save when completed date is in the future', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
+    expect(editButton).toBeDefined()
+    await editButton!.trigger('click')
+    await wrapper.find('select').setValue('finished')
+
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0')
+    const day = String(tomorrow.getDate()).padStart(2, '0')
+    const futureDate = `${tomorrow.getFullYear()}-${month}-${day}`
+    await wrapper.find('input[type="date"]').setValue(futureDate)
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save changes'))
+    expect(saveButton).toBeDefined()
+    await saveButton!.trigger('click')
+
+    expect(mocks.updateBookMetadata).not.toHaveBeenCalled()
     expect(mocks.notificationsError).toHaveBeenCalled()
   })
 })

@@ -285,6 +285,8 @@ export const es = {
     status_wishlist: 'Pendiente',
     status_paused: 'En pausa',
     status_abandoned: 'Abandonado',
+    completedAtLabel: 'Fecha de completado',
+    completedAtFutureError: 'La fecha de completado no puede ser posterior a hoy.',
     abandonedReason: 'Motivo de abandono (opcional)',
     abandonedReasonPlaceholder: 'Ej: No conecté con la historia...',
     editMetadata: 'Editar metadatos',

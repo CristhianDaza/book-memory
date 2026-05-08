@@ -225,7 +225,7 @@ export const useStatsStore = defineStore('stats', () => {
       }
 
       if (book.status !== 'finished') return
-      const finishedAt = parseDate(book.updatedAt)
+      const finishedAt = parseDate(book.completedAt) ?? parseDate(book.updatedAt)
       if (!finishedAt) return
       const monthEntry = ensureMonth(finishedAt)
       monthEntry.finishedCount += 1
