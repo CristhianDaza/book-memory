@@ -39,6 +39,7 @@ const formRating = ref<1 | 2 | 3 | 4 | 5 | null>(null)
 const formNote = ref<string>('')
 const formAbandonedReason = ref<string>('')
 const completedAtError = ref('')
+const editingStartedAsFinished = ref(false)
 const sessions = ref<ReadingSessionRecord[]>([])
 const loadingSessions = ref(false)
 const visibleSessionsCount = ref(5)
@@ -52,9 +53,11 @@ const removingBookModalOpen = ref(false)
 const removingSessionId = ref<string | null>(null)
 const showCompletionRatingModal = ref(false)
 const completionRating = ref<1 | 2 | 3 | 4 | 5 | null>(null)
+const completionDate = ref('')
 const completionNote = ref('')
 const completionRatingError = ref('')
-const canEditRating = computed(() => formStatus.value === 'finished')
+const completionDateError = ref('')
+const canEditCompletedMetadata = computed(() => editingStartedAsFinished.value)
 const showRatingDisplay = computed(() => Boolean(book.value && book.value.status === 'finished' && book.value.rating))
 const maxCompletedAtDate = computed(() => {
   const today = new Date()
@@ -105,6 +108,17 @@ function getValidatedCompletedAtFromForm(): Date | null {
   if (!parsedDate) return null
   if (isFutureCompletedAtDate(parsedDate)) {
     completedAtError.value = t('books.completedAtFutureError')
+    return null
+  }
+  return parsedDate
+}
+
+function getValidatedCompletedAtFromModal(): Date | null {
+  completionDateError.value = ''
+  const parsedDate = parseCompletedAtInput(completionDate.value)
+  if (!parsedDate) return null
+  if (isFutureCompletedAtDate(parsedDate)) {
+    completionDateError.value = t('books.completedAtFutureError')
     return null
   }
   return parsedDate
@@ -234,21 +248,20 @@ function syncFormFromBook() {
 
 function syncFinishedProgressField() {
   if (formStatus.value !== 'finished') return
-  if (!formCompletedAt.value) {
-    formCompletedAt.value = maxCompletedAtDate.value
-  }
   const parsedTotalPages = Number(formTotalPages.value)
   if (!Number.isFinite(parsedTotalPages) || parsedTotalPages <= 0) return
   formCurrentPage.value = String(Math.floor(parsedTotalPages))
 }
 
 function onStartEdit() {
+  editingStartedAsFinished.value = book.value?.status === 'finished'
   syncFormFromBook()
   editMode.value = true
 }
 
 function onCancelEdit() {
   editMode.value = false
+  editingStartedAsFinished.value = false
   syncFormFromBook()
   completedAtError.value = ''
 }
@@ -268,11 +281,6 @@ async function onSaveMetadata() {
     safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
 
   const previousStatus = book.value.status
-  const completedAt = getValidatedCompletedAtFromForm()
-  if (completedAtError.value) {
-    notificationsStore.error(completedAtError.value)
-    return
-  }
   const nextAbandonedReason = formStatus.value === 'abandoned' ? (formAbandonedReason.value.trim() || null) : null
 
   let nextCurrentPage: number
@@ -289,8 +297,16 @@ async function onSaveMetadata() {
   if (isTransitionToFinished) {
     completionRating.value = formRating.value ?? book.value.rating
     completionNote.value = formNote.value || book.value.note || ''
+    completionDate.value = formCompletedAt.value || maxCompletedAtDate.value
     completionRatingError.value = ''
+    completionDateError.value = ''
     showCompletionRatingModal.value = true
+    return
+  }
+
+  const completedAt = getValidatedCompletedAtFromForm()
+  if (completedAtError.value) {
+    notificationsStore.error(completedAtError.value)
     return
   }
 
@@ -318,6 +334,7 @@ async function onSaveMetadata() {
 function onCancelCompletionRating() {
   showCompletionRatingModal.value = false
   completionRatingError.value = ''
+  completionDateError.value = ''
 }
 
 async function onConfirmCompletionRating() {
@@ -336,9 +353,9 @@ async function onConfirmCompletionRating() {
   const safeCoverUrl = book.value.coverUrl ?? (formCoverUrl.value.trim() || null)
   const currentPageCapped =
     safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
-  const completedAt = getValidatedCompletedAtFromForm()
-  if (completedAtError.value) {
-    notificationsStore.error(completedAtError.value)
+  const completedAt = getValidatedCompletedAtFromModal()
+  if (completionDateError.value) {
+    notificationsStore.error(completionDateError.value)
     return
   }
 
@@ -358,11 +375,13 @@ async function onConfirmCompletionRating() {
 
   formRating.value = completionRating.value
   formNote.value = completionNote.value
+  formCompletedAt.value = completionDate.value
   formStatus.value = 'finished'
   syncFormFromBook()
   showQueuedFeedbackIfAny()
   showCompletionRatingModal.value = false
   editMode.value = false
+  editingStartedAsFinished.value = false
   showBookCompletion({
     bookId: book.value.id,
     title: book.value.title,
@@ -504,6 +523,7 @@ watch(
   async () => {
     syncFormFromBook()
     editMode.value = false
+    editingStartedAsFinished.value = false
     await loadSessions()
   },
   { immediate: true },
@@ -806,7 +826,7 @@ onMounted(async () => {
                 </label>
 
                 <label
-                  v-if="formStatus === 'finished'"
+                  v-if="canEditCompletedMetadata"
                   class="bm-label"
                 >
                   {{ t('books.completedAtLabel') }}
@@ -839,7 +859,7 @@ onMounted(async () => {
                 </label>
 
                 <label
-                  v-if="canEditRating"
+                  v-if="canEditCompletedMetadata"
                   class="bm-label sm:col-span-3"
                 >
                   {{ t('books.ratingLabel') }}
@@ -852,7 +872,7 @@ onMounted(async () => {
                 </label>
 
                 <label
-                  v-if="canEditRating"
+                  v-if="canEditCompletedMetadata"
                   class="bm-label sm:col-span-3"
                 >
                   {{ t('books.noteLabel') }}
@@ -1084,6 +1104,21 @@ onMounted(async () => {
           {{ completionRatingError }}
         </p>
       </div>
+      <label class="bm-label mt-4 block">
+        {{ t('books.completedAtLabel') }}
+        <input
+          v-model="completionDate"
+          type="date"
+          :max="maxCompletedAtDate"
+          class="bm-input mt-1 text-sm"
+        >
+      </label>
+      <p
+        v-if="completionDateError"
+        class="mt-2 text-xs text-(--app-danger)"
+      >
+        {{ completionDateError }}
+      </p>
       <label class="bm-label mt-4 block">
         {{ t('books.noteLabel') }}
         <textarea
