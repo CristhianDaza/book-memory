@@ -242,26 +242,58 @@ a {
 }
 
 .bm-nav-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.7rem;
+  overflow: hidden;
   border-radius: 0.9rem;
   color: var(--app-text-muted);
   font-size: 0.92rem;
   font-weight: 650;
   padding: 0.72rem 0.8rem;
   text-decoration: none;
-  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.bm-nav-item::before {
+  position: absolute;
+  inset-block: 0.55rem;
+  left: 0.35rem;
+  width: 0.18rem;
+  border-radius: 999px;
+  background: var(--app-primary-strong);
+  content: "";
+  opacity: 0;
+  transform: scaleY(0.45);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.bm-nav-item-icon {
+  flex: 0 0 auto;
+  transition: transform 0.18s ease;
 }
 
 .bm-nav-item:hover {
   background: var(--app-surface-muted);
   color: var(--app-text);
+  transform: translateX(2px);
 }
 
 .bm-nav-item.is-active {
   background: var(--app-primary-soft);
   color: var(--app-primary-strong);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-primary) 20%, transparent);
+}
+
+.bm-nav-item.is-active::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.bm-nav-item:hover .bm-nav-item-icon,
+.bm-nav-item.is-active .bm-nav-item-icon {
+  transform: translateY(-1px);
 }
 
 .bm-bottom-nav .bm-nav-item {
@@ -275,9 +307,40 @@ a {
   text-align: center;
 }
 
+.bm-bottom-nav .bm-nav-item::before {
+  inset: auto 30% 0.2rem;
+  width: auto;
+  height: 0.18rem;
+  transform: scaleX(0.45);
+}
+
+.bm-bottom-nav .bm-nav-item:hover {
+  transform: translateY(-1px);
+}
+
+.bm-bottom-nav .bm-nav-item.is-active::before {
+  transform: scaleX(1);
+}
+
 .bm-page {
   display: grid;
   gap: 1rem;
+}
+
+.bm-page > * {
+  animation: bm-section-rise 0.34s ease both;
+}
+
+.bm-page > *:nth-child(2) {
+  animation-delay: 0.04s;
+}
+
+.bm-page > *:nth-child(3) {
+  animation-delay: 0.08s;
+}
+
+.bm-page > *:nth-child(4) {
+  animation-delay: 0.12s;
 }
 
 .bm-page-header {
@@ -569,6 +632,10 @@ a {
   background: var(--app-surface-muted);
 }
 
+.bm-button:active {
+  transform: translateY(0) scale(0.985);
+}
+
 .bm-button-primary {
   border-color: var(--app-primary);
   background: var(--app-primary);
@@ -675,12 +742,13 @@ a {
   background: var(--app-surface-raised);
   box-shadow: var(--app-shadow-soft);
   text-decoration: none;
-  transition: transform 0.18s ease, border-color 0.18s ease;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .bm-book-card:hover {
   border-color: var(--app-primary);
   transform: translateY(-2px);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
 }
 
 .bm-book-cover {
@@ -694,6 +762,12 @@ a {
   height: 100%;
   width: 100%;
   object-fit: cover;
+  transition: transform 0.28s ease, filter 0.28s ease;
+}
+
+.bm-book-card:hover .bm-book-cover img {
+  filter: saturate(1.04);
+  transform: scale(1.025);
 }
 
 .bm-empty {
@@ -727,6 +801,27 @@ a {
   box-shadow: var(--app-shadow);
 }
 
+.bm-modal-enter-active,
+.bm-modal-leave-active {
+  transition: opacity 0.22s ease;
+}
+
+.bm-modal-enter-active .bm-modal-sheet,
+.bm-modal-leave-active .bm-modal-sheet {
+  transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+.bm-modal-enter-from,
+.bm-modal-leave-to {
+  opacity: 0;
+}
+
+.bm-modal-enter-from .bm-modal-sheet,
+.bm-modal-leave-to .bm-modal-sheet {
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+}
+
 .bm-progress-track {
   height: 0.55rem;
   overflow: hidden;
@@ -738,6 +833,120 @@ a {
   height: 100%;
   border-radius: inherit;
   background: var(--app-accent);
+  transition: width 0.38s ease;
+}
+
+.bm-route-enter-active,
+.bm-route-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.bm-route-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.bm-route-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.bm-soft-swap-enter-active,
+.bm-soft-swap-leave-active,
+.bm-stagger-enter-active,
+.bm-stagger-leave-active {
+  transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+.bm-soft-swap-enter-from,
+.bm-soft-swap-leave-to,
+.bm-stagger-enter-from,
+.bm-stagger-leave-to {
+  opacity: 0;
+  transform: translateY(10px) scale(0.985);
+}
+
+.bm-stagger-move {
+  transition: transform 0.24s ease;
+}
+
+.bm-book-detail-cover {
+  animation: bm-cover-reveal 0.38s ease both;
+  transform-origin: 50% 70%;
+}
+
+.bm-session-row {
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.bm-session-row:hover {
+  border-color: var(--app-border-strong);
+  transform: translateY(-1px);
+}
+
+.bm-reading-book-card {
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.bm-reading-book-card:hover {
+  transform: translateY(-1px);
+}
+
+.bm-reading-timer {
+  position: relative;
+  overflow: hidden;
+}
+
+.bm-reading-timer::after {
+  position: absolute;
+  inset: 1rem;
+  border: 1px solid color-mix(in srgb, var(--app-primary) 26%, transparent);
+  border-radius: 1rem;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bm-reading-timer.is-running::after {
+  animation: bm-reading-breathe 2.4s ease-in-out infinite;
+}
+
+.bm-reading-action:not(:disabled):active {
+  box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 16%, transparent);
+}
+
+@keyframes bm-section-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bm-cover-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px) rotateX(5deg) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotateX(0deg) scale(1);
+  }
+}
+
+@keyframes bm-reading-breathe {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
 }
 
 .bm-footer {
@@ -855,7 +1064,24 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
   .bm-main {
     scroll-behavior: auto;
+  }
+
+  .bm-book-card:hover,
+  .bm-bottom-nav .bm-nav-item:hover,
+  .bm-nav-item:hover,
+  .bm-reading-book-card:hover,
+  .bm-session-row:hover {
+    transform: none;
   }
 }

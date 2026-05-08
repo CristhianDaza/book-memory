@@ -6,7 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import type { BookSearchResult, LibraryBook } from '../../../types/books'
 import type { AppLocale } from '../../../types/i18n'
-import type { LibraryStatusFilter, SearchLanguageMode } from '../../../types/books-store'
+import type { SearchLanguageMode } from '../../../types/books-store'
 import EmptyState from '../../../components/ui/EmptyState.vue'
 import PageHeader from '../../../components/ui/PageHeader.vue'
 import PromptModal from '../../../components/PromptModal.vue'
@@ -38,6 +38,7 @@ const manualCoverUrl = ref('')
 const showRandomPickerModal = ref(false)
 const selectedRandomBook = ref<LibraryBook | null>(null)
 const includePausedInRandom = ref(false)
+const includePausedInPendingBooks = ref(false)
 const isAnimating = ref(false)
 const randomAnimationKey = ref(0)
 const randomAnimationTimeoutId = ref<number | null>(null)
@@ -46,6 +47,7 @@ const randomConfirmButtonRef = ref<HTMLButtonElement | null>(null)
 const {
   query,
   searchResults,
+  library,
   searching,
   loadingMoreSearch,
   hasMoreSearchResults,
@@ -55,7 +57,6 @@ const {
   filteredSortedLibrary,
   favoriteUpdatingIds,
   showOnlyFavorites,
-  libraryStatusFilter,
   librarySearchQuery,
   librarySortMode,
   searchLanguageMode,
@@ -65,6 +66,24 @@ const { isAuthenticated } = storeToRefs(authStore)
 
 const mappedError = computed(() => (errorKey.value ? t(errorKey.value) : null))
 const hasSearchExecuted = computed(() => query.value.trim().length > 0)
+const pendingLibrary = computed(() => {
+  const normalizedQuery = librarySearchQuery.value.trim().toLowerCase()
+  const base = library.value.filter((book) => {
+    if (showOnlyFavorites.value && !book.favorite) return false
+    if (!(book.status === 'wishlist' || (includePausedInPendingBooks.value && book.status === 'paused'))) return false
+    if (!normalizedQuery) return true
+    const titleMatch = book.title.toLowerCase().includes(normalizedQuery)
+    const authorMatch = book.authors.some((author) => author.toLowerCase().includes(normalizedQuery))
+    return titleMatch || authorMatch
+  })
+  if (librarySortMode.value === 'title_asc') {
+    return [...base].sort((a, b) => a.title.localeCompare(b.title))
+  }
+  if (librarySortMode.value === 'recent') {
+    return base
+  }
+  return [...base].sort((a, b) => Number(b.favorite) - Number(a.favorite))
+})
 const randomCandidates = computed(() =>
   filteredSortedLibrary.value.filter(
     (book) => book.status === 'wishlist' || (includePausedInRandom.value && book.status === 'paused'),
@@ -183,10 +202,6 @@ function onChangeAddMode(mode: 'search' | 'manual') {
 
 function onChangeSearchLanguageMode(mode: SearchLanguageMode) {
   booksStore.setSearchLanguageMode(mode)
-}
-
-function onChangeLibraryStatusFilter(filter: LibraryStatusFilter) {
-  libraryStatusFilter.value = filter
 }
 
 function showQueuedFeedbackIfAny() {
@@ -352,6 +367,11 @@ async function onAddManualBook() {
 
 onMounted(async () => {
   await booksStore.loadLibrary()
+  const query = (router as { currentRoute?: { value?: { query?: Record<string, unknown> } } }).currentRoute?.value
+    ?.query
+  if (query?.pending === '1') {
+    includePausedInPendingBooks.value = query.includePaused === '1'
+  }
 })
 
 watch(showAddModal, async (isOpen) => {
@@ -415,7 +435,7 @@ onBeforeUnmount(() => {
         {{ mappedError }}
       </p>
 
-      <div class="bm-toolbar grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(8rem,0.85fr)_minmax(10rem,1fr)_minmax(14rem,1.4fr)_minmax(10rem,1fr)]">
+      <div class="bm-toolbar grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(8rem,0.95fr)_minmax(14rem,1.4fr)_minmax(10rem,1fr)]">
         <label class="bm-label grid gap-1">
           <span>{{ t('books.favoritesFilter') }}</span>
           <span class="flex min-h-10 cursor-pointer items-center gap-2 rounded-[0.85rem] border border-(--app-border-strong) bg-(--app-surface-raised) px-3 text-sm text-(--app-text)">
@@ -429,19 +449,15 @@ onBeforeUnmount(() => {
         </label>
 
         <label class="bm-label grid gap-1">
-          <span>{{ t('books.filterStatus') }}</span>
-          <select
-            :value="libraryStatusFilter"
-            class="bm-select min-h-10 py-2 text-sm"
-            @change="onChangeLibraryStatusFilter(($event.target as HTMLSelectElement).value as LibraryStatusFilter)"
-          >
-            <option value="all">{{ t('books.status_all') }}</option>
-            <option value="reading">{{ t('books.status_reading') }}</option>
-            <option value="finished">{{ t('books.status_finished') }}</option>
-            <option value="wishlist">{{ t('books.status_wishlist') }}</option>
-            <option value="paused">{{ t('books.status_paused') }}</option>
-            <option value="abandoned">{{ t('books.status_abandoned') }}</option>
-          </select>
+          <span>{{ t('books.pendingBooksSection') }}</span>
+          <span class="flex min-h-10 cursor-pointer items-center gap-2 rounded-[0.85rem] border border-(--app-border-strong) bg-(--app-surface-raised) px-3 text-sm text-(--app-text)">
+            <input
+              v-model="includePausedInPendingBooks"
+              type="checkbox"
+              class="h-4 w-4 cursor-pointer accent-(--app-primary)"
+            >
+            {{ t('books.showPausedBooks') }}
+          </span>
         </label>
 
         <label class="bm-label grid gap-1">
@@ -491,14 +507,17 @@ onBeforeUnmount(() => {
         </article>
       </div>
 
-      <div
+      <TransitionGroup
         v-else
+        name="bm-stagger"
+        tag="div"
         class="bm-book-grid mt-4"
       >
         <article
-          v-for="item in filteredSortedLibrary"
+          v-for="(item, index) in pendingLibrary"
           :key="item.id"
           class="bm-book-card overflow-visible"
+          :style="{ transitionDelay: `${Math.min(index, 10) * 24}ms` }"
         >
           <div class="bm-book-cover relative">
             <RouterLink
@@ -572,13 +591,13 @@ onBeforeUnmount(() => {
             </RouterLink>
           </div>
         </article>
-      </div>
+      </TransitionGroup>
 
       <EmptyState
-        v-if="!loadingLibrary && filteredSortedLibrary.length === 0"
+        v-if="!loadingLibrary && pendingLibrary.length === 0"
         class="mt-4"
-        :title="t('books.emptyLibrary')"
-        :description="t('books.librarySubtitle')"
+        :title="t('books.randomModalEmptyTitle')"
+        :description="t('books.pendingBooksSubtitle')"
       >
         <button
           type="button"
@@ -594,14 +613,15 @@ onBeforeUnmount(() => {
       </EmptyState>
     </SurfaceCard>
 
-    <div
-      v-if="showAddModal"
-      class="bm-modal-backdrop z-40"
-    >
-      <section
-        class="bm-modal-sheet flex max-w-2xl flex-col p-4 sm:p-6"
-        @keydown.esc="closeAddModal"
+    <Transition name="bm-modal">
+      <div
+        v-if="showAddModal"
+        class="bm-modal-backdrop z-40"
       >
+        <section
+          class="bm-modal-sheet flex max-w-2xl flex-col p-4 sm:p-6"
+          @keydown.esc="closeAddModal"
+        >
         <div class="flex items-center justify-between gap-3">
           <div>
             <h2 class="bm-section-title">
@@ -913,8 +933,9 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </Transition>
 
     <PromptModal
       :open="showAddBookPagesModal"
@@ -955,17 +976,18 @@ onBeforeUnmount(() => {
       </template>
     </PromptModal>
 
-    <div
-      v-if="showRandomPickerModal"
-      class="bm-modal-backdrop z-50"
-      @click.self="closeRandomPickerModal"
-    >
-      <section
-        class="bm-modal-sheet bm-random-modal flex max-w-md flex-col p-4 sm:p-6"
-        role="dialog"
-        :aria-label="t('books.randomModalTitle')"
-        @keydown.esc="closeRandomPickerModal"
+    <Transition name="bm-modal">
+      <div
+        v-if="showRandomPickerModal"
+        class="bm-modal-backdrop z-50"
+        @click.self="closeRandomPickerModal"
       >
+        <section
+          class="bm-modal-sheet bm-random-modal flex max-w-md flex-col p-4 sm:p-6"
+          role="dialog"
+          :aria-label="t('books.randomModalTitle')"
+          @keydown.esc="closeRandomPickerModal"
+        >
         <div class="flex items-center justify-between gap-3">
           <div>
             <p class="bm-eyebrow">{{ t('books.randomModalEyebrow') }}</p>
@@ -1090,8 +1112,9 @@ onBeforeUnmount(() => {
             {{ t('books.randomPickThis') }}
           </button>
         </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </Transition>
   </div>
 </template>
 

@@ -30,42 +30,43 @@ withBodyScrollLock(computed(() => props.open))
 </script>
 
 <template>
-  <div
-    v-if="open"
-    class="bm-modal-backdrop z-55"
-    @click.self="onCancel"
-  >
-    <section class="bm-modal-sheet flex max-h-[88dvh] max-w-md flex-col p-4 sm:p-6">
-      <div class="overflow-y-auto pr-1">
-        <h3 class="bm-section-title">
-          {{ title }}
-        </h3>
-        <p
-          v-if="message"
-          class="bm-muted mt-1 text-sm"
-        >
-          {{ message }}
-        </p>
-
-        <label
-          v-if="inputLabel"
-          class="bm-label mt-3 block"
-        >
-          {{ inputLabel }}
-          <input
-            :value="value"
-            :type="inputType"
-            :min="inputMin || undefined"
-            :placeholder="inputPlaceholder || undefined"
-            class="bm-input mt-1 text-sm"
-            @input="onUpdateValue(($event.target as HTMLInputElement).value)"
+  <Transition name="bm-modal">
+    <div
+      v-if="open"
+      class="bm-modal-backdrop z-55"
+      @click.self="onCancel"
+    >
+      <section class="bm-modal-sheet flex max-h-[88dvh] max-w-md flex-col p-4 sm:p-6">
+        <div class="overflow-y-auto pr-1">
+          <h3 class="bm-section-title">
+            {{ title }}
+          </h3>
+          <p
+            v-if="message"
+            class="bm-muted mt-1 text-sm"
           >
-        </label>
+            {{ message }}
+          </p>
 
-        <slot name="details" />
-      </div>
+          <label
+            v-if="inputLabel"
+            class="bm-label mt-3 block"
+          >
+            {{ inputLabel }}
+            <input
+              :value="value"
+              :type="inputType"
+              :min="inputMin || undefined"
+              :placeholder="inputPlaceholder || undefined"
+              class="bm-input mt-1 text-sm"
+              @input="onUpdateValue(($event.target as HTMLInputElement).value)"
+            >
+          </label>
 
-      <div class="mt-4 grid grid-cols-2 gap-2">
+          <slot name="details" />
+        </div>
+
+        <div class="mt-4 grid grid-cols-2 gap-2">
           <button
             type="button"
             class="bm-button"
@@ -82,7 +83,8 @@ withBodyScrollLock(computed(() => props.open))
           >
             {{ confirmLabel }}
           </button>
-      </div>
-    </section>
-  </div>
+        </div>
+      </section>
+    </div>
+  </Transition>
 </template>

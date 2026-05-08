@@ -35,8 +35,8 @@ export default defineConfig({
               cacheName: 'html-pages',
               networkTimeoutSeconds: 5,
               expiration: {
-                maxEntries: 30,
-                maxAgeSeconds: 60 * 60 * 24 * 7,
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60,
               },
             },
           },

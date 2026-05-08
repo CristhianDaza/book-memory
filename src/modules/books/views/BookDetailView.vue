@@ -34,9 +34,12 @@ const formTotalPages = ref<string>('')
 const formCurrentPage = ref<string>('0')
 const formCoverUrl = ref<string>('')
 const formStatus = ref<'reading' | 'finished' | 'wishlist' | 'paused' | 'abandoned'>('reading')
+const formCompletedAt = ref<string>('')
 const formRating = ref<1 | 2 | 3 | 4 | 5 | null>(null)
 const formNote = ref<string>('')
 const formAbandonedReason = ref<string>('')
+const completedAtError = ref('')
+const editingStartedAsFinished = ref(false)
 const sessions = ref<ReadingSessionRecord[]>([])
 const loadingSessions = ref(false)
 const visibleSessionsCount = ref(5)
@@ -50,10 +53,76 @@ const removingBookModalOpen = ref(false)
 const removingSessionId = ref<string | null>(null)
 const showCompletionRatingModal = ref(false)
 const completionRating = ref<1 | 2 | 3 | 4 | 5 | null>(null)
+const completionDate = ref('')
 const completionNote = ref('')
 const completionRatingError = ref('')
-const canEditRating = computed(() => formStatus.value === 'finished')
+const completionDateError = ref('')
+const canEditCompletedMetadata = computed(() => editingStartedAsFinished.value)
 const showRatingDisplay = computed(() => Boolean(book.value && book.value.status === 'finished' && book.value.rating))
+const maxCompletedAtDate = computed(() => {
+  const today = new Date()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  return `${today.getFullYear()}-${month}-${day}`
+})
+
+function formatDateInputValue(value: unknown): string {
+  if (!value) return ''
+  let date: Date | null = null
+  if (value instanceof Date) {
+    date = Number.isNaN(value.getTime()) ? null : value
+  } else if (typeof value === 'string') {
+    const parsed = new Date(value)
+    date = Number.isNaN(parsed.getTime()) ? null : parsed
+  } else if (typeof value === 'object' && 'toDate' in value) {
+    const dateLike = value as { toDate?: () => Date }
+    if (typeof dateLike.toDate !== 'function') return ''
+    const converted = dateLike.toDate()
+    date = converted instanceof Date && !Number.isNaN(converted.getTime()) ? converted : null
+  }
+  if (!date) return ''
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+function parseCompletedAtInput(value: string): Date | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const parsed = new Date(`${trimmed}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed
+}
+
+function isFutureCompletedAtDate(value: Date | null): boolean {
+  if (!value) return false
+  const maxToday = new Date()
+  maxToday.setHours(23, 59, 59, 999)
+  return value.getTime() > maxToday.getTime()
+}
+
+function getValidatedCompletedAtFromForm(): Date | null {
+  completedAtError.value = ''
+  if (formStatus.value !== 'finished') return null
+  const parsedDate = parseCompletedAtInput(formCompletedAt.value)
+  if (!parsedDate) return null
+  if (isFutureCompletedAtDate(parsedDate)) {
+    completedAtError.value = t('books.completedAtFutureError')
+    return null
+  }
+  return parsedDate
+}
+
+function getValidatedCompletedAtFromModal(): Date | null {
+  completionDateError.value = ''
+  const parsedDate = parseCompletedAtInput(completionDate.value)
+  if (!parsedDate) return null
+  if (isFutureCompletedAtDate(parsedDate)) {
+    completionDateError.value = t('books.completedAtFutureError')
+    return null
+  }
+  return parsedDate
+}
 
 function isFavoriteUpdating() {
   return favoriteUpdatingIds.value.includes(bookId.value)
@@ -170,9 +239,11 @@ function syncFormFromBook() {
   formCurrentPage.value = String(displayCurrentPage.value)
   formCoverUrl.value = book.value.coverUrl ?? ''
   formStatus.value = book.value.status
+  formCompletedAt.value = formatDateInputValue(book.value.completedAt)
   formRating.value = book.value.rating
   formNote.value = book.value.note ?? ''
   formAbandonedReason.value = book.value.abandonedReason ?? ''
+  completedAtError.value = ''
 }
 
 function syncFinishedProgressField() {
@@ -183,13 +254,16 @@ function syncFinishedProgressField() {
 }
 
 function onStartEdit() {
+  editingStartedAsFinished.value = book.value?.status === 'finished'
   syncFormFromBook()
   editMode.value = true
 }
 
 function onCancelEdit() {
   editMode.value = false
+  editingStartedAsFinished.value = false
   syncFormFromBook()
+  completedAtError.value = ''
 }
 
 async function onSaveMetadata() {
@@ -223,8 +297,16 @@ async function onSaveMetadata() {
   if (isTransitionToFinished) {
     completionRating.value = formRating.value ?? book.value.rating
     completionNote.value = formNote.value || book.value.note || ''
+    completionDate.value = formCompletedAt.value || maxCompletedAtDate.value
     completionRatingError.value = ''
+    completionDateError.value = ''
     showCompletionRatingModal.value = true
+    return
+  }
+
+  const completedAt = getValidatedCompletedAtFromForm()
+  if (completedAtError.value) {
+    notificationsStore.error(completedAtError.value)
     return
   }
 
@@ -233,6 +315,7 @@ async function onSaveMetadata() {
     totalPages: safeTotalPages,
     currentPage: nextCurrentPage,
     status: formStatus.value,
+    completedAt,
     rating: formRating.value,
     note: formNote.value.trim() || null,
     abandonedReason: nextAbandonedReason,
@@ -251,6 +334,7 @@ async function onSaveMetadata() {
 function onCancelCompletionRating() {
   showCompletionRatingModal.value = false
   completionRatingError.value = ''
+  completionDateError.value = ''
 }
 
 async function onConfirmCompletionRating() {
@@ -269,12 +353,18 @@ async function onConfirmCompletionRating() {
   const safeCoverUrl = book.value.coverUrl ?? (formCoverUrl.value.trim() || null)
   const currentPageCapped =
     safeTotalPages !== null ? Math.min(Math.floor(safeCurrentPage), safeTotalPages) : Math.floor(safeCurrentPage)
+  const completedAt = getValidatedCompletedAtFromModal()
+  if (completionDateError.value) {
+    notificationsStore.error(completionDateError.value)
+    return
+  }
 
   await booksStore.updateBookMetadata(book.value.id, {
     coverUrl: safeCoverUrl,
     totalPages: safeTotalPages,
     currentPage: safeTotalPages ?? currentPageCapped,
     status: 'finished',
+    completedAt,
     rating: completionRating.value,
     note: completionNote.value.trim() || null,
   })
@@ -285,11 +375,13 @@ async function onConfirmCompletionRating() {
 
   formRating.value = completionRating.value
   formNote.value = completionNote.value
+  formCompletedAt.value = completionDate.value
   formStatus.value = 'finished'
   syncFormFromBook()
   showQueuedFeedbackIfAny()
   showCompletionRatingModal.value = false
   editMode.value = false
+  editingStartedAsFinished.value = false
   showBookCompletion({
     bookId: book.value.id,
     title: book.value.title,
@@ -431,6 +523,7 @@ watch(
   async () => {
     syncFormFromBook()
     editMode.value = false
+    editingStartedAsFinished.value = false
     await loadSessions()
   },
   { immediate: true },
@@ -464,7 +557,7 @@ onMounted(async () => {
       </div>
       <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
         <div class="mx-auto w-48 lg:mx-0">
-          <div class="overflow-hidden rounded-2xl border border-(--app-border) bg-(--app-surface-muted) shadow-lg">
+          <div class="bm-book-detail-cover overflow-hidden rounded-2xl border border-(--app-border) bg-(--app-surface-muted) shadow-lg">
             <img
               v-if="book.coverUrl"
               :src="book.coverUrl"
@@ -658,6 +751,13 @@ onMounted(async () => {
                 <p class="bm-muted text-sm">{{ t(`books.status_${book.status}`) }}</p>
               </div>
               <div
+                v-if="book.status === 'finished'"
+                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2"
+              >
+                <p class="bm-soft text-[11px]">{{ t('books.completedAtLabel') }}</p>
+                <p class="bm-muted text-sm">{{ formatDateInputValue(book.completedAt) || '—' }}</p>
+              </div>
+              <div
                 v-if="showRatingDisplay"
                 class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2"
               >
@@ -726,6 +826,26 @@ onMounted(async () => {
                 </label>
 
                 <label
+                  v-if="canEditCompletedMetadata"
+                  class="bm-label"
+                >
+                  {{ t('books.completedAtLabel') }}
+                  <input
+                    v-model="formCompletedAt"
+                    type="date"
+                    :max="maxCompletedAtDate"
+                    :disabled="isMetadataUpdating()"
+                    class="bm-input mt-1 py-1.5 text-sm"
+                  >
+                  <span
+                    v-if="completedAtError"
+                    class="mt-1 block text-xs text-(--app-danger)"
+                  >
+                    {{ completedAtError }}
+                  </span>
+                </label>
+
+                <label
                   v-if="formStatus === 'abandoned'"
                   class="bm-label sm:col-span-3"
                 >
@@ -739,7 +859,7 @@ onMounted(async () => {
                 </label>
 
                 <label
-                  v-if="canEditRating"
+                  v-if="canEditCompletedMetadata"
                   class="bm-label sm:col-span-3"
                 >
                   {{ t('books.ratingLabel') }}
@@ -752,7 +872,7 @@ onMounted(async () => {
                 </label>
 
                 <label
-                  v-if="canEditRating"
+                  v-if="canEditCompletedMetadata"
                   class="bm-label sm:col-span-3"
                 >
                   {{ t('books.noteLabel') }}
@@ -819,14 +939,17 @@ onMounted(async () => {
               {{ t('books.loadingSessions') }}
             </p>
 
-            <ul
+            <TransitionGroup
               v-else-if="visibleSessions.length > 0"
+              name="bm-stagger"
+              tag="ul"
               class="mt-2 space-y-2"
             >
               <li
-                v-for="session in visibleSessions"
+                v-for="(session, index) in visibleSessions"
                 :key="session.id"
-                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2 text-xs text-(--app-text-muted)"
+                class="bm-session-row rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2 text-xs text-(--app-text-muted)"
+                :style="{ transitionDelay: `${Math.min(index, 10) * 24}ms` }"
               >
                 <template v-if="editingSessionId === session.id">
                   <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -906,7 +1029,7 @@ onMounted(async () => {
                   </div>
                 </template>
               </li>
-            </ul>
+            </TransitionGroup>
 
             <p
               v-else
@@ -964,11 +1087,12 @@ onMounted(async () => {
     @confirm="onConfirmDeleteSession"
   />
 
-  <div
-    v-if="showCompletionRatingModal"
-    class="bm-modal-backdrop z-50"
-  >
-    <section class="bm-modal-sheet w-full max-w-lg p-5 sm:p-6">
+  <Transition name="bm-modal">
+    <div
+      v-if="showCompletionRatingModal"
+      class="bm-modal-backdrop z-50"
+    >
+      <section class="bm-modal-sheet w-full max-w-lg p-5 sm:p-6">
       <h3 class="bm-section-title">{{ t('books.ratingModalTitle') }}</h3>
       <p class="bm-muted mt-1 text-sm">{{ t('books.ratingModalSubtitle') }}</p>
       <div class="mt-4">
@@ -984,6 +1108,21 @@ onMounted(async () => {
           {{ completionRatingError }}
         </p>
       </div>
+      <label class="bm-label mt-4 block">
+        {{ t('books.completedAtLabel') }}
+        <input
+          v-model="completionDate"
+          type="date"
+          :max="maxCompletedAtDate"
+          class="bm-input mt-1 text-sm"
+        >
+      </label>
+      <p
+        v-if="completionDateError"
+        class="mt-2 text-xs text-(--app-danger)"
+      >
+        {{ completionDateError }}
+      </p>
       <label class="bm-label mt-4 block">
         {{ t('books.noteLabel') }}
         <textarea
@@ -1008,6 +1147,7 @@ onMounted(async () => {
           {{ t('books.saveRatingAction') }}
         </button>
       </div>
-    </section>
-  </div>
+      </section>
+    </div>
+  </Transition>
 </template>

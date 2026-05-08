@@ -114,7 +114,10 @@ function mountView() {
       plugins: [makeI18n()],
       stubs: {
         ConfirmModal: true,
-        IconButton: true,
+        IconButton: {
+          props: ['label'],
+          template: '<button type="button" @click="$emit(\'click\')">{{ label }}</button>',
+        },
         StatusBadge: true,
         StarRating: true,
         RouterLink: true,
@@ -137,6 +140,7 @@ describe('BookDetailView reading pace', () => {
       favorite: false,
       currentPage: 120,
       status: 'reading',
+      completedAt: null,
       rating: null,
       note: null,
     }
@@ -276,5 +280,103 @@ describe('BookDetailView reading pace', () => {
 
     expect(mocks.routerPush).not.toHaveBeenCalledWith({ name: 'reading', query: { bookId: 'book-1' } })
     expect(mocks.notificationsError).toHaveBeenCalled()
+  })
+
+  it('keeps completed date field hidden inline when transitioning to finished', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
+    expect(editButton).toBeDefined()
+    await editButton!.trigger('click')
+    expect(wrapper.find('input[type="date"]').exists()).toBe(false)
+
+    const statusSelect = wrapper.find('select')
+    await statusSelect.setValue('finished')
+    expect(wrapper.find('input[type="date"]').exists()).toBe(false)
+  })
+
+  it('shows completed metadata inline when editing an already finished book', async () => {
+    mocks.activeBook.value = {
+      ...mocks.activeBook.value!,
+      status: 'finished',
+      currentPage: 300,
+      completedAt: '2026-01-01T12:00:00.000Z',
+      rating: 4,
+      note: 'great',
+    }
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
+    expect(editButton).toBeDefined()
+    await editButton!.trigger('click')
+
+    expect(wrapper.find('input[type="date"]').exists()).toBe(true)
+  })
+
+  it('blocks completion modal save when completed date is in the future', async () => {
+    mocks.activeBook.value = {
+      ...mocks.activeBook.value!,
+      rating: 4,
+    }
+    const wrapper = mountView()
+    await flushPromises()
+
+    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
+    expect(editButton).toBeDefined()
+    await editButton!.trigger('click')
+    await wrapper.find('select').setValue('finished')
+    await wrapper.findAll('button').find((button) => button.text().includes('Save changes'))!.trigger('click')
+
+    const modalDateInput = wrapper.find('input[type="date"]')
+    expect(modalDateInput.exists()).toBe(true)
+
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0')
+    const day = String(tomorrow.getDate()).padStart(2, '0')
+    const futureDate = `${tomorrow.getFullYear()}-${month}-${day}`
+    await modalDateInput.setValue(futureDate)
+    await wrapper.findAll('button').find((button) => button.text().includes('Save rating'))!.trigger('click')
+
+    expect(mocks.updateBookMetadata).not.toHaveBeenCalled()
+    expect(mocks.notificationsError).toHaveBeenCalled()
+  })
+
+  it('uses today as default completed date in modal and saves valid completion metadata', async () => {
+    mocks.activeBook.value = {
+      ...mocks.activeBook.value!,
+      rating: 4,
+    }
+    const wrapper = mountView()
+    await flushPromises()
+
+    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
+    expect(editButton).toBeDefined()
+    await editButton!.trigger('click')
+    await wrapper.find('select').setValue('finished')
+    await wrapper.findAll('button').find((button) => button.text().includes('Save changes'))!.trigger('click')
+
+    const modalDateInput = wrapper.find('input[type="date"]')
+    expect(modalDateInput.exists()).toBe(true)
+
+    const today = new Date()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    const todayDate = `${today.getFullYear()}-${month}-${day}`
+    expect((modalDateInput.element as HTMLInputElement).value).toBe(todayDate)
+
+    await wrapper.findAll('button').find((button) => button.text().includes('Save rating'))!.trigger('click')
+
+    expect(mocks.updateBookMetadata).toHaveBeenCalledWith(
+      'book-1',
+      expect.objectContaining({
+        status: 'finished',
+        rating: expect.any(Number),
+        completedAt: expect.any(Date),
+      }),
+    )
   })
 })

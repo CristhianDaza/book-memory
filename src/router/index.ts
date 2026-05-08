@@ -46,6 +46,12 @@ export const router = createRouter({
       component: () => import('../modules/sync/views/SyncCenterView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/account/sync',
+      name: 'sync-center',
+      component: () => import('../modules/sync/views/SyncCenterView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

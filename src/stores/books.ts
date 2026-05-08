@@ -51,19 +51,39 @@ export const useBooksStore = defineStore('books', () => {
   let libraryLoadPromise: Promise<void> | null = null
 
   function normalizeFinishedBookProgress(book: LibraryBook): LibraryBook {
-    if (book.status !== 'finished' || book.totalPages === null || book.currentPage >= book.totalPages) {
-      return book
-    }
-
+    const shouldNormalizeProgress =
+      book.status === 'finished' && book.totalPages !== null && book.currentPage < book.totalPages
+    const completedAt = resolveCompletedAtForFinishedBook(book)
+    if (!shouldNormalizeProgress && completedAt === book.completedAt) return book
     return {
       ...book,
-      currentPage: book.totalPages,
+      currentPage: shouldNormalizeProgress && book.totalPages !== null ? book.totalPages : book.currentPage,
+      completedAt,
     }
+  }
+
+  function resolveCompletedAtForFinishedBook(book: LibraryBook): unknown {
+    if (book.status !== 'finished') return null
+    const existing = parseDateLike(book.completedAt)
+    if (existing) return existing
+    const fromUpdatedAt = parseDateLike(book.updatedAt)
+    if (fromUpdatedAt) return fromUpdatedAt
+    return new Date()
   }
 
   function normalizeMetadataPayload(
     payload: LibraryBookMetadataUpdate,
+    previousBook: LibraryBook,
   ): LibraryBookMetadataUpdate {
+    const parsedCompletedAt = parseDateLike(payload.completedAt)
+    const nextCompletedAt =
+      payload.status === 'finished'
+        ? parsedCompletedAt === null
+          ? previousBook.status === 'finished'
+            ? (previousBook.completedAt ?? new Date())
+            : new Date()
+          : parsedCompletedAt
+        : null
     const nextAbandonedReason =
       payload.status === 'abandoned'
         ? payload.abandonedReason === undefined
@@ -74,8 +94,42 @@ export const useBooksStore = defineStore('books', () => {
       ...payload,
       currentPage:
         payload.status === 'finished' && payload.totalPages !== null ? payload.totalPages : payload.currentPage,
+      completedAt: nextCompletedAt,
       abandonedReason: nextAbandonedReason,
     }
+  }
+
+  function parseDateLike(value: unknown): Date | null {
+    if (!value) return null
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value
+    }
+    if (typeof value === 'string') {
+      const parsed = new Date(value)
+      return Number.isNaN(parsed.getTime()) ? null : parsed
+    }
+    if (typeof value === 'object' && 'toDate' in value) {
+      const dateLike = value as { toDate?: () => Date }
+      if (typeof dateLike.toDate !== 'function') return null
+      const parsed = dateLike.toDate()
+      return parsed instanceof Date && !Number.isNaN(parsed.getTime()) ? parsed : null
+    }
+    return null
+  }
+
+  function isFutureDate(value: unknown): boolean {
+    const parsed = parseDateLike(value)
+    if (!parsed) return false
+    const maxToday = new Date()
+    maxToday.setHours(23, 59, 59, 999)
+    return parsed.getTime() > maxToday.getTime()
+  }
+
+  function serializeCompletedAtForQueue(value: unknown): string | null | undefined {
+    if (value === undefined) return undefined
+    if (value === null) return null
+    const parsed = parseDateLike(value)
+    return parsed ? parsed.toISOString() : null
   }
 
   const libraryIds = computed(() => new Set(library.value.map((book) => book.id)))
@@ -131,6 +185,7 @@ export const useBooksStore = defineStore('books', () => {
       favorite: false,
       currentPage: 0,
       status: 'wishlist',
+      completedAt: null,
       rating: null,
       note: null,
       abandonedReason: null,
@@ -236,7 +291,30 @@ export const useBooksStore = defineStore('books', () => {
     loadingLibrary.value = true
     libraryLoadPromise = (async () => {
       try {
-        library.value = (await fetchLibraryBooks(uid)).map(normalizeFinishedBookProgress)
+        const fetchedLibrary = await fetchLibraryBooks(uid)
+        const booksToMigrateCompletedAt = fetchedLibrary
+          .filter((book) => book.status === 'finished' && !bookHasCompletedAt(book))
+          .map((book) => ({
+            ...book,
+            completedAt: resolveCompletedAtForFinishedBook(book),
+          }))
+        library.value = fetchedLibrary.map(normalizeFinishedBookProgress)
+
+        if (booksToMigrateCompletedAt.length > 0) {
+          for (const book of booksToMigrateCompletedAt) {
+            const completedAt = parseDateLike(book.completedAt)
+            if (!completedAt) continue
+            void updateLibraryBookMetadata(uid, book.id, {
+              coverUrl: undefined,
+              totalPages: book.totalPages,
+              currentPage: book.currentPage,
+              status: book.status,
+              completedAt,
+            }).catch(() => {
+              // Best effort migration; avoid blocking the library load flow.
+            })
+          }
+        }
         libraryLoadedForUid.value = uid
         libraryLoadedAt.value = Date.now()
         if (!selectedLibraryBookId.value) {
@@ -252,6 +330,10 @@ export const useBooksStore = defineStore('books', () => {
       }
     })()
     await libraryLoadPromise
+  }
+
+  function bookHasCompletedAt(book: LibraryBook): boolean {
+    return parseDateLike(book.completedAt) !== null
   }
 
   async function ensureLibraryLoaded() {
@@ -414,7 +496,11 @@ export const useBooksStore = defineStore('books', () => {
     const previousBook = library.value.find((book) => book.id === bookId)
     if (!previousBook) return
 
-    const normalizedPayload = normalizeMetadataPayload(payload)
+    const normalizedPayload = normalizeMetadataPayload(payload, previousBook)
+    if (isFutureDate(normalizedPayload.completedAt)) {
+      errorKey.value = 'books.completedAtFutureError'
+      return
+    }
     const shouldTrackStreak = options?.trackStreak !== false
     const statusChanged = shouldTrackStreak && previousBook.status !== normalizedPayload.status
     const streakAction = statusChanged
@@ -437,6 +523,10 @@ export const useBooksStore = defineStore('books', () => {
               normalizedPayload.abandonedReason === undefined
                 ? book.abandonedReason
                 : normalizedPayload.abandonedReason,
+            completedAt:
+              normalizedPayload.completedAt === undefined
+                ? book.completedAt
+                : normalizedPayload.completedAt,
           }
         : book,
     )
@@ -453,6 +543,7 @@ export const useBooksStore = defineStore('books', () => {
           totalPages: normalizedPayload.totalPages,
           currentPage: normalizedPayload.currentPage,
           status: normalizedPayload.status,
+          completedAt: serializeCompletedAtForQueue(normalizedPayload.completedAt),
           rating: normalizedPayload.rating,
           note: normalizedPayload.note,
           abandonedReason: normalizedPayload.abandonedReason,
@@ -468,6 +559,7 @@ export const useBooksStore = defineStore('books', () => {
                 totalPages: previousBook.totalPages,
                 currentPage: previousBook.currentPage,
                 status: previousBook.status,
+                completedAt: previousBook.completedAt ?? null,
                 rating: previousBook.rating,
                 note: previousBook.note,
                 abandonedReason: previousBook.abandonedReason ?? null,
