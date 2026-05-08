@@ -137,9 +137,12 @@ a {
   min-height: 0;
   flex-direction: column;
   gap: 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-right: 1px solid var(--app-border);
   background: color-mix(in srgb, var(--app-surface) 88%, transparent);
   padding: 1.25rem;
+  scrollbar-gutter: stable;
   backdrop-filter: blur(18px);
 }
 
@@ -482,8 +485,9 @@ a {
 }
 
 .bm-sidebar-danger-zone {
+  margin-top: 0.35rem;
   border-top: 1px solid var(--app-border);
-  padding-top: 0.5rem;
+  padding-top: 0.85rem;
 }
 
 .bm-sidebar-danger-zone summary {
@@ -509,6 +513,10 @@ a {
 .bm-sidebar-danger-zone[open] {
   display: grid;
   gap: 0.65rem;
+}
+
+.bm-sidebar-danger-zone[open] .bm-sidebar-section:last-child {
+  margin-top: 0.55rem;
 }
 
 .bm-sidebar-danger-zone[open] summary svg {
