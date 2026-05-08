@@ -234,78 +234,84 @@ describe('stats store', () => {
     auth.user = { uid: 'user-1' } as never
     const books = useBooksStore()
     const sessions = useSessionsStore()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-05T00:00:00.000Z'))
 
-    vi.mocked(fetchLibraryBooks).mockResolvedValue([
-      {
-        id: 'book-a',
-        source: 'google',
-        externalId: 'a',
-        title: 'Book A',
-        authors: ['A'],
-        coverUrl: null,
-        totalPages: 100,
-        favorite: false,
-        currentPage: 10,
-        status: 'reading',
-        completedAt: null,
-        rating: null,
-        note: null,
-        createdAt: null,
-        updatedAt: null,
-      },
-      {
-        id: 'book-b',
-        source: 'google',
-        externalId: 'b',
-        title: 'Book B',
-        authors: ['B'],
-        coverUrl: null,
-        totalPages: 300,
-        favorite: false,
-        currentPage: 300,
-        status: 'finished',
-        completedAt: null,
-        rating: null,
-        note: null,
-        createdAt: { toDate: () => new Date('2026-11-05T00:00:00.000Z') },
-        updatedAt: null,
-      },
-      {
-        id: 'book-c',
-        source: 'google',
-        externalId: 'c',
-        title: 'Book C',
-        authors: ['C'],
-        coverUrl: null,
-        totalPages: 250,
-        favorite: false,
-        currentPage: 250,
-        status: 'finished',
-        completedAt: { toDate: () => new Date('2026-02-10T00:00:00.000Z') },
-        rating: null,
-        note: null,
-        createdAt: { toDate: () => new Date('2026-01-20T00:00:00.000Z') },
-        updatedAt: { toDate: () => new Date('2026-02-10T00:00:00.000Z') },
-      },
-    ])
-    vi.mocked(fetchUserSessions).mockResolvedValue([])
-    vi.mocked(fetchStatsGoals).mockResolvedValue(null)
+    try {
+      vi.mocked(fetchLibraryBooks).mockResolvedValue([
+        {
+          id: 'book-a',
+          source: 'google',
+          externalId: 'a',
+          title: 'Book A',
+          authors: ['A'],
+          coverUrl: null,
+          totalPages: 100,
+          favorite: false,
+          currentPage: 10,
+          status: 'reading',
+          completedAt: null,
+          rating: null,
+          note: null,
+          createdAt: null,
+          updatedAt: null,
+        },
+        {
+          id: 'book-b',
+          source: 'google',
+          externalId: 'b',
+          title: 'Book B',
+          authors: ['B'],
+          coverUrl: null,
+          totalPages: 300,
+          favorite: false,
+          currentPage: 300,
+          status: 'finished',
+          completedAt: null,
+          rating: null,
+          note: null,
+          createdAt: { toDate: () => new Date('2026-11-05T00:00:00.000Z') },
+          updatedAt: null,
+        },
+        {
+          id: 'book-c',
+          source: 'google',
+          externalId: 'c',
+          title: 'Book C',
+          authors: ['C'],
+          coverUrl: null,
+          totalPages: 250,
+          favorite: false,
+          currentPage: 250,
+          status: 'finished',
+          completedAt: { toDate: () => new Date('2026-02-10T00:00:00.000Z') },
+          rating: null,
+          note: null,
+          createdAt: { toDate: () => new Date('2026-01-20T00:00:00.000Z') },
+          updatedAt: { toDate: () => new Date('2026-02-10T00:00:00.000Z') },
+        },
+      ])
+      vi.mocked(fetchUserSessions).mockResolvedValue([])
+      vi.mocked(fetchStatsGoals).mockResolvedValue(null)
 
-    await books.ensureLibraryLoaded()
-    await sessions.ensureSessionsLoaded()
-    const store = useStatsStore()
-    await store.loadStats()
-    store.setSelectedTimelineYear(2026)
+      await books.ensureLibraryLoaded()
+      await sessions.ensureSessionsLoaded()
+      const store = useStatsStore()
+      await store.loadStats()
+      store.setSelectedTimelineYear(2026)
 
-    expect(store.timelineMonthlyBySelectedYear.map((entry) => entry.monthKey)).toEqual([
-      '2026-01',
-      '2026-02',
-      '2026-11',
-    ])
-    expect(store.timelineMonthlyBySelectedYear.find((entry) => entry.monthKey === '2026-11')).toMatchObject({
-      purchasedCount: 1,
-      finishedCount: 0,
-    })
+      expect(store.timelineMonthlyBySelectedYear.map((entry) => entry.monthKey)).toEqual([
+        '2026-01',
+        '2026-02',
+        '2026-11',
+      ])
+      expect(store.timelineMonthlyBySelectedYear.find((entry) => entry.monthKey === '2026-11')).toMatchObject({
+        purchasedCount: 1,
+        finishedCount: 1,
+      })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('uses completedAt first and falls back to updatedAt when missing', async () => {

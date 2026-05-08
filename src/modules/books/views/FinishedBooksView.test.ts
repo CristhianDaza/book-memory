@@ -1,7 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
 import FinishedBooksView from './FinishedBooksView.vue'
 import type { LibraryBook } from '../../../types/books'
 import { useAuthStore } from '../../../stores/auth'
@@ -107,24 +106,32 @@ function mountView() {
   return mount(FinishedBooksView, {
     global: {
       stubs: {
-        PageHeader: defineComponent({
-          setup(_, { slots }) {
-            return () => h('header', slots.default?.())
+        PageHeader: {
+          template: '<header><slot /></header>',
+        },
+        SurfaceCard: {
+          template: '<section><slot /></section>',
+        },
+        EmptyState: {
+          props: {
+            title: {
+              type: String,
+              default: '',
+            },
+            description: {
+              type: String,
+              default: '',
+            },
           },
-        }),
-        SurfaceCard: defineComponent({
-          setup(_, { slots }) {
-            return () => h('section', slots.default?.())
-          },
-        }),
-        EmptyState: defineComponent({
-          props: ['title', 'description'],
-          setup(props, { slots }) {
-            return () => h('div', [h('p', String(props.title)), h('p', String(props.description)), slots.default?.()])
-          },
-        }),
+          template: '<div><p>{{ title }}</p><p>{{ description }}</p><slot /></div>',
+        },
         RouterLink: {
-          props: ['to'],
+          props: {
+            to: {
+              type: [String, Object],
+              default: '',
+            },
+          },
           template: '<a href="#"><slot /></a>',
         },
         StarRating: {
