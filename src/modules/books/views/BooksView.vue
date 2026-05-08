@@ -507,14 +507,17 @@ onBeforeUnmount(() => {
         </article>
       </div>
 
-      <div
+      <TransitionGroup
         v-else
+        name="bm-stagger"
+        tag="div"
         class="bm-book-grid mt-4"
       >
         <article
-          v-for="item in pendingLibrary"
+          v-for="(item, index) in pendingLibrary"
           :key="item.id"
           class="bm-book-card overflow-visible"
+          :style="{ transitionDelay: `${Math.min(index, 10) * 24}ms` }"
         >
           <div class="bm-book-cover relative">
             <RouterLink
@@ -588,7 +591,7 @@ onBeforeUnmount(() => {
             </RouterLink>
           </div>
         </article>
-      </div>
+      </TransitionGroup>
 
       <EmptyState
         v-if="!loadingLibrary && pendingLibrary.length === 0"
@@ -610,14 +613,15 @@ onBeforeUnmount(() => {
       </EmptyState>
     </SurfaceCard>
 
-    <div
-      v-if="showAddModal"
-      class="bm-modal-backdrop z-40"
-    >
-      <section
-        class="bm-modal-sheet flex max-w-2xl flex-col p-4 sm:p-6"
-        @keydown.esc="closeAddModal"
+    <Transition name="bm-modal">
+      <div
+        v-if="showAddModal"
+        class="bm-modal-backdrop z-40"
       >
+        <section
+          class="bm-modal-sheet flex max-w-2xl flex-col p-4 sm:p-6"
+          @keydown.esc="closeAddModal"
+        >
         <div class="flex items-center justify-between gap-3">
           <div>
             <h2 class="bm-section-title">
@@ -929,8 +933,9 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </Transition>
 
     <PromptModal
       :open="showAddBookPagesModal"
@@ -971,17 +976,18 @@ onBeforeUnmount(() => {
       </template>
     </PromptModal>
 
-    <div
-      v-if="showRandomPickerModal"
-      class="bm-modal-backdrop z-50"
-      @click.self="closeRandomPickerModal"
-    >
-      <section
-        class="bm-modal-sheet bm-random-modal flex max-w-md flex-col p-4 sm:p-6"
-        role="dialog"
-        :aria-label="t('books.randomModalTitle')"
-        @keydown.esc="closeRandomPickerModal"
+    <Transition name="bm-modal">
+      <div
+        v-if="showRandomPickerModal"
+        class="bm-modal-backdrop z-50"
+        @click.self="closeRandomPickerModal"
       >
+        <section
+          class="bm-modal-sheet bm-random-modal flex max-w-md flex-col p-4 sm:p-6"
+          role="dialog"
+          :aria-label="t('books.randomModalTitle')"
+          @keydown.esc="closeRandomPickerModal"
+        >
         <div class="flex items-center justify-between gap-3">
           <div>
             <p class="bm-eyebrow">{{ t('books.randomModalEyebrow') }}</p>
@@ -1106,8 +1112,9 @@ onBeforeUnmount(() => {
             {{ t('books.randomPickThis') }}
           </button>
         </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </Transition>
   </div>
 </template>
 

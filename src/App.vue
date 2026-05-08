@@ -351,7 +351,17 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </section>
-      <RouterView />
+      <RouterView v-slot="{ Component, route: viewRoute }">
+        <Transition
+          name="bm-route"
+          mode="out-in"
+        >
+          <component
+            :is="Component"
+            :key="viewRoute.fullPath"
+          />
+        </Transition>
+      </RouterView>
 
     <ConfirmModal
       :open="showLogoutConfirm"

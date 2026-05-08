@@ -17,6 +17,7 @@ defineProps<{
   >
     <component
       :is="icon"
+      class="bm-nav-item-icon"
       :size="19"
       aria-hidden="true"
     />

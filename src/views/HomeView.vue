@@ -314,15 +314,18 @@ onUnmounted(() => {
         {{ t('books.loadingLibrary') }}
       </p>
 
-      <div
+      <TransitionGroup
         v-else-if="previewBooks.length > 0"
+        name="bm-stagger"
+        tag="div"
         class="bm-book-grid"
       >
         <RouterLink
-          v-for="item in previewBooks"
+          v-for="(item, index) in previewBooks"
           :key="item.id"
           class="bm-book-card"
           :to="{ name: 'book-detail', params: { id: item.id } }"
+          :style="{ transitionDelay: `${Math.min(index, 10) * 24}ms` }"
         >
           <button
             type="button"
@@ -368,7 +371,7 @@ onUnmounted(() => {
             </div>
           </div>
         </RouterLink>
-      </div>
+      </TransitionGroup>
 
       <EmptyState
         v-else

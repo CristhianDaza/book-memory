@@ -425,45 +425,51 @@ onMounted(async () => {
           </span>
         </label>
 
-        <button
+        <Transition
           v-if="effectiveSessionBook && (bookSelectionLockedByRoute || isSelectedBookAvailable)"
-          type="button"
-          class="bm-subtle-panel flex w-full cursor-pointer items-center gap-3 text-left transition hover:border-(--app-primary) hover:bg-(--app-surface-raised)"
-          @click="onOpenBookDetail(effectiveSessionBook.id)"
+          name="bm-soft-swap"
+          mode="out-in"
         >
-          <span class="h-24 w-16 flex-none overflow-hidden rounded-lg border border-(--app-border) bg-(--app-surface-raised)">
-            <img
-              v-if="effectiveSessionBook.coverUrl"
-              :src="effectiveSessionBook.coverUrl"
-              :alt="effectiveSessionBook.title"
-              class="h-full w-full object-cover"
-            >
-            <span
-              v-else
-              class="grid h-full w-full place-items-center text-(--app-text-soft)"
-              :aria-label="t('books.noCover')"
-              role="img"
-            >
-              <BookOpen
-                :size="24"
-                aria-hidden="true"
-              />
+          <button
+            :key="effectiveSessionBook.id"
+            type="button"
+            class="bm-subtle-panel bm-reading-book-card flex w-full cursor-pointer items-center gap-3 text-left transition hover:border-(--app-primary) hover:bg-(--app-surface-raised)"
+            @click="onOpenBookDetail(effectiveSessionBook.id)"
+          >
+            <span class="h-24 w-16 flex-none overflow-hidden rounded-lg border border-(--app-border) bg-(--app-surface-raised)">
+              <img
+                v-if="effectiveSessionBook.coverUrl"
+                :src="effectiveSessionBook.coverUrl"
+                :alt="effectiveSessionBook.title"
+                class="h-full w-full object-cover"
+              >
+              <span
+                v-else
+                class="grid h-full w-full place-items-center text-(--app-text-soft)"
+                :aria-label="t('books.noCover')"
+                role="img"
+              >
+                <BookOpen
+                  :size="24"
+                  aria-hidden="true"
+                />
+              </span>
             </span>
-          </span>
 
-          <span class="min-w-0">
-            <span class="block text-sm font-extrabold leading-tight text-(--app-text)">
-              {{ effectiveSessionBook.title }}
+            <span class="min-w-0">
+              <span class="block text-sm font-extrabold leading-tight text-(--app-text)">
+                {{ effectiveSessionBook.title }}
+              </span>
+              <span class="mt-1 block truncate text-xs text-(--app-text-muted)">
+                {{ effectiveSessionBook.authors.join(', ') || t('books.unknownAuthor') }}
+              </span>
+              <span class="mt-2 block text-[11px] font-bold text-(--app-text-soft)">
+                {{ t('books.progress') }}: {{ effectiveSessionBook.currentPage }} /
+                {{ effectiveSessionBook.totalPages ?? t('reading.unknownRemaining') }}
+              </span>
             </span>
-            <span class="mt-1 block truncate text-xs text-(--app-text-muted)">
-              {{ effectiveSessionBook.authors.join(', ') || t('books.unknownAuthor') }}
-            </span>
-            <span class="mt-2 block text-[11px] font-bold text-(--app-text-soft)">
-              {{ t('books.progress') }}: {{ effectiveSessionBook.currentPage }} /
-              {{ effectiveSessionBook.totalPages ?? t('reading.unknownRemaining') }}
-            </span>
-          </span>
-        </button>
+          </button>
+        </Transition>
 
         <p
           v-else-if="!bookSelectionLockedByRoute"
@@ -484,7 +490,10 @@ onMounted(async () => {
         </label>
       </div>
 
-      <div class="bm-subtle-panel flex min-h-56 flex-col items-center justify-center text-center">
+      <div
+        class="bm-subtle-panel bm-reading-timer flex min-h-56 flex-col items-center justify-center text-center"
+        :class="{ 'is-running': running }"
+      >
         <TimerReset
           :size="28"
           class="text-(--app-primary-strong)"
@@ -505,7 +514,7 @@ onMounted(async () => {
     <div class="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
       <button
         type="button"
-        class="bm-button bm-button-primary"
+        class="bm-button bm-button-primary bm-reading-action"
         :disabled="running || !canStartReading"
         @click="onStart"
       >
@@ -544,7 +553,7 @@ onMounted(async () => {
 
       <button
         type="button"
-        class="bm-button bm-button-success"
+        class="bm-button bm-button-success bm-reading-action"
         :disabled="!hasActiveSession || saving"
         @click="onOpenFinish"
       >

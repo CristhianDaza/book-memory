@@ -557,7 +557,7 @@ onMounted(async () => {
       </div>
       <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
         <div class="mx-auto w-48 lg:mx-0">
-          <div class="overflow-hidden rounded-2xl border border-(--app-border) bg-(--app-surface-muted) shadow-lg">
+          <div class="bm-book-detail-cover overflow-hidden rounded-2xl border border-(--app-border) bg-(--app-surface-muted) shadow-lg">
             <img
               v-if="book.coverUrl"
               :src="book.coverUrl"
@@ -939,14 +939,17 @@ onMounted(async () => {
               {{ t('books.loadingSessions') }}
             </p>
 
-            <ul
+            <TransitionGroup
               v-else-if="visibleSessions.length > 0"
+              name="bm-stagger"
+              tag="ul"
               class="mt-2 space-y-2"
             >
               <li
-                v-for="session in visibleSessions"
+                v-for="(session, index) in visibleSessions"
                 :key="session.id"
-                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2 text-xs text-(--app-text-muted)"
+                class="bm-session-row rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2 text-xs text-(--app-text-muted)"
+                :style="{ transitionDelay: `${Math.min(index, 10) * 24}ms` }"
               >
                 <template v-if="editingSessionId === session.id">
                   <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -1026,7 +1029,7 @@ onMounted(async () => {
                   </div>
                 </template>
               </li>
-            </ul>
+            </TransitionGroup>
 
             <p
               v-else
@@ -1084,11 +1087,12 @@ onMounted(async () => {
     @confirm="onConfirmDeleteSession"
   />
 
-  <div
-    v-if="showCompletionRatingModal"
-    class="bm-modal-backdrop z-50"
-  >
-    <section class="bm-modal-sheet w-full max-w-lg p-5 sm:p-6">
+  <Transition name="bm-modal">
+    <div
+      v-if="showCompletionRatingModal"
+      class="bm-modal-backdrop z-50"
+    >
+      <section class="bm-modal-sheet w-full max-w-lg p-5 sm:p-6">
       <h3 class="bm-section-title">{{ t('books.ratingModalTitle') }}</h3>
       <p class="bm-muted mt-1 text-sm">{{ t('books.ratingModalSubtitle') }}</p>
       <div class="mt-4">
@@ -1143,6 +1147,7 @@ onMounted(async () => {
           {{ t('books.saveRatingAction') }}
         </button>
       </div>
-    </section>
-  </div>
+      </section>
+    </div>
+  </Transition>
 </template>
