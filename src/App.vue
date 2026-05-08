@@ -96,7 +96,7 @@ const navItems = computed(() => [
   {
     to: '/sync',
     label: t('home.sync'),
-    active: route.name === 'sync',
+    active: route.name === 'finished-books',
     icon: BookOpen,
   },
 ])
