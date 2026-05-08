@@ -24,11 +24,17 @@ const { library, loadingLibrary, favoriteUpdatingIds } = storeToRefs(booksStore)
 const { latestSessionMillisByBook } = storeToRefs(sessionsStore)
 const { currentStreakDays, bestStreakDays } = storeToRefs(streakStore)
 const isMobileDashboard = ref(false)
+const includePausedInPending = ref(false)
 const totalBooks = computed(() => library.value.length)
 const favoriteBooks = computed(() => library.value.filter((book) => book.favorite).length)
 const readingBooks = computed(() => library.value.filter((book) => book.status === 'reading').length)
+const pendingBooks = computed(() =>
+  library.value.filter(
+    (book) => book.status === 'wishlist' || (includePausedInPending.value && book.status === 'paused'),
+  ),
+)
 const sortedPreviewBooks = computed(() =>
-  [...library.value].sort((a, b) => {
+  [...pendingBooks.value].sort((a, b) => {
     const favoriteDiff = Number(b.favorite) - Number(a.favorite)
     if (favoriteDiff !== 0) return favoriteDiff
     return a.title.localeCompare(b.title)
@@ -278,20 +284,28 @@ onUnmounted(() => {
     <SurfaceCard>
       <div class="mb-3 flex items-center justify-between gap-2">
         <div>
-          <h2 class="bm-section-title">{{ t('home.yourBooksTitle') }}</h2>
-          <p class="bm-muted text-xs">{{ t('home.yourBooksSubtitle') }}</p>
+          <h2 class="bm-section-title">{{ t('home.pendingBooksTitle') }}</h2>
+          <p class="bm-muted text-xs">{{ t('home.pendingBooksSubtitle') }}</p>
         </div>
         <RouterLink
           class="bm-button text-xs"
-          to="/books"
+          :to="{ name: 'books', query: { pending: '1', includePaused: includePausedInPending ? '1' : undefined } }"
         >
-          {{ t('home.viewAllBooks') }}
+          {{ t('home.viewAllPendingBooks') }}
           <ArrowRight
             :size="14"
             aria-hidden="true"
           />
         </RouterLink>
       </div>
+      <label class="mb-3 flex cursor-pointer items-center gap-2 text-xs text-(--app-text)">
+        <input
+          v-model="includePausedInPending"
+          type="checkbox"
+          class="h-4 w-4 rounded border-(--app-border) text-(--app-primary) accent-(--app-primary)"
+        >
+        {{ t('books.showPausedBooks') }}
+      </label>
 
       <p
         v-if="loadingLibrary"
@@ -358,14 +372,14 @@ onUnmounted(() => {
 
       <EmptyState
         v-else
-        :title="t('books.emptyLibrary')"
-        :description="t('home.yourBooksSubtitle')"
+        :title="t('books.randomModalEmptyTitle')"
+        :description="t('home.pendingBooksSubtitle')"
       >
         <RouterLink
           class="bm-button bm-button-primary"
-          to="/books"
+          :to="{ name: 'books', query: { pending: '1', includePaused: includePausedInPending ? '1' : undefined } }"
         >
-          {{ t('books.openAddModal') }}
+          {{ t('home.viewAllPendingBooks') }}
         </RouterLink>
       </EmptyState>
     </SurfaceCard>

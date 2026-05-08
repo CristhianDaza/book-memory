@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type Component } from 'vue'
 import {
+  CloudUpload,
   ChevronDown,
   Download,
   Globe2,
@@ -46,6 +47,7 @@ defineProps<{
 defineEmits<{
   changeLocale: []
   exportData: []
+  openSyncCenter: []
   deleteAccount: []
   signOut: []
 }>()
@@ -252,6 +254,23 @@ watch(
 
               <section class="bm-sidebar-section">
                 <p class="bm-sidebar-section-title">{{ t('home.dataSection') }}</p>
+                <button
+                  type="button"
+                  class="bm-sidebar-action-row bm-sidebar-action-button"
+                  :aria-label="t('home.openBackupCenterAria')"
+                  @click="$emit('openSyncCenter')"
+                >
+                  <span class="bm-sidebar-action-copy">
+                    <span class="bm-sidebar-action-label">{{ t('home.openBackupCenter') }}</span>
+                    <span class="bm-sidebar-action-value">{{ t('home.openBackupCenterHint') }}</span>
+                  </span>
+                  <span class="bm-sidebar-action-icon">
+                    <CloudUpload
+                      :size="18"
+                      aria-hidden="true"
+                    />
+                  </span>
+                </button>
                 <button
                   type="button"
                   class="bm-sidebar-action-row bm-sidebar-action-button"

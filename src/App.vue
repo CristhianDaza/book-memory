@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { BarChart3, BookOpen, Home, Library, RefreshCw, TimerReset } from 'lucide-vue-next'
+import { BarChart3, BookOpen, Home, Library, TimerReset } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from './components/layout/AppShell.vue'
@@ -97,7 +97,7 @@ const navItems = computed(() => [
     to: '/sync',
     label: t('home.sync'),
     active: route.name === 'sync',
-    icon: RefreshCw,
+    icon: BookOpen,
   },
 ])
 const syncMessage = computed(() => {
@@ -133,6 +133,10 @@ async function onConfirmLogout() {
 
 function onOpenDeleteAccountConfirm() {
   showDeleteAccountConfirm.value = true
+}
+
+async function onOpenSyncCenter() {
+  await router.push({ name: 'sync-center' })
 }
 
 function onCancelDeleteAccountConfirm() {
@@ -279,6 +283,7 @@ onBeforeUnmount(() => {
     :app-version="appVersion"
     @change-locale="onChangeLocale(nextLocale)"
     @export-data="onExportMyData"
+    @open-sync-center="onOpenSyncCenter"
     @delete-account="onOpenDeleteAccountConfirm"
     @sign-out="onOpenLogoutConfirm"
   >
