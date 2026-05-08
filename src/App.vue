@@ -94,7 +94,7 @@ const navItems = computed(() => [
     icon: BarChart3,
   },
   {
-    to: '/sync',
+    to: '/finished-books',
     label: t('home.sync'),
     active: route.name === 'finished-books',
     icon: BookOpen,

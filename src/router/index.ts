@@ -42,6 +42,11 @@ export const router = createRouter({
     },
     {
       path: '/sync',
+      redirect: { name: 'finished-books' },
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/finished-books',
       name: 'finished-books',
       component: () => import('../modules/books/views/FinishedBooksView.vue'),
       meta: { requiresAuth: true },
