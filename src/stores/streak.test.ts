@@ -113,6 +113,54 @@ describe('streak store', () => {
     expect(store.bestStreakDays).toBe(3)
   })
 
+  it('marks the new local day after midnight without reloading the store', async () => {
+    vi.setSystemTime(new Date(2026, 4, 5, 23, 59))
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useStreakStore()
+
+    expect(store.todayId).toBe('2026-05-05')
+
+    vi.setSystemTime(new Date(2026, 4, 6, 0, 1))
+    await store.markTodayActivity('reading_session_finished')
+
+    expect(markStreakDay).toHaveBeenCalledWith('user-1', {
+      dayId: '2026-05-06',
+      action: 'reading_session_finished',
+    })
+    expect(store.days[0]?.dayId).toBe('2026-05-06')
+  })
+
+  it('refreshes today and recent days when the app stays open across midnight', () => {
+    vi.setSystemTime(new Date(2026, 4, 5, 23, 59))
+    const store = useStreakStore()
+    store.days = ['2026-05-05', '2026-05-04'].map((dayId) => ({
+      id: dayId,
+      dayId,
+      actions: ['book_added' as const],
+      firstAction: 'book_added' as const,
+      lastAction: 'book_added' as const,
+      activityCount: 1,
+    }))
+
+    expect(store.todayId).toBe('2026-05-05')
+    expect(store.currentStreakDays).toBe(2)
+    expect(store.recentDays[6]).toMatchObject({
+      dayId: '2026-05-05',
+      today: true,
+    })
+
+    vi.advanceTimersByTime(2 * 60_000)
+
+    expect(store.todayId).toBe('2026-05-06')
+    expect(store.currentStreakDays).toBe(2)
+    expect(store.recentDays[6]).toMatchObject({
+      dayId: '2026-05-06',
+      today: true,
+      active: false,
+    })
+  })
+
   it('migrates unique historical session days', async () => {
     const auth = useAuthStore()
     auth.user = { uid: 'user-1' } as never
