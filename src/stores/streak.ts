@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, onScopeDispose, ref } from 'vue'
 import { enqueueOfflineStreakDay } from '../services/offlineQueueService'
 import { isOfflineQueueCandidate } from '../utils/offline'
 import { fetchStreakDays, markStreakDay } from '../services/streakService'
@@ -11,6 +11,10 @@ const DAY_MS = 86400000
 
 function startOfLocalDay(date: Date): number {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+}
+
+function nextLocalDayStart(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime()
 }
 
 function toLocalDayId(date: Date): string {
@@ -82,15 +86,17 @@ function computeConsecutiveRuns(dayIdsDesc: string[]): number[] {
 }
 
 export const useStreakStore = defineStore('streak', () => {
+  const currentDate = ref(new Date())
   const days = ref<StreakDayRecord[]>([])
   const loading = ref(false)
   const loadedUid = ref<string | null>(null)
   const errorKey = ref<string | null>(null)
   const overlayPayload = ref<StreakOverlayPayload | null>(null)
   const overlayVisible = ref(false)
+  let dayRefreshTimer: ReturnType<typeof setTimeout> | null = null
   let loadPromise: Promise<void> | null = null
 
-  const todayId = computed(() => toLocalDayId(new Date()))
+  const todayId = computed(() => toLocalDayId(currentDate.value))
   const activeDayIdsDesc = computed(() =>
     Array.from(new Set(days.value.map((day) => day.dayId)))
       .filter((dayId) => dayIdToLocalStart(dayId) > 0)
@@ -100,7 +106,7 @@ export const useStreakStore = defineStore('streak', () => {
   const bestStreakDaysValue = computed(() => bestStreakDays(activeDayIdsDesc.value))
   const recentDays = computed(() => {
     const activeSet = new Set(activeDayIdsDesc.value)
-    const todayStart = startOfLocalDay(new Date())
+    const todayStart = startOfLocalDay(currentDate.value)
     return Array.from({ length: 7 }, (_, index) => {
       const date = new Date(todayStart - (6 - index) * DAY_MS)
       const dayId = toLocalDayId(date)
@@ -111,6 +117,30 @@ export const useStreakStore = defineStore('streak', () => {
       }
     })
   })
+
+  function refreshCurrentDay() {
+    currentDate.value = new Date()
+  }
+
+  function clearDayRefreshTimer() {
+    if (dayRefreshTimer === null) return
+    clearTimeout(dayRefreshTimer)
+    dayRefreshTimer = null
+  }
+
+  function scheduleNextDayRefresh() {
+    clearDayRefreshTimer()
+    const now = currentDate.value
+    const delay = Math.max(1000, nextLocalDayStart(now) - now.getTime())
+    dayRefreshTimer = setTimeout(() => {
+      refreshCurrentDay()
+      scheduleNextDayRefresh()
+    }, delay)
+  }
+
+  scheduleNextDayRefresh()
+
+  onScopeDispose(clearDayRefreshTimer)
 
   function upsertLocalDay(dayId: string, action: StreakActivityAction): boolean {
     const existing = days.value.find((day) => day.dayId === dayId)
@@ -220,6 +250,9 @@ export const useStreakStore = defineStore('streak', () => {
   }
 
   async function markTodayActivity(action: StreakActivityAction): Promise<boolean> {
+    refreshCurrentDay()
+    scheduleNextDayRefresh()
+
     const authStore = useAuthStore()
     const uid = authStore.user?.uid
     if (!uid) return false

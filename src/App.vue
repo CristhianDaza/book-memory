@@ -354,7 +354,6 @@ onBeforeUnmount(() => {
       <RouterView v-slot="{ Component, route: viewRoute }">
         <Transition
           name="bm-route"
-          mode="out-in"
         >
           <component
             :is="Component"
