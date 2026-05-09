@@ -7,6 +7,7 @@ import { i18n } from './i18n'
 import { initOfflineQueueReplay } from './services/offlineQueueService'
 import { initPwa } from './pwa'
 import { initTheme } from './composables/useTheme'
+import { installNavigationRecovery } from './utils/navigationRecovery'
 
 const app = createApp(App)
 
@@ -15,6 +16,7 @@ app.use(router)
 app.use(i18n)
 
 initTheme()
+installNavigationRecovery(router)
 app.mount('#app')
 initOfflineQueueReplay()
 void initPwa()

@@ -43,7 +43,7 @@ export default defineConfig({
           {
             urlPattern: ({ request, url }) =>
               ['script', 'style', 'worker'].includes(request.destination) && url.pathname.startsWith('/assets/'),
-            handler: 'StaleWhileRevalidate',
+            handler: 'CacheFirst',
             options: {
               cacheName: 'assets-runtime',
               expiration: {

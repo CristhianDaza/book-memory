@@ -846,17 +846,18 @@ a {
 
 .bm-route-enter-active,
 .bm-route-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  will-change: opacity, transform;
 }
 
 .bm-route-enter-from {
-  opacity: 0;
-  transform: translateY(8px);
+  opacity: 0.01;
+  transform: translate3d(0, 0.35rem, 0);
 }
 
 .bm-route-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
+  opacity: 0.01;
+  transform: translate3d(0, -0.25rem, 0);
 }
 
 .bm-soft-swap-enter-active,
