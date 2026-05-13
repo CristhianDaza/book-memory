@@ -17,6 +17,7 @@ import {
   enqueueOfflineLibraryUpdateMetadata,
 } from '../services/offlineQueueService'
 import type { BookSearchResult, LibraryBook, LibraryBookMetadataUpdate } from '../types/books'
+import { normalizeReadingPlan } from '../utils/readingPlan'
 import { useAuthStore } from './auth'
 import { useSessionsStore } from './sessions'
 import { useStreakStore } from './streak'
@@ -88,13 +89,17 @@ export const useBooksStore = defineStore('books', () => {
           ? undefined
           : (payload.abandonedReason?.trim() || null)
         : null
-    return {
+    const normalized: LibraryBookMetadataUpdate = {
       ...payload,
       currentPage:
         payload.status === 'finished' && payload.totalPages !== null ? payload.totalPages : payload.currentPage,
       completedAt: nextCompletedAt,
       abandonedReason: nextAbandonedReason,
     }
+    if (payload.readingPlan !== undefined) {
+      normalized.readingPlan = normalizeReadingPlan(payload.readingPlan)
+    }
+    return normalized
   }
 
   function parseDateLike(value: unknown): Date | null {
@@ -186,6 +191,7 @@ export const useBooksStore = defineStore('books', () => {
       completedAt: null,
       rating: null,
       note: null,
+      readingPlan: null,
       abandonedReason: null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -513,6 +519,8 @@ export const useBooksStore = defineStore('books', () => {
             coverUrl: normalizedPayload.coverUrl === undefined ? book.coverUrl : normalizedPayload.coverUrl,
             rating: normalizedPayload.rating === undefined ? book.rating : normalizedPayload.rating,
             note: normalizedPayload.note === undefined ? book.note : normalizedPayload.note,
+            readingPlan:
+              normalizedPayload.readingPlan === undefined ? book.readingPlan : normalizedPayload.readingPlan,
             abandonedReason:
               normalizedPayload.abandonedReason === undefined
                 ? book.abandonedReason
@@ -531,7 +539,7 @@ export const useBooksStore = defineStore('books', () => {
       if (streakAction) void markStreakActivity(streakAction)
     } catch (error) {
       if (isOfflineQueueCandidate(error)) {
-        enqueueOfflineLibraryUpdateMetadata(uid, {
+        const queuedPayload = {
           bookId,
           coverUrl: normalizedPayload.coverUrl,
           totalPages: normalizedPayload.totalPages,
@@ -541,7 +549,11 @@ export const useBooksStore = defineStore('books', () => {
           rating: normalizedPayload.rating,
           note: normalizedPayload.note,
           abandonedReason: normalizedPayload.abandonedReason,
-        })
+        }
+        if (normalizedPayload.readingPlan !== undefined) {
+          Object.assign(queuedPayload, { readingPlan: normalizedPayload.readingPlan })
+        }
+        enqueueOfflineLibraryUpdateMetadata(uid, queuedPayload)
         syncQueuedMessageKey.value = 'notifications.bookMetadataQueuedOffline'
         if (streakAction) void markStreakActivity(streakAction)
       } else {
@@ -556,6 +568,7 @@ export const useBooksStore = defineStore('books', () => {
                 completedAt: previousBook.completedAt ?? null,
                 rating: previousBook.rating,
                 note: previousBook.note,
+                readingPlan: previousBook.readingPlan ?? null,
                 abandonedReason: previousBook.abandonedReason ?? null,
               }
             : book,

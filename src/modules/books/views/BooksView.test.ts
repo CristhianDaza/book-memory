@@ -83,6 +83,7 @@ const savedBook: LibraryBook = {
   status: 'wishlist',
   rating: null,
   note: null,
+  readingPlan: null,
 }
 
 const readingBookA: LibraryBook = {
@@ -98,6 +99,7 @@ const readingBookA: LibraryBook = {
   status: 'reading',
   rating: null,
   note: null,
+  readingPlan: null,
 }
 
 const wishlistBookA: LibraryBook = {
@@ -113,6 +115,7 @@ const wishlistBookA: LibraryBook = {
   status: 'wishlist',
   rating: null,
   note: null,
+  readingPlan: null,
 }
 
 const wishlistBookB: LibraryBook = {
@@ -128,6 +131,7 @@ const wishlistBookB: LibraryBook = {
   status: 'wishlist',
   rating: null,
   note: null,
+  readingPlan: null,
 }
 
 const pausedBook: LibraryBook = {
@@ -143,6 +147,7 @@ const pausedBook: LibraryBook = {
   status: 'paused',
   rating: null,
   note: null,
+  readingPlan: null,
 }
 
 const abandonedBook: LibraryBook = {
@@ -158,6 +163,7 @@ const abandonedBook: LibraryBook = {
   status: 'abandoned',
   rating: null,
   note: null,
+  readingPlan: null,
   abandonedReason: 'not_for_me',
 }
 

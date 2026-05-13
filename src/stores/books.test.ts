@@ -72,6 +72,7 @@ function createBook(overrides: Partial<LibraryBook>): LibraryBook {
     completedAt: null,
     rating: null,
     note: null,
+    readingPlan: null,
     ...overrides,
   }
 }
@@ -361,6 +362,106 @@ describe('books store', () => {
       completedAt: null,
       abandonedReason: 'No conecté con el ritmo.',
     })
+  })
+
+  it('saves a reading plan through metadata updates', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useBooksStore()
+    const readingPlan = {
+      targetDate: '2026-05-20',
+      dailyPagesGoal: 10,
+      reminderEnabled: true,
+      reminderTime: '19:00',
+      reminderDays: [1, 2, 3],
+      startDate: '2026-05-13',
+      startPage: 40,
+    }
+    store.library = [createBook({ id: 'book-1', totalPages: 300, currentPage: 40, status: 'reading' })]
+
+    await store.updateBookMetadata('book-1', {
+      totalPages: 300,
+      currentPage: 40,
+      status: 'reading',
+      readingPlan,
+    })
+
+    expect(store.library[0]?.readingPlan).toEqual(readingPlan)
+    expect(updateLibraryBookMetadata).toHaveBeenCalledWith('user-1', 'book-1', {
+      totalPages: 300,
+      currentPage: 40,
+      status: 'reading',
+      completedAt: null,
+      abandonedReason: null,
+      readingPlan,
+    })
+  })
+
+  it('queues reading plan metadata updates when offline', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useBooksStore()
+    const readingPlan = {
+      targetDate: '2026-05-20',
+      dailyPagesGoal: 10,
+      reminderEnabled: true,
+      reminderTime: '19:00',
+      reminderDays: [1, 2, 3],
+      startDate: '2026-05-13',
+      startPage: 40,
+    }
+    store.library = [createBook({ id: 'book-1', totalPages: 300, currentPage: 40, status: 'reading' })]
+    vi.mocked(updateLibraryBookMetadata).mockRejectedValueOnce(new Error('network offline'))
+
+    await store.updateBookMetadata('book-1', {
+      totalPages: 300,
+      currentPage: 40,
+      status: 'reading',
+      readingPlan,
+    })
+
+    expect(enqueueOfflineLibraryUpdateMetadata).toHaveBeenCalledWith('user-1', {
+      bookId: 'book-1',
+      coverUrl: undefined,
+      totalPages: 300,
+      currentPage: 40,
+      status: 'reading',
+      completedAt: null,
+      abandonedReason: null,
+      rating: undefined,
+      note: undefined,
+      readingPlan,
+    })
+    expect(store.library[0]?.readingPlan).toEqual(readingPlan)
+  })
+
+  it('rolls back reading plan updates on non-offline failures', async () => {
+    vi.stubGlobal('navigator', { onLine: true })
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const store = useBooksStore()
+    const previousPlan = {
+      targetDate: '2026-05-20',
+      dailyPagesGoal: 10,
+      reminderEnabled: false,
+      reminderTime: null,
+      reminderDays: null,
+      startDate: '2026-05-13',
+      startPage: 20,
+    }
+    store.library = [createBook({ id: 'book-1', readingPlan: previousPlan })]
+    vi.mocked(updateLibraryBookMetadata).mockRejectedValueOnce(new Error('permission-denied'))
+
+    await store.updateBookMetadata('book-1', {
+      totalPages: 100,
+      currentPage: 20,
+      status: 'reading',
+      readingPlan: null,
+    })
+
+    expect(store.library[0]?.readingPlan).toEqual(previousPlan)
+    expect(store.errorKey).toBe('books.updateBookError')
+    vi.unstubAllGlobals()
   })
 
   it('rejects future completedAt dates', async () => {

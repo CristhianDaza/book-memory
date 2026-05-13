@@ -48,6 +48,7 @@ const mocks = vi.hoisted(() => {
           status: 'reading',
           rating: null,
           note: null,
+          readingPlan: null,
         },
         {
           id: 'book-2',
@@ -62,6 +63,7 @@ const mocks = vi.hoisted(() => {
           status: 'reading',
           rating: null,
           note: null,
+          readingPlan: null,
         },
       ],
     },

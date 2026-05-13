@@ -1,3 +1,5 @@
+import type { ReadingPlan } from './books'
+
 export interface QueuedReadingStatePayload {
   selectedBookId: string
   sessionBookId: string | null
@@ -46,6 +48,7 @@ export interface QueuedLibraryMetadataPayload {
   completedAt?: string | null
   rating?: 1 | 2 | 3 | 4 | 5 | null
   note?: string | null
+  readingPlan?: ReadingPlan | null
   abandonedReason?: string | null
 }
 

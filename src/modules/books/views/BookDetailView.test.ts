@@ -143,6 +143,7 @@ describe('BookDetailView reading pace', () => {
       completedAt: null,
       rating: null,
       note: null,
+      readingPlan: null,
     }
     mocks.sessionsByBook.value = []
     mocks.ensureLibraryLoaded.mockResolvedValue(undefined)

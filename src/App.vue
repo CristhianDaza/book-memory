@@ -26,6 +26,7 @@ import { useAuthStore } from './stores/auth'
 import { useNotificationsStore } from './stores/notifications'
 import { useStreakStore } from './stores/streak'
 import { bookCompletionOverlay } from './composables/useBookCompletionOverlay'
+import { useReadingPlanReminders } from './composables/useReadingPlanReminders'
 
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
@@ -36,6 +37,7 @@ const streakOverlayPayload = computed(() => streakStore.overlayPayload)
 const router = useRouter()
 const route = useRoute()
 const { t, locale } = useI18n()
+useReadingPlanReminders()
 
 const showChrome = computed(() => route.name !== 'login')
 const currentLocale = computed(() => locale.value as AppLocale)
