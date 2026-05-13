@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { fetchStatsGoals, saveStatsGoals } from '../services/statsGoalsService'
-import type { LibraryBook } from '../types/books'
+import type { LibraryBook, ReadingPlanDayRecord } from '../types/books'
 import type { ReadingSessionRecord } from '../types/reading'
 import type {
   BookStatsEntry,
@@ -16,10 +16,11 @@ import type {
   StatsRange,
   StatsSummary,
 } from '../types/stats'
-import { getReadingPlanInsights } from '../utils/readingPlan'
+import { summarizeReadingPlanCompliance } from '../utils/readingPlan'
 import { useAuthStore } from './auth'
 import { useBooksStore } from './books'
 import { useSessionsStore } from './sessions'
+import { useReadingPlanHistoryStore } from './readingPlanHistory'
 import { useStreakStore } from './streak'
 
 function parseDate(value: unknown): Date | null {
@@ -53,6 +54,7 @@ function monthKeyFromDate(date: Date): string {
 export const useStatsStore = defineStore('stats', () => {
   const sessions = ref<ReadingSessionRecord[]>([])
   const library = ref<LibraryBook[]>([])
+  const planHistoryRecords = ref<ReadingPlanDayRecord[]>([])
   const libraryTitles = ref<Record<string, string>>({})
   const loading = ref(false)
   const errorKey = ref<string | null>(null)
@@ -202,13 +204,12 @@ export const useStatsStore = defineStore('stats', () => {
   }))
 
   const readingPlanSummary = computed<ReadingPlanStatsSummary>(() => {
-    const planned = library.value
-      .map((book) => ({ book, insights: getReadingPlanInsights(book) }))
-      .filter((entry) => entry.book.readingPlan !== null)
+    const summary = summarizeReadingPlanCompliance(planHistoryRecords.value, library.value)
     return {
-      plannedBooks: planned.length,
-      onTrackBooks: planned.filter((entry) => entry.insights.status === 'on_track' || entry.insights.status === 'ahead').length,
-      behindBooks: planned.filter((entry) => entry.insights.status === 'behind').length,
+      adherencePercent: summary.adherencePercent,
+      metDays: summary.metDays,
+      totalDays: summary.totalDays,
+      atRiskBooks: summary.atRiskBookIds.length,
     }
   })
 
@@ -331,11 +332,17 @@ export const useStatsStore = defineStore('stats', () => {
     try {
       const booksStore = useBooksStore()
       const sessionsStore = useSessionsStore()
+      const readingPlanHistoryStore = useReadingPlanHistoryStore()
       const streakStore = useStreakStore()
-      await Promise.all([booksStore.ensureLibraryLoaded(), sessionsStore.ensureSessionsLoaded()])
+      await Promise.all([
+        booksStore.ensureLibraryLoaded(),
+        sessionsStore.ensureSessionsLoaded(),
+        readingPlanHistoryStore.ensureHistoryLoaded(),
+      ])
       await streakStore.migrateFromSessions(sessionsStore.allSessions)
       sessions.value = sessionsStore.allSessions
       library.value = booksStore.library
+      planHistoryRecords.value = readingPlanHistoryStore.records
       libraryTitles.value = booksStore.library.reduce<Record<string, string>>((acc, book) => {
         acc[book.id] = book.title
         return acc
@@ -364,6 +371,7 @@ export const useStatsStore = defineStore('stats', () => {
     } catch {
       sessions.value = []
       library.value = []
+      planHistoryRecords.value = []
       libraryTitles.value = {}
       errorKey.value = 'stats.loadError'
     } finally {

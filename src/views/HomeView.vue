@@ -10,12 +10,14 @@ import SurfaceCard from '../components/ui/SurfaceCard.vue'
 import StarRating from '../components/ui/StarRating.vue'
 import { useAuthStore } from '../stores/auth'
 import { useBooksStore } from '../stores/books'
+import { useReadingPlanHistoryStore } from '../stores/readingPlanHistory'
 import { useSessionsStore } from '../stores/sessions'
 import { useStreakStore } from '../stores/streak'
-import { getTodayReadingPlanQueue } from '../utils/readingPlan'
+import { getTodayReadingPlanQueue, summarizeReadingPlanCompliance } from '../utils/readingPlan'
 
 const authStore = useAuthStore()
 const booksStore = useBooksStore()
+const readingPlanHistoryStore = useReadingPlanHistoryStore()
 const sessionsStore = useSessionsStore()
 const streakStore = useStreakStore()
 const { t } = useI18n()
@@ -26,7 +28,34 @@ const { latestSessionMillisByBook } = storeToRefs(sessionsStore)
 const { currentStreakDays, bestStreakDays } = storeToRefs(streakStore)
 const isMobileDashboard = ref(false)
 const includePausedInPending = ref(false)
-const todayPlanQueue = computed(() => getTodayReadingPlanQueue(library.value).slice(0, 3))
+const planComplianceSummary = computed(() => summarizeReadingPlanCompliance(readingPlanHistoryStore.records, library.value))
+const atRiskBookIds = computed(() => new Set(planComplianceSummary.value.atRiskBookIds))
+const atRiskBooks = computed(() =>
+  library.value.filter((book) => atRiskBookIds.value.has(book.id)).slice(0, 3),
+)
+const planStatusPriority: Record<string, number> = {
+  behind: 0,
+  at_risk: 1,
+  on_track: 2,
+  ahead: 3,
+}
+const todayPlanQueue = computed(() =>
+  getTodayReadingPlanQueue(library.value)
+    .map((entry) => ({
+      ...entry,
+      displayStatus:
+        entry.insights.status === 'behind'
+          ? 'behind'
+          : atRiskBookIds.value.has(entry.book.id)
+            ? 'at_risk'
+            : entry.insights.status,
+    }))
+    .sort(
+      (a, b) =>
+        (planStatusPriority[a.displayStatus] ?? 10) - (planStatusPriority[b.displayStatus] ?? 10),
+    )
+    .slice(0, 3),
+)
 const totalBooks = computed(() => library.value.length)
 const favoriteBooks = computed(() => library.value.filter((book) => book.favorite).length)
 const readingBooks = computed(() => library.value.filter((book) => book.status === 'reading').length)
@@ -89,7 +118,7 @@ onMounted(async () => {
   }
   await booksStore.ensureLibraryLoaded()
   if (!user.value?.uid) return
-  await sessionsStore.ensureSessionsLoaded()
+  await Promise.all([sessionsStore.ensureSessionsLoaded(), readingPlanHistoryStore.ensureHistoryLoaded()])
   await streakStore.migrateFromSessions(sessionsStore.allSessions)
 })
 
@@ -283,6 +312,45 @@ onUnmounted(() => {
       </EmptyState>
     </SurfaceCard>
 
+    <SurfaceCard v-if="atRiskBooks.length > 0">
+      <div class="mb-3">
+        <h2 class="bm-section-title">{{ t('home.earlyRiskTitle') }}</h2>
+        <p class="bm-muted text-xs">{{ t('home.earlyRiskSubtitle') }}</p>
+      </div>
+      <div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <article
+          v-for="book in atRiskBooks"
+          :key="book.id"
+          class="bm-card"
+        >
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="line-clamp-2 font-serif text-base font-bold text-(--app-text)">
+                {{ book.title }}
+              </p>
+              <p class="bm-muted mt-1 line-clamp-1 text-xs">
+                {{ t('books.by') }} {{ book.authors.join(', ') || t('books.unknownAuthor') }}
+              </p>
+            </div>
+            <StatusBadge tone="warning">
+              {{ t('books.planStatus_at_risk') }}
+            </StatusBadge>
+          </div>
+          <p class="bm-soft mt-2 text-xs">{{ t('home.earlyRiskHint') }}</p>
+          <RouterLink
+            class="bm-button bm-button-primary mt-3 text-xs"
+            :to="{ name: 'reading', query: { bookId: book.id } }"
+          >
+            <TimerReset
+              :size="15"
+              aria-hidden="true"
+            />
+            {{ t('home.continueReadingAction') }}
+          </RouterLink>
+        </article>
+      </div>
+    </SurfaceCard>
+
     <SurfaceCard v-if="todayPlanQueue.length > 0">
       <div class="mb-3">
         <h2 class="bm-section-title">{{ t('home.todayPlanTitle') }}</h2>
@@ -309,8 +377,8 @@ onUnmounted(() => {
                 {{ t('books.by') }} {{ entry.book.authors.join(', ') || t('books.unknownAuthor') }}
               </p>
             </div>
-            <StatusBadge :tone="entry.insights.status === 'behind' ? 'danger' : 'success'">
-              {{ t(`books.planStatus_${entry.insights.status}`) }}
+            <StatusBadge :tone="entry.displayStatus === 'behind' ? 'danger' : entry.displayStatus === 'at_risk' ? 'warning' : 'success'">
+              {{ t(`books.planStatus_${entry.displayStatus}`) }}
             </StatusBadge>
           </div>
           <p class="bm-muted mt-3 text-xs">
