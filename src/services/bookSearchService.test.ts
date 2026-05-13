@@ -36,7 +36,7 @@ describe('bookSearchService', () => {
     )
     const { searchBooks } = await loadService()
 
-    const result = await searchBooks('clean code', 'en', 'active', 0, 20)
+    const result = await searchBooks('clean code', 0, 20)
 
     expect(result.totalItems).toBe(1)
     expect(result.items).toHaveLength(1)
@@ -48,6 +48,11 @@ describe('bookSearchService', () => {
       totalPages: 464,
       publishedYear: 2008,
     })
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toEqual(
+      expect.stringContaining('https://www.googleapis.com/books/v1/volumes'),
+    )
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).not.toEqual(expect.stringContaining('langRestrict'))
   })
 
   it('falls back to Open Library when Google Books fails', async () => {
@@ -78,7 +83,7 @@ describe('bookSearchService', () => {
     )
     const { searchBooks } = await loadService()
 
-    const result = await searchBooks('clean code', 'en', 'active', 0, 20)
+    const result = await searchBooks('clean code', 0, 20)
 
     expect(result.totalItems).toBe(1)
     expect(result.items).toHaveLength(1)
@@ -87,6 +92,51 @@ describe('bookSearchService', () => {
       source: 'openlibrary',
       title: 'Clean Code',
     })
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(fetch).mock.calls[1]?.[0]).toEqual(
+      expect.stringContaining('https://openlibrary.org/search.json'),
+    )
+    expect(vi.mocked(fetch).mock.calls[1]?.[0]).not.toEqual(expect.stringContaining('language='))
+  })
+
+  it('falls back to Open Library when Google Books returns no usable results', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            totalItems: 0,
+            items: [],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            numFound: 1,
+            docs: [
+              {
+                key: '/works/OL123W',
+                title: 'Clean Code',
+                author_name: ['Robert C. Martin'],
+                first_publish_year: 2008,
+              },
+            ],
+          }),
+        }),
+    )
+    const { searchBooks } = await loadService()
+
+    const result = await searchBooks('clean code', 0, 20)
+
+    expect(result.totalItems).toBe(1)
+    expect(result.items[0]).toMatchObject({
+      id: 'openlibrary:OL123W',
+      source: 'openlibrary',
+      title: 'Clean Code',
+    })
+    expect(fetch).toHaveBeenCalledTimes(2)
   })
 
   it('throws original Google error when both providers fail', async () => {
@@ -102,9 +152,108 @@ describe('bookSearchService', () => {
     )
     const { searchBooks } = await loadService()
 
-    await expect(searchBooks('dune', 'en', 'active', 0, 20)).rejects.toMatchObject({
+    await expect(searchBooks('dune', 0, 20)).rejects.toMatchObject({
       name: 'SearchBooksError',
       code: 'quota_exceeded',
     })
+  })
+
+  it('does not block future Google Books calls after a quota/auth failure', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            numFound: 1,
+            docs: [
+              {
+                key: '/works/OL123W',
+                title: 'Fallback Book',
+              },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            totalItems: 1,
+            items: [
+              {
+                id: 'google-ok',
+                volumeInfo: {
+                  title: 'Google Book',
+                },
+              },
+            ],
+          }),
+        }),
+    )
+    const { searchBooks } = await loadService()
+
+    const fallbackResult = await searchBooks('first search', 0, 20)
+    const googleResult = await searchBooks('second search', 0, 20)
+
+    expect(fallbackResult.items[0]).toMatchObject({
+      source: 'openlibrary',
+      title: 'Fallback Book',
+    })
+    expect(googleResult.items[0]).toMatchObject({
+      source: 'google',
+      title: 'Google Book',
+    })
+    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(vi.mocked(fetch).mock.calls[2]?.[0]).toEqual(
+      expect.stringContaining('https://www.googleapis.com/books/v1/volumes'),
+    )
+  })
+
+  it('prioritizes titles that best match the original query', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          totalItems: 3,
+          items: [
+            {
+              id: 'english',
+              volumeInfo: {
+                title: "Harry Potter and the Philosopher's Stone",
+                authors: ['J. K. Rowling'],
+              },
+            },
+            {
+              id: 'spanish',
+              volumeInfo: {
+                title: 'Harry Potter y la piedra filosofal',
+                authors: ['J. K. Rowling'],
+              },
+            },
+            {
+              id: 'exact',
+              volumeInfo: {
+                title: 'La piedra filosofal',
+                authors: ['J. K. Rowling'],
+              },
+            },
+          ],
+        }),
+      }),
+    )
+    const { searchBooks } = await loadService()
+
+    const result = await searchBooks('la piedra filosofal', 0, 20)
+
+    expect(result.items.map((item) => item.title)).toEqual([
+      'La piedra filosofal',
+      'Harry Potter y la piedra filosofal',
+      "Harry Potter and the Philosopher's Stone",
+    ])
   })
 })

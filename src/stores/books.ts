@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { isSearchBooksError, searchBooks } from '../services/bookSearchService'
-import type { LibrarySortMode, LibraryStatusFilter, SearchLanguageMode } from '../types/books-store'
+import type { LibrarySortMode, LibraryStatusFilter } from '../types/books-store'
 import { deleteSessionsForBook } from '../services/readingSessionService'
 import {
   addBookToLibrary,
@@ -17,7 +17,6 @@ import {
   enqueueOfflineLibraryUpdateMetadata,
 } from '../services/offlineQueueService'
 import type { BookSearchResult, LibraryBook, LibraryBookMetadataUpdate } from '../types/books'
-import type { AppLocale } from '../types/i18n'
 import { useAuthStore } from './auth'
 import { useSessionsStore } from './sessions'
 import { useStreakStore } from './streak'
@@ -42,7 +41,6 @@ export const useBooksStore = defineStore('books', () => {
   const libraryStatusFilter = ref<LibraryStatusFilter>('all')
   const librarySearchQuery = ref('')
   const librarySortMode = ref<LibrarySortMode>('favorite_first')
-  const searchLanguageMode = ref<SearchLanguageMode>('active')
   const errorKey = ref<string | null>(null)
   const errorDetails = ref<string | null>(null)
   const syncQueuedMessageKey = ref<string | null>(null)
@@ -211,12 +209,12 @@ export const useBooksStore = defineStore('books', () => {
     return 'books.searchError'
   }
 
-  async function search(queryText: string, locale: AppLocale) {
+  async function search(queryText: string) {
     clearError()
     query.value = queryText
     searching.value = true
     try {
-      const result = await searchBooks(queryText, locale, searchLanguageMode.value, 0, 20)
+      const result = await searchBooks(queryText, 0, 20)
       searchResults.value = result.items
       searchPage.value = 0
       hasMoreSearchResults.value = result.totalItems > result.items.length
@@ -238,12 +236,12 @@ export const useBooksStore = defineStore('books', () => {
     clearError()
   }
 
-  async function loadMoreSearch(locale: AppLocale) {
+  async function loadMoreSearch() {
     if (searching.value || loadingMoreSearch.value || !hasMoreSearchResults.value || !query.value.trim()) return
     loadingMoreSearch.value = true
     try {
       const nextPage = searchPage.value + 1
-      const result = await searchBooks(query.value, locale, searchLanguageMode.value, nextPage, 20)
+      const result = await searchBooks(query.value, nextPage, 20)
       const merged = new Map<string, BookSearchResult>()
       for (const item of searchResults.value) merged.set(item.id, item)
       for (const item of result.items) {
@@ -258,10 +256,6 @@ export const useBooksStore = defineStore('books', () => {
     } finally {
       loadingMoreSearch.value = false
     }
-  }
-
-  function setSearchLanguageMode(mode: SearchLanguageMode) {
-    searchLanguageMode.value = mode
   }
 
   async function loadLibrary(options?: { force?: boolean; maxAgeMs?: number }) {
@@ -627,7 +621,6 @@ export const useBooksStore = defineStore('books', () => {
     libraryStatusFilter,
     librarySearchQuery,
     librarySortMode,
-    searchLanguageMode,
     selectedBook,
     filteredSortedLibrary,
     errorKey,
@@ -635,7 +628,6 @@ export const useBooksStore = defineStore('books', () => {
     syncQueuedMessageKey,
     search,
     loadMoreSearch,
-    setSearchLanguageMode,
     loadLibrary,
     ensureLibraryLoaded,
     addSearchResultToLibrary,
