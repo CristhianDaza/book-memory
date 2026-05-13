@@ -139,6 +139,46 @@ describe('bookSearchService', () => {
     expect(fetch).toHaveBeenCalledTimes(2)
   })
 
+  it('retries transient Google Books service errors before falling back', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 503,
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            totalItems: 1,
+            items: [
+              {
+                id: 'google-retry-ok',
+                volumeInfo: {
+                  title: 'La piedra filosofal',
+                  authors: ['J. K. Rowling'],
+                },
+              },
+            ],
+          }),
+        }),
+    )
+    const { searchBooks } = await loadService()
+
+    const result = await searchBooks('La piedra filosofal', 0, 20)
+
+    expect(result.items[0]).toMatchObject({
+      id: 'google:google-retry-ok',
+      source: 'google',
+      title: 'La piedra filosofal',
+    })
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(fetch).mock.calls[1]?.[0]).toEqual(
+      expect.stringContaining('https://www.googleapis.com/books/v1/volumes'),
+    )
+  })
+
   it('throws original Google error when both providers fail', async () => {
     vi.stubGlobal(
       'fetch',

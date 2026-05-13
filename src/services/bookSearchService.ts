@@ -20,6 +20,7 @@ export function isSearchBooksError(error: unknown): error is SearchBooksError {
 
 const MAX_RESULTS = 40
 const PAGE_SIZE = 20
+const GOOGLE_TRANSIENT_RETRY_DELAY_MS = 350
 
 function normalizeKey(title: string, authors: string[]): string {
   const author = authors[0] ?? ''
@@ -70,6 +71,17 @@ function normalizeTotalPages(value: unknown): number | null {
   if (!Number.isFinite(parsed)) return null
   const rounded = Math.floor(parsed)
   return rounded > 0 ? rounded : null
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+function isTransientGoogleError(error: unknown): boolean {
+  return (
+    error instanceof SearchBooksError &&
+    (error.code === 'service_unavailable' || error.code === 'network_error')
+  )
 }
 
 async function searchGoogleBooks(
@@ -125,6 +137,20 @@ async function searchGoogleBooks(
   return {
     items: normalized,
     totalItems: Math.max(0, data.totalItems ?? normalized.length),
+  }
+}
+
+async function searchGoogleBooksWithTransientRetry(
+  query: string,
+  startIndex = 0,
+  maxResults = PAGE_SIZE,
+): Promise<SearchBooksPageResult> {
+  try {
+    return await searchGoogleBooks(query, startIndex, maxResults)
+  } catch (error) {
+    if (!isTransientGoogleError(error)) throw error
+    await delay(GOOGLE_TRANSIENT_RETRY_DELAY_MS)
+    return await searchGoogleBooks(query, startIndex, maxResults)
   }
 }
 
@@ -190,7 +216,7 @@ export async function searchBooks(
   const startIndex = Math.max(0, Math.floor(page)) * Math.max(1, Math.floor(pageSize))
   const primaryResult = await (async () => {
     try {
-      const googleResult = await searchGoogleBooks(trimmedQuery, startIndex, pageSize)
+      const googleResult = await searchGoogleBooksWithTransientRetry(trimmedQuery, startIndex, pageSize)
       if (googleResult.items.length > 0) return googleResult
       return await searchOpenLibrary(trimmedQuery, startIndex, pageSize)
     } catch (googleError) {
