@@ -275,19 +275,8 @@ onBeforeUnmount(() => {
     :sync-visible="showSyncBanner"
     :sync-tone="syncTone"
     :sync-message="syncMessage"
-    :next-locale-label="nextLocaleLabel"
-    :exporting-data="exportingData"
-    :export-label="exportingData ? t('home.exportingData') : t('home.exportData')"
-    :export-aria-label="t('home.exportDataAria')"
-    :delete-label="t('home.deleteAccount')"
-    :sign-out-label="t('home.signOut')"
     :current-year="currentYear"
     :app-version="appVersion"
-    @change-locale="onChangeLocale(nextLocale)"
-    @export-data="onExportMyData"
-    @open-sync-center="onOpenSyncCenter"
-    @delete-account="onOpenDeleteAccountConfirm"
-    @sign-out="onOpenLogoutConfirm"
   >
     <AppNotifications />
     <section
@@ -359,6 +348,21 @@ onBeforeUnmount(() => {
         >
           <component
             :is="Component"
+            v-if="viewRoute.name === 'settings'"
+            :key="viewRoute.fullPath"
+            :next-locale-label="nextLocaleLabel"
+            :exporting-data="exportingData"
+            :export-label="exportingData ? t('home.exportingData') : t('home.exportData')"
+            :export-aria-label="t('home.exportDataAria')"
+            @change-locale="onChangeLocale(nextLocale)"
+            @export-data="onExportMyData"
+            @open-sync-center="onOpenSyncCenter"
+            @delete-account="onOpenDeleteAccountConfirm"
+            @sign-out="onOpenLogoutConfirm"
+          />
+          <component
+            :is="Component"
+            v-else
             :key="viewRoute.fullPath"
           />
         </Transition>

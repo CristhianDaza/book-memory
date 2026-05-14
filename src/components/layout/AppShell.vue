@@ -1,25 +1,15 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type Component } from 'vue'
 import {
-  CloudUpload,
-  ChevronDown,
-  Download,
-  Globe2,
-  Laptop,
-  LogOut,
-  Moon,
+  Settings,
   ShieldCheck,
-  Sun,
-  Trash2,
 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import IconButton from '../ui/IconButton.vue'
 import NavItem from '../ui/NavItem.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
 import ThemeToggle from '../ui/ThemeToggle.vue'
 import { useTheme } from '../../composables/useTheme'
-import type { ThemeMode } from '../../types/theme'
 
 interface ShellNavItem {
   to: string
@@ -34,56 +24,15 @@ defineProps<{
   syncVisible: boolean
   syncTone: 'success' | 'warning' | 'danger'
   syncMessage: string
-  nextLocaleLabel: string
-  exportingData: boolean
-  exportLabel: string
-  exportAriaLabel: string
-  deleteLabel: string
-  signOutLabel: string
   currentYear: number
   appVersion: string
 }>()
 
-defineEmits<{
-  changeLocale: []
-  exportData: []
-  openSyncCenter: []
-  deleteAccount: []
-  signOut: []
-}>()
-
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const route = useRoute()
-const { themeMode, resolvedTheme, setThemeMode } = useTheme()
+const { resolvedTheme } = useTheme()
 const mainScrollTarget = ref<HTMLElement | null>(null)
-
-const nextThemeMode = computed<ThemeMode>(() => {
-  if (themeMode.value === 'system') return 'light'
-  if (themeMode.value === 'light') return 'dark'
-  return 'system'
-})
-
-const themeLabel = computed(() => {
-  if (themeMode.value === 'system') return t('theme.system')
-  if (themeMode.value === 'light') return t('theme.light')
-  return t('theme.dark')
-})
-
-const themeIcon = computed<Component>(() => {
-  if (themeMode.value === 'system') return Laptop
-  if (themeMode.value === 'light') return Sun
-  return Moon
-})
-
-const currentLanguageLabel = computed(() =>
-  locale.value === 'es' ? t('common.spanishFull') : t('common.englishFull'),
-)
-
 const brandIconSrc = computed(() => `/icons/bookmemory-${resolvedTheme.value}-192.png`)
-
-function onToggleTheme() {
-  setThemeMode(nextThemeMode.value)
-}
 
 watch(
   () => route.fullPath,
@@ -130,15 +79,18 @@ watch(
         </RouterLink>
         <div class="flex items-center gap-2">
           <ThemeToggle />
-          <IconButton
-            :label="t('common.switchLanguage', { language: nextLocaleLabel })"
-            @click="$emit('changeLocale')"
+          <RouterLink
+            to="/settings"
+            class="bm-icon-button"
+            :class="{ 'text-(--app-primary-strong)': route.name === 'settings' }"
+            :aria-label="t('settings.open')"
+            :title="t('settings.open')"
           >
-            <Globe2
+            <Settings
               :size="18"
               aria-hidden="true"
             />
-          </IconButton>
+          </RouterLink>
         </div>
       </header>
 
@@ -174,6 +126,17 @@ watch(
               v-bind="item"
             />
           </nav>
+          <nav
+            class="bm-nav-list"
+            aria-label="Account"
+          >
+            <NavItem
+              to="/settings"
+              :label="t('settings.navLabel')"
+              :active="route.name === 'settings'"
+              :icon="Settings"
+            />
+          </nav>
 
           <div
             v-if="syncVisible"
@@ -187,126 +150,6 @@ watch(
               <StatusBadge :tone="syncTone">Sync</StatusBadge>
             </div>
             <p class="bm-muted text-xs leading-relaxed">{{ syncMessage }}</p>
-          </div>
-
-          <div class="grid gap-3">
-            <section class="bm-sidebar-section">
-              <p class="bm-sidebar-section-title">{{ t('home.sessionSection') }}</p>
-              <button
-                type="button"
-                class="bm-button w-full"
-                @click="$emit('signOut')"
-              >
-                <LogOut
-                  :size="17"
-                  aria-hidden="true"
-                />
-                {{ signOutLabel }}
-              </button>
-            </section>
-
-            <details class="bm-sidebar-danger-zone">
-              <summary>
-                <span>{{ t('home.accountOptions') }}</span>
-                <ChevronDown
-                  :size="16"
-                  aria-hidden="true"
-                />
-              </summary>
-              <section class="bm-sidebar-section">
-                <p class="bm-sidebar-section-title">{{ t('home.preferences') }}</p>
-                <button
-                  type="button"
-                  class="bm-sidebar-action-row bm-sidebar-action-button"
-                  :aria-label="t('theme.toggle')"
-                  @click="onToggleTheme"
-                >
-                  <span class="bm-sidebar-action-copy">
-                    <span class="bm-sidebar-action-label">{{ t('theme.setting') }}</span>
-                    <span class="bm-sidebar-action-value">{{ themeLabel }}</span>
-                  </span>
-                  <span class="bm-sidebar-action-icon">
-                    <component
-                      :is="themeIcon"
-                      :size="18"
-                      aria-hidden="true"
-                    />
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  class="bm-sidebar-action-row bm-sidebar-action-button"
-                  :aria-label="t('common.switchLanguage', { language: nextLocaleLabel })"
-                  @click="$emit('changeLocale')"
-                >
-                  <span class="bm-sidebar-action-copy">
-                    <span class="bm-sidebar-action-label">{{ t('common.language') }}</span>
-                    <span class="bm-sidebar-action-value">{{ currentLanguageLabel }}</span>
-                  </span>
-                  <span class="bm-sidebar-action-icon">
-                    <Globe2
-                      :size="18"
-                      aria-hidden="true"
-                    />
-                  </span>
-                </button>
-              </section>
-
-              <section class="bm-sidebar-section">
-                <p class="bm-sidebar-section-title">{{ t('home.dataSection') }}</p>
-                <button
-                  type="button"
-                  class="bm-sidebar-action-row bm-sidebar-action-button"
-                  :aria-label="t('home.openBackupCenterAria')"
-                  @click="$emit('openSyncCenter')"
-                >
-                  <span class="bm-sidebar-action-copy">
-                    <span class="bm-sidebar-action-label">{{ t('home.openBackupCenter') }}</span>
-                    <span class="bm-sidebar-action-value">{{ t('home.openBackupCenterHint') }}</span>
-                  </span>
-                  <span class="bm-sidebar-action-icon">
-                    <CloudUpload
-                      :size="18"
-                      aria-hidden="true"
-                    />
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  class="bm-sidebar-action-row bm-sidebar-action-button"
-                  :aria-label="exportAriaLabel"
-                  :disabled="exportingData"
-                  @click="$emit('exportData')"
-                >
-                  <span class="bm-sidebar-action-copy">
-                    <span class="bm-sidebar-action-label">{{ t('home.exportData') }}</span>
-                    <span class="bm-sidebar-action-value">{{ exportLabel }}</span>
-                  </span>
-                  <span class="bm-sidebar-action-icon">
-                    <Download
-                      :size="18"
-                      aria-hidden="true"
-                    />
-                  </span>
-                </button>
-              </section>
-
-              <section class="bm-sidebar-section">
-                <p class="bm-sidebar-section-title">{{ t('home.dangerSection') }}</p>
-                <p class="bm-muted text-xs leading-relaxed">{{ t('home.accountOptionsHint') }}</p>
-                <button
-                  type="button"
-                  class="bm-button bm-button-danger w-full"
-                  @click="$emit('deleteAccount')"
-                >
-                  <Trash2
-                    :size="17"
-                    aria-hidden="true"
-                  />
-                  {{ deleteLabel }}
-                </button>
-              </section>
-            </details>
           </div>
         </aside>
 
