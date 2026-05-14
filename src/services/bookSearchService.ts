@@ -1,7 +1,6 @@
 import type { BookSearchResult } from '../types/books'
 import type { GoogleBooksResponse, OpenLibraryResponse } from '../types/book-search'
-import type { AppLocale } from '../types/i18n'
-import type { SearchBooksPageResult, SearchLanguageMode } from '../types/books-store'
+import type { SearchBooksPageResult } from '../types/books-store'
 
 export type SearchBooksErrorCode = 'quota_exceeded' | 'service_unavailable' | 'network_error' | 'http_error'
 
@@ -21,19 +20,44 @@ export function isSearchBooksError(error: unknown): error is SearchBooksError {
 
 const MAX_RESULTS = 40
 const PAGE_SIZE = 20
-const GOOGLE_LANG_BY_LOCALE: Record<AppLocale, string> = {
-  es: 'es',
-  en: 'en',
-}
-const OPENLIBRARY_LANG_BY_LOCALE: Record<AppLocale, string> = {
-  es: 'spa',
-  en: 'eng',
-}
-let googleBooksUnavailable = false
+const GOOGLE_TRANSIENT_RETRY_DELAY_MS = 350
 
 function normalizeKey(title: string, authors: string[]): string {
   const author = authors[0] ?? ''
   return `${title.trim().toLowerCase()}::${author.trim().toLowerCase()}`
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^\p{Letter}\p{Number}]+/gu, ' ')
+    .trim()
+}
+
+function getTitleMatchScore(title: string, query: string): number {
+  const normalizedTitle = normalizeSearchText(title)
+  const normalizedQuery = normalizeSearchText(query)
+  if (!normalizedTitle || !normalizedQuery) return 4
+  if (normalizedTitle === normalizedQuery) return 0
+  if (normalizedTitle.startsWith(normalizedQuery)) return 1
+  if (normalizedTitle.includes(normalizedQuery)) return 2
+
+  const queryWords = normalizedQuery.split(' ').filter(Boolean)
+  if (queryWords.length > 0 && queryWords.every((word) => normalizedTitle.includes(word))) return 3
+  return 4
+}
+
+function rankResultsByTitleMatch(items: BookSearchResult[], query: string): BookSearchResult[] {
+  return items
+    .map((item, index) => ({
+      item,
+      index,
+      score: getTitleMatchScore(item.title, query),
+    }))
+    .sort((a, b) => a.score - b.score || a.index - b.index)
+    .map(({ item }) => item)
 }
 
 function parseYear(value?: string): number | null {
@@ -49,24 +73,27 @@ function normalizeTotalPages(value: unknown): number | null {
   return rounded > 0 ? rounded : null
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+function isTransientGoogleError(error: unknown): boolean {
+  return (
+    error instanceof SearchBooksError &&
+    (error.code === 'service_unavailable' || error.code === 'network_error')
+  )
+}
+
 async function searchGoogleBooks(
   query: string,
-  locale?: AppLocale,
   startIndex = 0,
   maxResults = PAGE_SIZE,
 ): Promise<SearchBooksPageResult> {
-  if (googleBooksUnavailable) {
-    throw new SearchBooksError(
-      'service_unavailable',
-      'Google Books is temporarily unavailable because of previous quota/auth failures.',
-    )
-  }
   const apiKey = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY as string | undefined
   const keyParam = apiKey ? `&key=${encodeURIComponent(apiKey)}` : ''
-  const langParam = locale ? `&langRestrict=${GOOGLE_LANG_BY_LOCALE[locale]}` : ''
   const safeMaxResults = Math.max(1, Math.min(MAX_RESULTS, Math.floor(maxResults)))
   const safeStartIndex = Math.max(0, Math.floor(startIndex))
-  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=${safeMaxResults}&startIndex=${safeStartIndex}${langParam}${keyParam}`
+  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=${safeMaxResults}&startIndex=${safeStartIndex}${keyParam}`
   let response: Response
   try {
     response = await fetch(url)
@@ -76,7 +103,6 @@ async function searchGoogleBooks(
 
   if (!response.ok) {
     if (response.status === 403 || response.status === 429) {
-      googleBooksUnavailable = true
       throw new SearchBooksError('quota_exceeded', `Google Books quota/auth error (${response.status}).`)
     }
 
@@ -96,7 +122,6 @@ async function searchGoogleBooks(
     const info = item.volumeInfo
     const title = info?.title?.trim() ?? ''
     if (!item.id || !title) continue
-    if (locale && info?.language && info.language.toLowerCase() !== GOOGLE_LANG_BY_LOCALE[locale]) continue
 
     normalized.push({
       id: `google:${item.id}`,
@@ -115,16 +140,28 @@ async function searchGoogleBooks(
   }
 }
 
+async function searchGoogleBooksWithTransientRetry(
+  query: string,
+  startIndex = 0,
+  maxResults = PAGE_SIZE,
+): Promise<SearchBooksPageResult> {
+  try {
+    return await searchGoogleBooks(query, startIndex, maxResults)
+  } catch (error) {
+    if (!isTransientGoogleError(error)) throw error
+    await delay(GOOGLE_TRANSIENT_RETRY_DELAY_MS)
+    return await searchGoogleBooks(query, startIndex, maxResults)
+  }
+}
+
 async function searchOpenLibrary(
   query: string,
-  locale?: AppLocale,
   startIndex = 0,
   maxResults = PAGE_SIZE,
 ): Promise<SearchBooksPageResult> {
   const safeMaxResults = Math.max(1, Math.min(MAX_RESULTS, Math.floor(maxResults)))
   const safeStartIndex = Math.max(0, Math.floor(startIndex))
-  const langParam = locale ? `&language=${encodeURIComponent(OPENLIBRARY_LANG_BY_LOCALE[locale])}` : ''
-  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=${safeMaxResults}&offset=${safeStartIndex}${langParam}`
+  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=${safeMaxResults}&offset=${safeStartIndex}`
   let response: Response
   try {
     response = await fetch(url)
@@ -147,10 +184,6 @@ async function searchOpenLibrary(
     const title = item.title?.trim() ?? ''
     const key = item.key?.trim() ?? ''
     if (!title || !key) continue
-    if (locale && item.language?.length) {
-      const hasLocaleLang = item.language.some((lang) => lang === OPENLIBRARY_LANG_BY_LOCALE[locale])
-      if (!hasLocaleLang) continue
-    }
 
     const externalId = key.replace('/works/', '')
     const coverUrl = item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg` : null
@@ -174,22 +207,21 @@ async function searchOpenLibrary(
 
 export async function searchBooks(
   query: string,
-  locale: AppLocale,
-  languageMode: SearchLanguageMode,
   page = 0,
   pageSize = PAGE_SIZE,
 ): Promise<SearchBooksPageResult> {
   const trimmedQuery = query.trim()
   if (!trimmedQuery) return { items: [], totalItems: 0 }
 
-  const localeFilter = languageMode === 'active' ? locale : undefined
   const startIndex = Math.max(0, Math.floor(page)) * Math.max(1, Math.floor(pageSize))
   const primaryResult = await (async () => {
     try {
-      return await searchGoogleBooks(trimmedQuery, localeFilter, startIndex, pageSize)
+      const googleResult = await searchGoogleBooksWithTransientRetry(trimmedQuery, startIndex, pageSize)
+      if (googleResult.items.length > 0) return googleResult
+      return await searchOpenLibrary(trimmedQuery, startIndex, pageSize)
     } catch (googleError) {
       try {
-        return await searchOpenLibrary(trimmedQuery, localeFilter, startIndex, pageSize)
+        return await searchOpenLibrary(trimmedQuery, startIndex, pageSize)
       } catch {
         throw googleError
       }
@@ -197,7 +229,7 @@ export async function searchBooks(
   })()
   const unique = new Map<string, BookSearchResult>()
 
-  for (const book of primaryResult.items) {
+  for (const book of rankResultsByTitleMatch(primaryResult.items, trimmedQuery)) {
     const key = normalizeKey(book.title, book.authors)
     if (!unique.has(key)) unique.set(key, book)
   }

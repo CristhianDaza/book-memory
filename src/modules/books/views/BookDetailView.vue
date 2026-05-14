@@ -7,12 +7,14 @@ import { useRoute, useRouter } from 'vue-router'
 import ConfirmModal from '../../../components/ConfirmModal.vue'
 import { useBookCompletionOverlay } from '../../../composables/useBookCompletionOverlay'
 import IconButton from '../../../components/ui/IconButton.vue'
+import ReadingPlanCard from '../components/ReadingPlanCard.vue'
 import StatusBadge from '../../../components/ui/StatusBadge.vue'
 import StarRating from '../../../components/ui/StarRating.vue'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
 import { useSessionsStore } from '../../../stores/sessions'
+import type { ReadingPlan } from '../../../types/books'
 import type { ReadingSessionRecord } from '../../../types/reading'
 
 const { t } = useI18n()
@@ -337,6 +339,22 @@ function onCancelCompletionRating() {
   completionDateError.value = ''
 }
 
+async function onSaveReadingPlan(plan: ReadingPlan | null) {
+  if (!book.value) return
+  await booksStore.updateBookMetadata(book.value.id, {
+    totalPages: book.value.totalPages,
+    currentPage: book.value.currentPage,
+    status: book.value.status,
+    readingPlan: plan,
+  })
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
+  showQueuedFeedbackIfAny()
+  notificationsStore.success(t('notifications.metadataSaved'))
+}
+
 async function onConfirmCompletionRating() {
   if (!book.value) return
   if (!completionRating.value) {
@@ -655,6 +673,13 @@ onMounted(async () => {
               </p>
             </template>
           </div>
+
+          <ReadingPlanCard
+            :book="book"
+            :saving="isMetadataUpdating()"
+            @save="onSaveReadingPlan"
+            @clear="onSaveReadingPlan(null)"
+          />
 
           <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button

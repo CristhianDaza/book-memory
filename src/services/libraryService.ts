@@ -36,6 +36,7 @@ export async function fetchLibraryBooks(uid: string): Promise<LibraryBook[]> {
       favorite: data.favorite ?? false,
       rating: data.rating ?? null,
       note: data.note ?? null,
+      readingPlan: data.readingPlan ?? null,
     }
   })
 }
@@ -58,6 +59,7 @@ export async function addBookToLibrary(uid: string, book: BookSearchResult): Pro
     status: 'wishlist',
     rating: null,
     note: null,
+    readingPlan: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }
@@ -104,6 +106,9 @@ export async function updateLibraryBookMetadata(
   }
   if (payload.abandonedReason === undefined) {
     delete updatePayload.abandonedReason
+  }
+  if (payload.readingPlan === undefined) {
+    delete updatePayload.readingPlan
   }
   await updateDoc(ref, updatePayload)
 }

@@ -59,6 +59,7 @@ const finishedBook: LibraryBook = {
   status: 'finished',
   rating: 4,
   note: null,
+  readingPlan: null,
   completedAt: '2026-03-01T00:00:00.000Z',
   updatedAt: '2026-03-01T00:00:00.000Z',
 }
@@ -76,6 +77,7 @@ const abandonedBook: LibraryBook = {
   status: 'abandoned',
   rating: 2,
   note: 'Maybe later',
+  readingPlan: null,
   abandonedReason: 'Too dense',
   updatedAt: '2026-04-01T00:00:00.000Z',
 }
@@ -93,6 +95,7 @@ const readingBook: LibraryBook = {
   status: 'reading',
   rating: null,
   note: null,
+  readingPlan: null,
 }
 
 function mountView() {

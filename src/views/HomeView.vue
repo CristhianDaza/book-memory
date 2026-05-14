@@ -12,6 +12,7 @@ import { useAuthStore } from '../stores/auth'
 import { useBooksStore } from '../stores/books'
 import { useSessionsStore } from '../stores/sessions'
 import { useStreakStore } from '../stores/streak'
+import { getTodayReadingPlanQueue } from '../utils/readingPlan'
 
 const authStore = useAuthStore()
 const booksStore = useBooksStore()
@@ -25,6 +26,7 @@ const { latestSessionMillisByBook } = storeToRefs(sessionsStore)
 const { currentStreakDays, bestStreakDays } = storeToRefs(streakStore)
 const isMobileDashboard = ref(false)
 const includePausedInPending = ref(false)
+const todayPlanQueue = computed(() => getTodayReadingPlanQueue(library.value).slice(0, 3))
 const totalBooks = computed(() => library.value.length)
 const favoriteBooks = computed(() => library.value.filter((book) => book.favorite).length)
 const readingBooks = computed(() => library.value.filter((book) => book.status === 'reading').length)
@@ -279,6 +281,66 @@ onUnmounted(() => {
           {{ t('home.viewAllBooks') }}
         </RouterLink>
       </EmptyState>
+    </SurfaceCard>
+
+    <SurfaceCard v-if="todayPlanQueue.length > 0">
+      <div class="mb-3">
+        <h2 class="bm-section-title">{{ t('home.todayPlanTitle') }}</h2>
+        <p class="bm-muted text-xs">{{ t('home.todayPlanSubtitle') }}</p>
+      </div>
+
+      <TransitionGroup
+        name="bm-stagger"
+        tag="div"
+        class="grid grid-cols-1 gap-3 lg:grid-cols-3"
+      >
+        <article
+          v-for="(entry, index) in todayPlanQueue"
+          :key="entry.book.id"
+          class="bm-card"
+          :style="{ transitionDelay: `${Math.min(index, 10) * 24}ms` }"
+        >
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="line-clamp-2 font-serif text-base font-bold text-(--app-text)">
+                {{ entry.book.title }}
+              </p>
+              <p class="bm-muted mt-1 line-clamp-1 text-xs">
+                {{ t('books.by') }} {{ entry.book.authors.join(', ') || t('books.unknownAuthor') }}
+              </p>
+            </div>
+            <StatusBadge :tone="entry.insights.status === 'behind' ? 'danger' : 'success'">
+              {{ t(`books.planStatus_${entry.insights.status}`) }}
+            </StatusBadge>
+          </div>
+          <p class="bm-muted mt-3 text-xs">
+            {{ t('home.todayPlanDelta') }}:
+            {{ entry.insights.deltaPagesToday ?? t('books.planUnknown') }}
+          </p>
+          <p class="bm-soft mt-1 text-xs">
+            {{ t('books.planRequiredDaily') }}:
+            {{ entry.insights.requiredDailyPages ?? t('books.planUnknown') }}
+          </p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <RouterLink
+              class="bm-button bm-button-primary text-xs"
+              :to="{ name: 'reading', query: { bookId: entry.book.id } }"
+            >
+              <TimerReset
+                :size="15"
+                aria-hidden="true"
+              />
+              {{ t('home.continueReadingAction') }}
+            </RouterLink>
+            <RouterLink
+              class="bm-button text-xs"
+              :to="{ name: 'book-detail', params: { id: entry.book.id } }"
+            >
+              {{ t('home.openBookDetail') }}
+            </RouterLink>
+          </div>
+        </article>
+      </TransitionGroup>
     </SurfaceCard>
 
     <SurfaceCard>

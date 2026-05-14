@@ -9,12 +9,14 @@ import type {
   BooksTimelineYearSummary,
   FirestoreDateLike,
   StatsGoalsProgress,
+  ReadingPlanStatsSummary,
   StatsActivityMetric,
   ReadingSessionWithDate,
   StatsActivityPoint,
   StatsRange,
   StatsSummary,
 } from '../types/stats'
+import { getReadingPlanInsights } from '../utils/readingPlan'
 import { useAuthStore } from './auth'
 import { useBooksStore } from './books'
 import { useSessionsStore } from './sessions'
@@ -199,6 +201,17 @@ export const useStatsStore = defineStore('stats', () => {
         : 0,
   }))
 
+  const readingPlanSummary = computed<ReadingPlanStatsSummary>(() => {
+    const planned = library.value
+      .map((book) => ({ book, insights: getReadingPlanInsights(book) }))
+      .filter((entry) => entry.book.readingPlan !== null)
+    return {
+      plannedBooks: planned.length,
+      onTrackBooks: planned.filter((entry) => entry.insights.status === 'on_track' || entry.insights.status === 'ahead').length,
+      behindBooks: planned.filter((entry) => entry.insights.status === 'behind').length,
+    }
+  })
+
   const timelineMonths = computed<BooksTimelineMonthPoint[]>(() => {
     const bucket = new Map<string, BooksTimelineMonthPoint>()
 
@@ -372,6 +385,7 @@ export const useStatsStore = defineStore('stats', () => {
     summary,
     topBooks,
     goalsProgress,
+    readingPlanSummary,
     selectedTimelineYear,
     timelineYears,
     timelineMonthlyBySelectedYear,

@@ -19,6 +19,7 @@ const {
   activitySeries,
   topBooks,
   goalsProgress,
+  readingPlanSummary,
   selectedTimelineYear,
   timelineYears,
   timelineMonthlyBySelectedYear,
@@ -300,6 +301,36 @@ onMounted(async () => {
         </p>
         <p class="mt-1 text-lg font-semibold text-(--app-text)">
           {{ summary.sessionsThisMonth }}
+        </p>
+      </article>
+    </div>
+
+    <div
+      v-if="!loading"
+      class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3"
+    >
+      <article class="bm-stat-card">
+        <p class="bm-stat-label">
+          {{ t('stats.plannedBooks') }}
+        </p>
+        <p class="mt-1 text-lg font-semibold text-(--app-text)">
+          {{ readingPlanSummary.plannedBooks }}
+        </p>
+      </article>
+      <article class="bm-stat-card">
+        <p class="bm-stat-label">
+          {{ t('stats.planOnTrackBooks') }}
+        </p>
+        <p class="mt-1 text-lg font-semibold text-(--app-success)">
+          {{ readingPlanSummary.onTrackBooks }}
+        </p>
+      </article>
+      <article class="bm-stat-card">
+        <p class="bm-stat-label">
+          {{ t('stats.planBehindBooks') }}
+        </p>
+        <p class="mt-1 text-lg font-semibold text-(--app-danger)">
+          {{ readingPlanSummary.behindBooks }}
         </p>
       </article>
     </div>

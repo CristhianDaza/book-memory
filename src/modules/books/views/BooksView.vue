@@ -5,8 +5,6 @@ import { Check, Heart, Plus, Search, Shuffle, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import type { BookSearchResult, LibraryBook } from '../../../types/books'
-import type { AppLocale } from '../../../types/i18n'
-import type { SearchLanguageMode } from '../../../types/books-store'
 import EmptyState from '../../../components/ui/EmptyState.vue'
 import PageHeader from '../../../components/ui/PageHeader.vue'
 import PromptModal from '../../../components/PromptModal.vue'
@@ -17,7 +15,7 @@ import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const router = useRouter()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
@@ -59,7 +57,6 @@ const {
   showOnlyFavorites,
   librarySearchQuery,
   librarySortMode,
-  searchLanguageMode,
   syncQueuedMessageKey,
 } = storeToRefs(booksStore)
 const { isAuthenticated } = storeToRefs(authStore)
@@ -93,14 +90,14 @@ const skeletonKeys = [1, 2, 3, 4, 5]
 const librarySkeletonKeys = [1, 2, 3, 4, 5, 6]
 
 async function onSearchSubmit() {
-  await booksStore.search(queryInput.value, locale.value as AppLocale)
+  await booksStore.search(queryInput.value)
   if (booksStore.errorKey) {
     notificationsStore.error(t(booksStore.errorKey))
   }
 }
 
 async function onLoadMoreSearch() {
-  await booksStore.loadMoreSearch(locale.value as AppLocale)
+  await booksStore.loadMoreSearch()
   if (booksStore.errorKey) {
     notificationsStore.error(t(booksStore.errorKey))
   }
@@ -198,10 +195,6 @@ function closeAddModal() {
 
 function onChangeAddMode(mode: 'search' | 'manual') {
   addMode.value = mode
-}
-
-function onChangeSearchLanguageMode(mode: SearchLanguageMode) {
-  booksStore.setSearchLanguageMode(mode)
 }
 
 function showQueuedFeedbackIfAny() {
@@ -690,32 +683,6 @@ onBeforeUnmount(() => {
             @submit.prevent="onSearchSubmit"
           >
             <label class="bm-label block">{{ t('books.searchLabel') }}</label>
-            <div class="inline-flex rounded-lg border border-(--app-border) bg-(--app-surface-muted) p-1">
-              <button
-                type="button"
-                class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
-                :class="
-                  searchLanguageMode === 'active'
-                    ? 'bg-(--app-primary) text-(--app-primary-contrast)'
-                    : 'text-(--app-text-muted) hover:bg-(--app-surface)'
-                "
-                @click="onChangeSearchLanguageMode('active')"
-              >
-                {{ t('books.languageScopeActive') }}
-              </button>
-              <button
-                type="button"
-                class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
-                :class="
-                  searchLanguageMode === 'all'
-                    ? 'bg-(--app-primary) text-(--app-primary-contrast)'
-                    : 'text-(--app-text-muted) hover:bg-(--app-surface)'
-                "
-                @click="onChangeSearchLanguageMode('all')"
-              >
-                {{ t('books.languageScopeAll') }}
-              </button>
-            </div>
             <div class="flex flex-col gap-2 sm:flex-row">
               <input
                 ref="searchInputRef"
@@ -848,14 +815,6 @@ onBeforeUnmount(() => {
                 @click="onClearSearch"
               >
                 {{ t('books.searchEmptyAction') }}
-              </button>
-              <button
-                v-if="searchLanguageMode === 'active'"
-                type="button"
-                class="bm-button bm-button-primary text-xs"
-                @click="onChangeSearchLanguageMode('all')"
-              >
-                {{ t('books.searchTryAllLanguages') }}
               </button>
             </div>
           </div>
