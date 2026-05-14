@@ -149,6 +149,8 @@ a {
 .bm-main {
   flex: 1 1 auto;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
   min-width: 0;
   padding: 1.5rem;
   scroll-behavior: smooth;
@@ -986,6 +988,18 @@ a {
 }
 
 @media (max-width: 900px) {
+  body {
+    overflow: hidden;
+  }
+
+  #app,
+  .bm-app,
+  .bm-shell {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
   .bm-shell {
     display: flex;
     flex: 1 1 auto;
@@ -1012,6 +1026,8 @@ a {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
     padding: 1rem 1rem calc(5.25rem + env(safe-area-inset-bottom));
   }
 
