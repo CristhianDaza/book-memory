@@ -30,6 +30,9 @@ const mocks = vi.hoisted(() => {
     updateSession: vi.fn(),
     deleteSession: vi.fn(),
     recalculateBookProgressFromSessions: vi.fn(),
+    ensureHistoryLoaded: vi.fn(),
+    getRecordsForBook: vi.fn(() => []),
+    syncBookDay: vi.fn(),
     updateBookMetadata: vi.fn(),
     removeFromLibrary: vi.fn(),
     toggleFavorite: vi.fn(),
@@ -79,6 +82,14 @@ vi.mock('../../../stores/sessions', () => ({
     getSessionsForBook: mocks.getSessionsForBook,
     updateSession: mocks.updateSession,
     deleteSession: mocks.deleteSession,
+  }),
+}))
+
+vi.mock('../../../stores/readingPlanHistory', () => ({
+  useReadingPlanHistoryStore: () => ({
+    ensureHistoryLoaded: mocks.ensureHistoryLoaded,
+    getRecordsForBook: mocks.getRecordsForBook,
+    syncBookDay: mocks.syncBookDay,
   }),
 }))
 

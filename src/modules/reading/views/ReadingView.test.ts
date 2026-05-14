@@ -15,6 +15,7 @@ vi.mock('pinia', async () => {
 
 const mocks = vi.hoisted(() => {
   const enqueueOfflineFinishReadingSession = vi.fn()
+  const enqueueOfflineReadingPlanDayUpdate = vi.fn()
   const createSession = vi.fn()
   const routerPush = vi.fn()
   const ensureLibraryLoaded = vi.fn()
@@ -103,6 +104,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     enqueueOfflineFinishReadingSession,
+    enqueueOfflineReadingPlanDayUpdate,
     createSession,
     routerPush,
     ensureLibraryLoaded,
@@ -123,11 +125,13 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('../../../services/offlineQueueService', () => ({
   enqueueOfflineFinishReadingSession: mocks.enqueueOfflineFinishReadingSession,
+  enqueueOfflineReadingPlanDayUpdate: mocks.enqueueOfflineReadingPlanDayUpdate,
 }))
 
 vi.mock('../../../stores/sessions', () => ({
   useSessionsStore: () => ({
     createSession: mocks.createSession,
+    allSessions: [],
   }),
 }))
 
@@ -136,7 +140,17 @@ vi.mock('../../../stores/auth', () => ({
 }))
 
 vi.mock('../../../stores/books', () => ({
-  useBooksStore: () => mocks.booksStore,
+  useBooksStore: () => ({
+    ...mocks.booksStore,
+    getLibraryBookById: (bookId: string) =>
+      mocks.booksStore.library.value.find((book: { id: string }) => book.id === bookId) ?? null,
+  }),
+}))
+
+vi.mock('../../../stores/readingPlanHistory', () => ({
+  useReadingPlanHistoryStore: () => ({
+    syncBookDay: vi.fn(),
+  }),
 }))
 
 vi.mock('../../../stores/reading', () => ({

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import type { LibraryBook } from '../types/books'
-import { createReadingPlanSnapshot, getReadingPlanInsights, getTodayReadingPlanQueue } from './readingPlan'
+import type { LibraryBook, ReadingPlanDayRecord } from '../types/books'
+import {
+  buildReadingPlanDayRecord,
+  createReadingPlanSnapshot,
+  getAtRiskBookIds,
+  getReadingPlanInsights,
+  getTodayReadingPlanQueue,
+  summarizeReadingPlanCompliance,
+} from './readingPlan'
 
 function book(overrides: Partial<LibraryBook> = {}): LibraryBook {
   return {
@@ -137,5 +144,85 @@ describe('reading plan utilities', () => {
     ], today)
 
     expect(entries.map((entry) => entry.book.id)).toEqual(['behind', 'ahead'])
+  })
+
+  it('builds a daily compliance record from sessions and target pages', () => {
+    const plannedBook = book({
+      readingPlan: {
+        targetDate: null,
+        dailyPagesGoal: 15,
+        reminderEnabled: false,
+        reminderTime: null,
+        reminderDays: null,
+        startDate: '2026-05-13',
+        startPage: 20,
+      },
+    })
+
+    const record = buildReadingPlanDayRecord(
+      plannedBook,
+      [
+        { id: 's1', bookId: 'book-1', startedAt: new Date('2026-05-13T09:00:00'), pagesRead: 10 },
+        { id: 's2', bookId: 'book-1', startedAt: new Date('2026-05-13T18:00:00'), pagesRead: 5 },
+      ],
+      today,
+    )
+
+    expect(record).toEqual({
+      bookId: 'book-1',
+      dayId: '2026-05-13',
+      targetPages: 15,
+      actualPages: 15,
+      metGoal: true,
+    })
+  })
+
+  it('summarizes adherence and detects at-risk books after two recent misses', () => {
+    const plannedBook = book({
+      id: 'risk-book',
+      readingPlan: {
+        targetDate: null,
+        dailyPagesGoal: 10,
+        reminderEnabled: false,
+        reminderTime: null,
+        reminderDays: null,
+        startDate: '2026-05-11',
+        startPage: 0,
+      },
+    })
+    const records: ReadingPlanDayRecord[] = [
+      {
+        id: 'risk-book_2026-05-12',
+        bookId: 'risk-book',
+        dayId: '2026-05-12',
+        targetPages: 10,
+        actualPages: 0,
+        metGoal: false,
+      },
+      {
+        id: 'risk-book_2026-05-13',
+        bookId: 'risk-book',
+        dayId: '2026-05-13',
+        targetPages: 10,
+        actualPages: 8,
+        metGoal: false,
+      },
+      {
+        id: 'book-1_2026-05-13',
+        bookId: 'book-1',
+        dayId: '2026-05-13',
+        targetPages: 10,
+        actualPages: 10,
+        metGoal: true,
+      },
+    ]
+
+    const summary = summarizeReadingPlanCompliance(records, [plannedBook, book()], today)
+
+    expect(summary.totalDays).toBe(3)
+    expect(summary.metDays).toBe(1)
+    expect(summary.adherencePercent).toBe(33)
+    expect(getAtRiskBookIds(records, [plannedBook])).toEqual(['risk-book'])
+    expect(summary.atRiskBookIds).toEqual(['risk-book'])
   })
 })

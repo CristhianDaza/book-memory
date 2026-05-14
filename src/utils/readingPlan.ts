@@ -1,4 +1,11 @@
-import type { LibraryBook, ReadingPlan, ReadingPlanInsights } from '../types/books'
+import type {
+  LibraryBook,
+  ReadingPlan,
+  ReadingPlanComplianceSummary,
+  ReadingPlanDayRecord,
+  ReadingPlanInsights,
+} from '../types/books'
+import type { ReadingSessionRecord } from '../types/reading'
 
 const DAY_MS = 86_400_000
 const PAGE_TOLERANCE = 5
@@ -29,6 +36,20 @@ function addDays(date: Date, days: number): string {
 
 export function todayKey(now = new Date()): string {
   return toDateKey(now)
+}
+
+export function dateKeyFromUnknown(value: unknown): string | null {
+  if (!value) return null
+  if (value instanceof Date) return toDateKey(value)
+  if (typeof value === 'object' && 'toDate' in value) {
+    const parsed = (value as { toDate?: () => Date }).toDate?.()
+    return parsed instanceof Date && !Number.isNaN(parsed.getTime()) ? toDateKey(parsed) : null
+  }
+  if (typeof value === 'string') {
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? null : toDateKey(parsed)
+  }
+  return null
 }
 
 export function normalizeReadingPlan(value: ReadingPlan | null | undefined): ReadingPlan | null {
@@ -158,6 +179,108 @@ export function getTodayReadingPlanQueue(books: LibraryBook[], now = new Date())
       if (statusDiff !== 0) return statusDiff
       return (a.insights.deltaPagesToday ?? 0) - (b.insights.deltaPagesToday ?? 0)
     })
+}
+
+export function getReadingPlanTargetPages(book: LibraryBook, now = new Date()): number | null {
+  const plan = normalizeReadingPlan(book.readingPlan)
+  if (!plan) return null
+  const insights = getReadingPlanInsights(book, now)
+  const candidates = [insights.requiredDailyPages, plan.dailyPagesGoal].filter(
+    (value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0,
+  )
+  if (candidates.length === 0) return null
+  return Math.max(...candidates)
+}
+
+export function getBookPagesReadForDay(
+  sessions: ReadingSessionRecord[],
+  bookId: string,
+  dayId: string,
+): number {
+  return sessions
+    .filter((session) => session.bookId === bookId && dateKeyFromUnknown(session.startedAt) === dayId)
+    .reduce((total, session) => total + Math.max(0, session.pagesRead ?? 0), 0)
+}
+
+export function buildReadingPlanDayRecord(
+  book: LibraryBook,
+  sessions: ReadingSessionRecord[],
+  date = new Date(),
+): Omit<ReadingPlanDayRecord, 'id' | 'createdAt' | 'updatedAt'> | null {
+  const dayId = todayKey(date)
+  const targetPages = getReadingPlanTargetPages(book, date)
+  if (targetPages === null) return null
+  const actualPages = getBookPagesReadForDay(sessions, book.id, dayId)
+  return {
+    bookId: book.id,
+    dayId,
+    targetPages,
+    actualPages,
+    metGoal: actualPages >= targetPages,
+  }
+}
+
+export function summarizeReadingPlanCompliance(
+  records: ReadingPlanDayRecord[],
+  books: LibraryBook[],
+  now = new Date(),
+): ReadingPlanComplianceSummary {
+  const relevantRecords = records.filter((record) => record.targetPages > 0)
+  const totalDays = relevantRecords.length
+  const metDays = relevantRecords.filter((record) => record.metGoal).length
+  const missedDays = Math.max(0, totalDays - metDays)
+  return {
+    totalDays,
+    metDays,
+    missedDays,
+    adherencePercent: totalDays > 0 ? Math.round((metDays / totalDays) * 100) : 0,
+    currentStreakDays: getComplianceStreakDays(relevantRecords, now),
+    atRiskBookIds: getAtRiskBookIds(relevantRecords, books),
+  }
+}
+
+export function getAtRiskBookIds(records: ReadingPlanDayRecord[], books: LibraryBook[]): string[] {
+  const activeBookIds = new Set(
+    books
+      .filter((book) => book.readingPlan && !['finished', 'abandoned'].includes(book.status))
+      .map((book) => book.id),
+  )
+  const byBook = new Map<string, ReadingPlanDayRecord[]>()
+  records.forEach((record) => {
+    if (!activeBookIds.has(record.bookId)) return
+    const current = byBook.get(record.bookId) ?? []
+    current.push(record)
+    byBook.set(record.bookId, current)
+  })
+  return Array.from(byBook.entries())
+    .filter(([, bookRecords]) =>
+      [...bookRecords]
+        .sort((a, b) => b.dayId.localeCompare(a.dayId))
+        .slice(0, 2)
+        .filter((record) => !record.metGoal).length >= 2,
+    )
+    .map(([bookId]) => bookId)
+}
+
+function getComplianceStreakDays(records: ReadingPlanDayRecord[], now: Date): number {
+  const byDay = new Map<string, ReadingPlanDayRecord[]>()
+  records.forEach((record) => {
+    const current = byDay.get(record.dayId) ?? []
+    current.push(record)
+    byDay.set(record.dayId, current)
+  })
+
+  let streak = 0
+  let cursor = new Date(now)
+  for (;;) {
+    const dayId = toDateKey(cursor)
+    const dayRecords = byDay.get(dayId)
+    if (!dayRecords || dayRecords.length === 0) break
+    if (!dayRecords.every((record) => record.metGoal)) break
+    streak += 1
+    cursor = new Date(cursor.getTime() - DAY_MS)
+  }
+  return streak
 }
 
 function emptyInsights(status: ReadingPlanInsights['status']): ReadingPlanInsights {

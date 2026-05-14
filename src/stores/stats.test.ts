@@ -8,6 +8,7 @@ import { fetchLibraryBooks } from '../services/libraryService'
 import { fetchUserSessions } from '../services/readingSessionService'
 import { fetchStatsGoals, saveStatsGoals } from '../services/statsGoalsService'
 import { fetchStreakDays, markStreakDay } from '../services/streakService'
+import { fetchReadingPlanDayRecords } from '../services/readingPlanHistoryService'
 
 vi.mock('../i18n', () => ({
   i18n: {
@@ -35,6 +36,12 @@ vi.mock('../services/streakService', () => ({
   markStreakDay: vi.fn(),
 }))
 
+vi.mock('../services/readingPlanHistoryService', () => ({
+  fetchReadingPlanDayRecords: vi.fn(),
+  toReadingPlanDayRecordId: (bookId: string, dayId: string) => `${bookId}_${dayId}`,
+  upsertReadingPlanDayRecord: vi.fn(),
+}))
+
 vi.mock('../services/offlineQueueService', () => ({
   enqueueOfflineStreakDay: vi.fn(),
 }))
@@ -43,6 +50,7 @@ describe('stats store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    vi.mocked(fetchReadingPlanDayRecords).mockResolvedValue([])
     vi.mocked(fetchStreakDays).mockResolvedValue([])
     vi.mocked(markStreakDay).mockImplementation(async (_uid, payload) => ({
       created: true,

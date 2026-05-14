@@ -22,6 +22,26 @@ export interface ReadingPlanInsights {
   inconsistentPlan: boolean
 }
 
+export interface ReadingPlanDayRecord {
+  id: string
+  bookId: string
+  dayId: string
+  targetPages: number
+  actualPages: number
+  metGoal: boolean
+  createdAt?: unknown
+  updatedAt?: unknown
+}
+
+export interface ReadingPlanComplianceSummary {
+  totalDays: number
+  metDays: number
+  missedDays: number
+  adherencePercent: number
+  currentStreakDays: number
+  atRiskBookIds: string[]
+}
+
 export interface BookSearchResult {
   id: string
   source: BookSource

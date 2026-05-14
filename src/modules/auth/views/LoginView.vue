@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { BookOpen, Globe2 } from 'lucide-vue-next'
+import { BookOpen, Chrome, Globe2, KeyRound, LogIn, Mail, Send, UserPlus } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ThemeToggle from '../../../components/ui/ThemeToggle.vue'
@@ -17,7 +17,7 @@ const { t, locale } = useI18n()
 const { errorMessage, isAuthenticated, initializing } = storeToRefs(authStore)
 const email = ref('')
 const password = ref('')
-const mode = ref<'login' | 'register'>('login')
+const mode = ref<'login' | 'register' | 'reset'>('login')
 const resetInfoMessage = ref<string | null>(null)
 const redirecting = ref(false)
 const floatingBooks = [
@@ -35,8 +35,16 @@ const floatingBooks = [
   { id: 12, imageSrc: '/auth-books/book-06.webp', color: 'var(--app-accent-strong)', left: '93%', delay: '-11.4s', duration: '11.6s', size: '3.3rem', rotate: '-7deg', z: 1, depth: '0.8' },
 ]
 const modeSubtitle = computed(() =>
-  mode.value === 'login' ? t('auth.subtitleLogin') : t('auth.subtitleRegister'),
+  mode.value === 'login'
+    ? t('auth.subtitleLogin')
+    : mode.value === 'reset'
+      ? t('auth.subtitleReset')
+      : t('auth.subtitleRegister'),
 )
+const formTitle = computed(() => {
+  if (mode.value === 'reset') return t('auth.resetPassword')
+  return mode.value === 'login' ? t('auth.signInWithEmail') : t('auth.createAccount')
+})
 const currentLocale = computed(() => locale.value as AppLocale)
 const nextLocale = computed<AppLocale>(() => (currentLocale.value === 'es' ? 'en' : 'es'))
 const nextLocaleLabel = computed(() =>
@@ -68,6 +76,11 @@ watch(
 )
 
 async function onEmailSubmit() {
+  if (mode.value === 'reset') {
+    await onResetPassword()
+    return
+  }
+
   if (mode.value === 'login') {
     await authStore.loginWithEmail(email.value, password.value)
   } else {
@@ -77,6 +90,12 @@ async function onEmailSubmit() {
 
 async function onGoogleSubmit() {
   await authStore.loginWithGoogle()
+}
+
+function onOpenResetPassword() {
+  mode.value = 'reset'
+  resetInfoMessage.value = null
+  authStore.clearError()
 }
 
 async function onResetPassword() {
@@ -96,13 +115,19 @@ function onToggleMode() {
   resetInfoMessage.value = null
   authStore.clearError()
 }
+
+function onBackToLogin() {
+  mode.value = 'login'
+  resetInfoMessage.value = null
+  authStore.clearError()
+}
 </script>
 
 <template>
-  <section class="mx-auto grid max-w-5xl items-center gap-6 py-4 md:grid-cols-[1.05fr_0.95fr]">
-    <div class="bm-page-header relative min-h-128 flex-col items-stretch! justify-between overflow-hidden p-5">
+  <section class="login-layout mx-auto grid max-w-5xl items-center gap-6 py-4 max-[640px]:gap-3 max-[640px]:py-0 md:grid-cols-[1.05fr_0.95fr]">
+    <div class="login-hero-panel bm-page-header relative min-h-0 flex-col items-stretch! justify-between overflow-hidden p-4 max-[640px]:gap-3 max-[640px]:p-3">
       <div
-        class="relative isolate min-h-70 w-full overflow-hidden rounded-2xl bg-(--app-surface-muted) max-[640px]:min-h-48"
+        class="login-books-stage relative isolate h-44 w-full overflow-hidden rounded-2xl bg-(--app-surface-muted) max-[640px]:h-[clamp(9rem,32dvh,12rem)] max-[640px]:rounded-xl"
         aria-hidden="true"
       >
         <span class="absolute inset-[1.5rem_16%_auto] h-px bg-[color-mix(in_srgb,var(--app-border)_76%,transparent)] opacity-[0.72]" />
@@ -128,8 +153,8 @@ function onToggleMode() {
         </span>
       </div>
 
-      <div class="relative z-1 pt-5">
-        <span class="bm-brand-mark mb-5">
+      <div class="login-hero-copy relative z-1 pt-4 max-[640px]:pt-1">
+        <span class="bm-brand-mark mb-3 max-[640px]:mb-2">
           <BookOpen
             :size="28"
             aria-hidden="true"
@@ -139,18 +164,18 @@ function onToggleMode() {
         <h1 class="bm-title mt-3 max-w-lg">
           {{ t('auth.title') }}
         </h1>
-        <p class="bm-muted mt-4 max-w-md text-base">
+        <p class="bm-muted mt-4 max-w-md text-base max-[640px]:mt-2 max-[640px]:text-sm">
           {{ modeSubtitle }}
         </p>
       </div>
     </div>
 
-    <div class="bm-panel">
+    <div class="login-form-panel bm-panel max-[640px]:p-3">
       <div class="flex items-center justify-between gap-2">
         <div>
           <p class="bm-eyebrow">{{ t('common.bookMemory') }}</p>
           <h2 class="bm-section-title mt-1">
-            {{ mode === 'login' ? t('auth.signInWithEmail') : t('auth.createAccount') }}
+            {{ formTitle }}
           </h2>
         </div>
       <div class="flex items-center gap-2">
@@ -171,7 +196,7 @@ function onToggleMode() {
     </div>
 
     <form
-      class="mt-6 space-y-3"
+      class="login-form mt-6 space-y-3 max-[640px]:mt-4 max-[640px]:space-y-2.5"
       @submit.prevent="onEmailSubmit"
     >
       <label class="block">
@@ -185,7 +210,10 @@ function onToggleMode() {
         >
       </label>
 
-      <label class="block">
+      <label
+        v-if="mode !== 'reset'"
+        class="block"
+      >
         <span class="bm-label mb-1 block">{{ t('auth.password') }}</span>
         <input
           v-model="password"
@@ -197,40 +225,73 @@ function onToggleMode() {
         >
       </label>
 
-      <div class="flex gap-2">
+      <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 max-[640px]:grid-cols-2">
         <button
           type="submit"
-          class="bm-button bm-button-primary flex-1"
+          class="login-action-button bm-button bm-button-primary flex-1 max-[640px]:w-full"
         >
-          {{ mode === 'login' ? t('auth.signInWithEmail') : t('auth.createAccount') }}
+          <component
+            :is="mode === 'login' ? Mail : mode === 'reset' ? Send : UserPlus"
+            :size="17"
+            aria-hidden="true"
+          />
+          <span class="max-[640px]:hidden">
+            {{ mode === 'login' ? t('auth.signInWithEmail') : mode === 'reset' ? t('auth.sendResetLink') : t('auth.createAccount') }}
+          </span>
+          <span class="hidden max-[640px]:inline">
+            {{ mode === 'login' ? t('auth.email') : mode === 'reset' ? t('auth.send') : t('auth.register') }}
+          </span>
         </button>
         <button
           type="button"
-          class="bm-button"
-          @click="onToggleMode"
+          class="login-action-button bm-button max-[640px]:w-full"
+          @click="mode === 'reset' ? onBackToLogin() : onToggleMode()"
         >
-          {{ mode === 'login' ? t('auth.register') : t('auth.login') }}
+          <component
+            :is="mode === 'login' ? UserPlus : LogIn"
+            :size="17"
+            aria-hidden="true"
+          />
+          <span>{{ mode === 'login' ? t('auth.register') : t('auth.login') }}</span>
         </button>
       </div>
     </form>
 
-    <button
-      type="button"
-      class="bm-button bm-button-success mt-3 w-full"
-      :disabled="initializing"
-      @click="onGoogleSubmit"
+    <div
+      v-if="mode !== 'reset'"
+      class="mt-3 grid grid-cols-2 gap-2"
     >
-      {{ t('auth.continueWithGoogle') }}
-    </button>
+      <button
+        type="button"
+        class="login-action-button bm-button bm-button-success w-full"
+        :class="{ 'col-span-2': mode !== 'login' }"
+        :disabled="initializing"
+        @click="onGoogleSubmit"
+      >
+        <Chrome
+          :size="17"
+          aria-hidden="true"
+        />
+        <span class="max-[640px]:hidden">{{ t('auth.continueWithGoogle') }}</span>
+        <span class="hidden max-[640px]:inline">Google</span>
+      </button>
 
-    <button
-      v-if="mode === 'login'"
-      type="button"
-      class="bm-button mt-3 w-full"
-      @click="onResetPassword"
-    >
-      {{ t('auth.forgotPassword') }}
-    </button>
+      <button
+        v-if="mode === 'login'"
+        type="button"
+        class="login-action-button bm-button w-full"
+        :aria-label="t('auth.forgotPassword')"
+        :title="t('auth.forgotPassword')"
+        @click="onOpenResetPassword"
+      >
+        <KeyRound
+          :size="17"
+          aria-hidden="true"
+        />
+        <span class="max-[640px]:hidden">{{ t('auth.forgotPassword') }}</span>
+        <span class="hidden max-[640px]:inline">{{ t('auth.recover') }}</span>
+      </button>
+    </div>
 
     <p
       v-if="errorMessage"
@@ -262,6 +323,10 @@ function onToggleMode() {
   animation-fill-mode: both;
 }
 
+.login-hero-copy :deep(.bm-title) {
+  font-size: clamp(2rem, 2.5vw, 2.35rem);
+}
+
 @keyframes book-rise {
   0% {
     transform: translate3d(0, 0, 0) rotate(var(--book-rotate)) scale(calc(var(--book-depth) * 0.88));
@@ -282,6 +347,144 @@ function onToggleMode() {
 @media (prefers-reduced-motion: reduce) {
   .login-floating-book {
     animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .login-layout {
+    align-content: start;
+    min-height: 0;
+  }
+
+  .login-hero-panel,
+  .login-form-panel {
+    min-width: 0;
+  }
+
+  .login-hero-panel {
+    min-height: 0;
+    gap: 0.55rem;
+    padding: 0.75rem;
+  }
+
+  .login-books-stage {
+    flex: 0 0 auto;
+    height: clamp(5.75rem, 18dvh, 7.5rem);
+  }
+
+  .login-hero-copy :deep(.bm-title) {
+    font-size: clamp(1.45rem, 8vw, 1.8rem);
+    line-height: 1.02;
+  }
+
+  .login-hero-copy :deep(.bm-eyebrow) {
+    font-size: 0.64rem;
+  }
+
+  .login-form-panel :deep(.bm-section-title) {
+    font-size: 0.98rem;
+  }
+
+  .login-action-button {
+    min-width: 0;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+
+  @keyframes book-rise {
+    0% {
+      transform: translate3d(0, 0, 0) rotate(var(--book-rotate)) scale(calc(var(--book-depth) * 0.78));
+      opacity: 0;
+    }
+
+    6%,
+    90% {
+      opacity: 1;
+    }
+
+    100% {
+      transform: translate3d(0, -9rem, 0) rotate(calc(var(--book-rotate) * -1)) scale(calc(var(--book-depth) * 0.9));
+      opacity: 0;
+    }
+  }
+}
+
+@media (max-width: 640px) and (max-height: 780px) {
+  .login-layout {
+    gap: 0.6rem;
+  }
+
+  .login-hero-panel {
+    gap: 0.4rem;
+    padding: 0.55rem;
+  }
+
+  .login-books-stage {
+    height: clamp(4.5rem, 14dvh, 5.75rem);
+  }
+
+  .login-hero-copy {
+    padding-top: 0;
+  }
+
+  .login-hero-copy .bm-brand-mark {
+    height: 1.8rem;
+    width: 1.8rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .login-hero-copy :deep(.bm-title) {
+    margin-top: 0.35rem;
+    font-size: clamp(1.25rem, 7vw, 1.55rem);
+  }
+
+  .login-hero-copy :deep(.bm-muted) {
+    margin-top: 0.3rem;
+    font-size: 0.78rem;
+    line-height: 1.25;
+  }
+
+  .login-form-panel {
+    padding: 0.7rem;
+  }
+
+  .login-form {
+    margin-top: 0.65rem;
+  }
+
+  .login-form :deep(.bm-input) {
+    padding-block: 0.48rem;
+  }
+
+  .login-form-panel :deep(.bm-button) {
+    min-height: 2rem;
+    padding-block: 0.36rem;
+  }
+
+  .login-form-panel > .bm-button {
+    margin-top: 0.45rem;
+  }
+
+  .login-form-panel :deep(.bm-eyebrow),
+  .login-form-panel :deep(.bm-label) {
+    font-size: 0.64rem;
+  }
+
+  @keyframes book-rise {
+    0% {
+      transform: translate3d(0, 0, 0) rotate(var(--book-rotate)) scale(calc(var(--book-depth) * 0.72));
+      opacity: 0;
+    }
+
+    6%,
+    90% {
+      opacity: 1;
+    }
+
+    100% {
+      transform: translate3d(0, -7rem, 0) rotate(calc(var(--book-rotate) * -1)) scale(calc(var(--book-depth) * 0.84));
+      opacity: 0;
+    }
   }
 }
 </style>

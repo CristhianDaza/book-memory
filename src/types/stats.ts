@@ -52,9 +52,10 @@ export interface StatsGoalsProgress {
 }
 
 export interface ReadingPlanStatsSummary {
-  plannedBooks: number
-  onTrackBooks: number
-  behindBooks: number
+  adherencePercent: number
+  metDays: number
+  totalDays: number
+  atRiskBooks: number
 }
 
 export interface BooksTimelineMonthPoint {

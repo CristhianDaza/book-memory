@@ -311,26 +311,26 @@ onMounted(async () => {
     >
       <article class="bm-stat-card">
         <p class="bm-stat-label">
-          {{ t('stats.plannedBooks') }}
+          {{ t('stats.planAdherence') }}
         </p>
         <p class="mt-1 text-lg font-semibold text-(--app-text)">
-          {{ readingPlanSummary.plannedBooks }}
+          {{ readingPlanSummary.adherencePercent }}%
         </p>
       </article>
       <article class="bm-stat-card">
         <p class="bm-stat-label">
-          {{ t('stats.planOnTrackBooks') }}
+          {{ t('stats.planMetDays') }}
         </p>
         <p class="mt-1 text-lg font-semibold text-(--app-success)">
-          {{ readingPlanSummary.onTrackBooks }}
+          {{ readingPlanSummary.metDays }} / {{ readingPlanSummary.totalDays }}
         </p>
       </article>
       <article class="bm-stat-card">
         <p class="bm-stat-label">
-          {{ t('stats.planBehindBooks') }}
+          {{ t('stats.planAtRiskBooks') }}
         </p>
         <p class="mt-1 text-lg font-semibold text-(--app-danger)">
-          {{ readingPlanSummary.behindBooks }}
+          {{ readingPlanSummary.atRiskBooks }}
         </p>
       </article>
     </div>

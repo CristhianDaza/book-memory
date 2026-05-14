@@ -5,14 +5,19 @@ import { BookOpen, Pause, Play, RotateCcw, TimerReset } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import PromptModal from '../../../components/PromptModal.vue'
-import { enqueueOfflineFinishReadingSession } from '../../../services/offlineQueueService'
+import {
+  enqueueOfflineFinishReadingSession,
+  enqueueOfflineReadingPlanDayUpdate,
+} from '../../../services/offlineQueueService'
 import { useBookCompletionOverlay } from '../../../composables/useBookCompletionOverlay'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
 import { useReadingStore } from '../../../stores/reading'
+import { useReadingPlanHistoryStore } from '../../../stores/readingPlanHistory'
 import { useSessionsStore } from '../../../stores/sessions'
 import { useStreakStore } from '../../../stores/streak'
+import { buildReadingPlanDayRecord } from '../../../utils/readingPlan'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -20,6 +25,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const booksStore = useBooksStore()
 const readingStore = useReadingStore()
+const readingPlanHistoryStore = useReadingPlanHistoryStore()
 const sessionsStore = useSessionsStore()
 const notificationsStore = useNotificationsStore()
 const streakStore = useStreakStore()
@@ -259,6 +265,32 @@ function finishSessionQueuedOffline(
     currentPage: end,
     status,
   })
+  if (effectiveSessionBook.value?.readingPlan) {
+    const dayRecord = buildReadingPlanDayRecord(
+      {
+        ...effectiveSessionBook.value,
+        currentPage: end,
+        status,
+      },
+      [
+        ...sessionsStore.allSessions,
+        {
+          id: `queued-${Date.now()}`,
+          bookId,
+          startedAt: new Date(startedAtIso),
+          endedAt: new Date(endedAtIso),
+          durationSeconds,
+          startPage: start,
+          endPage: end,
+          pagesRead: Math.max(0, end - start),
+        },
+      ],
+      new Date(endedAtIso),
+    )
+    if (dayRecord) {
+      enqueueOfflineReadingPlanDayUpdate(uid, dayRecord)
+    }
+  }
   void streakStore.markTodayActivity('reading_session_finished')
 
   readingStore.resetSession()
@@ -352,6 +384,10 @@ async function onConfirmFinish() {
       5000,
       'network_timeout',
     )
+    const updatedBook = booksStore.getLibraryBookById(bookId)
+    if (updatedBook) {
+      await readingPlanHistoryStore.syncBookDay(updatedBook, sessionsStore.allSessions, now)
+    }
 
     if (status === 'finished') {
       showBookCompletion({

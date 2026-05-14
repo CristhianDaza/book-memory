@@ -3,11 +3,12 @@ import { computed, ref, watch } from 'vue'
 import { Bell, CalendarDays, Pencil, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import StatusBadge from '../../../components/ui/StatusBadge.vue'
-import type { LibraryBook, ReadingPlan } from '../../../types/books'
+import type { LibraryBook, ReadingPlan, ReadingPlanDayRecord } from '../../../types/books'
 import { createReadingPlanSnapshot, getReadingPlanInsights } from '../../../utils/readingPlan'
 
 const props = defineProps<{
   book: LibraryBook
+  records: ReadingPlanDayRecord[]
   saving: boolean
 }>()
 
@@ -28,6 +29,8 @@ const weekDays = [0, 1, 2, 3, 4, 5, 6]
 const normalizedPlan = computed(() => props.book.readingPlan)
 const insights = computed(() => getReadingPlanInsights(props.book))
 const hasPlan = computed(() => normalizedPlan.value !== null)
+const recentRecords = computed(() => props.records.slice(0, 7))
+const recentMetCount = computed(() => recentRecords.value.filter((record) => record.metGoal).length)
 const statusTone = computed(() => {
   if (insights.value.status === 'behind') return 'danger'
   if (insights.value.status === 'ahead' || insights.value.status === 'on_track' || insights.value.status === 'completed') {
@@ -162,6 +165,33 @@ watch(() => props.book.readingPlan, syncFormFromPlan, { immediate: true })
               : t('books.planReminderOff')
           }}
         </p>
+        <div
+          v-if="recentRecords.length > 0"
+          class="rounded-lg border border-(--app-border) bg-(--app-surface) p-3"
+        >
+          <div class="mb-2 flex items-center justify-between gap-2">
+            <p class="bm-stat-label text-[10px]">{{ t('books.planLastSevenDays') }}</p>
+            <p class="text-xs font-semibold text-(--app-text)">
+              {{ recentMetCount }} / {{ recentRecords.length }}
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              v-for="record in recentRecords"
+              :key="record.id"
+              class="inline-flex min-w-9 flex-col items-center rounded-lg border px-2 py-1 text-[10px] font-bold"
+              :class="
+                record.metGoal
+                  ? 'border-(--app-success) bg-(--app-success-soft) text-(--app-success)'
+                  : 'border-(--app-danger) bg-(--app-danger-soft) text-(--app-danger)'
+              "
+              :title="`${record.dayId}: ${record.actualPages}/${record.targetPages}`"
+            >
+              <span>{{ record.dayId.slice(5) }}</span>
+              <span>{{ record.actualPages }}/{{ record.targetPages }}</span>
+            </span>
+          </div>
+        </div>
       </div>
 
       <div

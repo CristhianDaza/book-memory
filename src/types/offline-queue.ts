@@ -61,6 +61,14 @@ export interface QueuedStreakDayPayload {
   action: 'book_added' | 'status_changed' | 'book_finished' | 'reading_session_finished'
 }
 
+export interface QueuedReadingPlanDayPayload {
+  bookId: string
+  dayId: string
+  targetPages: number
+  actualPages: number
+  metGoal: boolean
+}
+
 export type OfflineQueueAction =
   | 'save_reading_state'
   | 'clear_reading_state'
@@ -69,6 +77,7 @@ export type OfflineQueueAction =
   | 'library_update_favorite'
   | 'library_update_metadata'
   | 'library_delete_book'
+  | 'reading_plan_day_update'
   | 'streak_mark_day'
 
 export interface OfflineQueueItem {
@@ -82,6 +91,7 @@ export interface OfflineQueueItem {
     | QueuedLibraryFavoritePayload
     | QueuedLibraryMetadataPayload
     | QueuedLibraryDeletePayload
+    | QueuedReadingPlanDayPayload
     | QueuedStreakDayPayload
     | null
   createdAt: string
@@ -98,6 +108,7 @@ export interface OfflineConflictItem {
     | QueuedLibraryFavoritePayload
     | QueuedLibraryMetadataPayload
     | QueuedLibraryDeletePayload
+    | QueuedReadingPlanDayPayload
     | QueuedStreakDayPayload
     | null
   createdAt: string

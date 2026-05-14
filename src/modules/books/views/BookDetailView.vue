@@ -13,6 +13,7 @@ import StarRating from '../../../components/ui/StarRating.vue'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
+import { useReadingPlanHistoryStore } from '../../../stores/readingPlanHistory'
 import { useSessionsStore } from '../../../stores/sessions'
 import type { ReadingPlan } from '../../../types/books'
 import type { ReadingSessionRecord } from '../../../types/reading'
@@ -23,6 +24,7 @@ const router = useRouter()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const sessionsStore = useSessionsStore()
+const readingPlanHistoryStore = useReadingPlanHistoryStore()
 const notificationsStore = useNotificationsStore()
 
 const { favoriteUpdatingIds, metadataUpdatingIds, deletingIds, syncQueuedMessageKey } = storeToRefs(booksStore)
@@ -31,6 +33,7 @@ const { showBookCompletion } = useBookCompletionOverlay()
 
 const bookId = computed(() => String(route.params.id ?? ''))
 const book = computed(() => booksStore.getLibraryBookById(bookId.value))
+const planHistoryRecords = computed(() => readingPlanHistoryStore.getRecordsForBook(bookId.value).slice(0, 7))
 const editMode = ref(false)
 const formTotalPages = ref<string>('')
 const formCurrentPage = ref<string>('0')
@@ -227,6 +230,7 @@ async function loadSessions() {
   loadingSessions.value = true
   try {
     sessions.value = await sessionsStore.ensureBookSessionsLoaded(book.value.id)
+    await readingPlanHistoryStore.ensureHistoryLoaded()
     visibleSessionsCount.value = 5
   } catch {
     sessions.value = []
@@ -347,6 +351,10 @@ async function onSaveReadingPlan(plan: ReadingPlan | null) {
     status: book.value.status,
     readingPlan: plan,
   })
+  const updatedBook = booksStore.getLibraryBookById(book.value.id)
+  if (updatedBook) {
+    await readingPlanHistoryStore.syncBookDay(updatedBook, sessions.value)
+  }
   if (booksStore.errorKey) {
     notificationsStore.error(t(booksStore.errorKey))
     return
@@ -494,6 +502,10 @@ async function onSaveEditSession(sessionId: string) {
     editingSessionId.value = null
     sessions.value = sessionsStore.getSessionsForBook(book.value.id)
     await booksStore.recalculateBookProgressFromSessions(book.value.id)
+    const updatedBook = booksStore.getLibraryBookById(book.value.id)
+    if (updatedBook) {
+      await readingPlanHistoryStore.syncBookDay(updatedBook, sessions.value)
+    }
     if (booksStore.errorKey) {
       notificationsStore.error(t(booksStore.errorKey))
       return
@@ -523,6 +535,10 @@ async function onConfirmDeleteSession() {
     await sessionsStore.deleteSession(removingSessionId.value)
     sessions.value = sessionsStore.getSessionsForBook(book.value.id)
     await booksStore.recalculateBookProgressFromSessions(book.value.id)
+    const updatedBook = booksStore.getLibraryBookById(book.value.id)
+    if (updatedBook) {
+      await readingPlanHistoryStore.syncBookDay(updatedBook, sessions.value)
+    }
     if (booksStore.errorKey) {
       notificationsStore.error(t(booksStore.errorKey))
       return
@@ -551,6 +567,7 @@ watch([formStatus, formTotalPages], syncFinishedProgressField)
 
 onMounted(async () => {
   await booksStore.ensureLibraryLoaded()
+  await readingPlanHistoryStore.ensureHistoryLoaded()
   if (bookId.value) booksStore.selectLibraryBook(bookId.value)
 })
 </script>
@@ -676,6 +693,7 @@ onMounted(async () => {
 
           <ReadingPlanCard
             :book="book"
+            :records="planHistoryRecords"
             :saving="isMetadataUpdating()"
             @save="onSaveReadingPlan"
             @clear="onSaveReadingPlan(null)"

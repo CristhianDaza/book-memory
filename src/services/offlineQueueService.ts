@@ -5,6 +5,7 @@ import {
   updateLibraryBookMetadata,
 } from './libraryService'
 import { createReadingSessionWithId, deleteSessionsForBook } from './readingSessionService'
+import { upsertReadingPlanDayRecord } from './readingPlanHistoryService'
 import { clearReadingState, saveReadingState } from './readingStateService'
 import { markStreakDay } from './streakService'
 import type {
@@ -15,6 +16,7 @@ import type {
   QueuedLibraryDeletePayload,
   QueuedLibraryFavoritePayload,
   QueuedLibraryMetadataPayload,
+  QueuedReadingPlanDayPayload,
   QueuedReadingStatePayload,
   QueuedStreakDayPayload,
 } from '../types/offline-queue'
@@ -177,6 +179,7 @@ function resolveConflictForItem(item: OfflineQueueItem) {
 
 function compactQueue(items: OfflineQueueItem[]): OfflineQueueItem[] {
   const lastIndexByUid = new Map<string, number>()
+  const lastReadingPlanDayIndexByKey = new Map<string, number>()
   const keepIndexes: number[] = []
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index]
@@ -185,10 +188,16 @@ function compactQueue(items: OfflineQueueItem[]): OfflineQueueItem[] {
       lastIndexByUid.set(item.uid, index)
       continue
     }
+    if (item.action === 'reading_plan_day_update' && item.payload) {
+      const payload = item.payload as QueuedReadingPlanDayPayload
+      lastReadingPlanDayIndexByKey.set(`${item.uid}:${payload.bookId}:${payload.dayId}`, index)
+      continue
+    }
     keepIndexes.push(index)
   }
   const stateIndexes = Array.from(lastIndexByUid.values())
-  return [...keepIndexes, ...stateIndexes]
+  const readingPlanDayIndexes = Array.from(lastReadingPlanDayIndexByKey.values())
+  return [...keepIndexes, ...stateIndexes, ...readingPlanDayIndexes]
     .sort((a, b) => a - b)
     .map((index) => items[index])
     .filter((item): item is OfflineQueueItem => Boolean(item))
@@ -353,6 +362,18 @@ export function enqueueOfflineStreakDay(uid: string, payload: QueuedStreakDayPay
   writeQueue(items)
 }
 
+export function enqueueOfflineReadingPlanDayUpdate(uid: string, payload: QueuedReadingPlanDayPayload) {
+  const items = readQueue()
+  items.push({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    action: 'reading_plan_day_update',
+    uid,
+    payload,
+    createdAt: new Date().toISOString(),
+  })
+  writeQueue(items)
+}
+
 export async function replayOfflineQueue() {
   if (replaying) return
   replaying = true
@@ -446,6 +467,10 @@ export async function replayOfflineQueue() {
         if (item.action === 'streak_mark_day' && item.payload) {
           const payload = item.payload as QueuedStreakDayPayload
           await markStreakDay(item.uid, payload)
+        }
+        if (item.action === 'reading_plan_day_update' && item.payload) {
+          const payload = item.payload as QueuedReadingPlanDayPayload
+          await upsertReadingPlanDayRecord(item.uid, payload)
         }
       } catch (error) {
         if (item.action === 'finish_reading_session') {

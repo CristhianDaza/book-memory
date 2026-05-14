@@ -39,6 +39,8 @@ const route = useRoute()
 const { t, locale } = useI18n()
 useReadingPlanReminders()
 
+const initialRouteReady = ref(false)
+const showInitialAppLoader = computed(() => !authStore.initialized || !initialRouteReady.value)
 const showChrome = computed(() => route.name !== 'login')
 const currentLocale = computed(() => locale.value as AppLocale)
 const nextLocale = computed<AppLocale>(() => (currentLocale.value === 'es' ? 'en' : 'es'))
@@ -250,6 +252,9 @@ function installGlobalErrorHandlers() {
 onMounted(() => {
   refreshSyncStatus()
   installGlobalErrorHandlers()
+  void router.isReady().finally(() => {
+    initialRouteReady.value = true
+  })
   if (typeof window !== 'undefined') {
     window.addEventListener('online', refreshSyncStatus)
     window.addEventListener('offline', refreshSyncStatus)
@@ -269,25 +274,28 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <div
+    v-if="showInitialAppLoader"
+    class="bm-initial-loader"
+    role="status"
+    aria-live="polite"
+  >
+    <div class="bm-initial-loader-mark" aria-hidden="true">
+      <BookOpen :size="30" />
+    </div>
+    <p class="bm-initial-loader-title">BookMemory</p>
+    <p class="bm-initial-loader-message">{{ t('common.initializingApp') }}</p>
+    <span class="bm-initial-loader-spinner" aria-hidden="true" />
+  </div>
   <AppShell
+    v-else
     :nav-items="navItems"
     :show-chrome="showChrome"
     :sync-visible="showSyncBanner"
     :sync-tone="syncTone"
     :sync-message="syncMessage"
-    :next-locale-label="nextLocaleLabel"
-    :exporting-data="exportingData"
-    :export-label="exportingData ? t('home.exportingData') : t('home.exportData')"
-    :export-aria-label="t('home.exportDataAria')"
-    :delete-label="t('home.deleteAccount')"
-    :sign-out-label="t('home.signOut')"
     :current-year="currentYear"
     :app-version="appVersion"
-    @change-locale="onChangeLocale(nextLocale)"
-    @export-data="onExportMyData"
-    @open-sync-center="onOpenSyncCenter"
-    @delete-account="onOpenDeleteAccountConfirm"
-    @sign-out="onOpenLogoutConfirm"
   >
     <AppNotifications />
     <section
@@ -359,6 +367,21 @@ onBeforeUnmount(() => {
         >
           <component
             :is="Component"
+            v-if="viewRoute.name === 'settings'"
+            :key="viewRoute.fullPath"
+            :next-locale-label="nextLocaleLabel"
+            :exporting-data="exportingData"
+            :export-label="exportingData ? t('home.exportingData') : t('home.exportData')"
+            :export-aria-label="t('home.exportDataAria')"
+            @change-locale="onChangeLocale(nextLocale)"
+            @export-data="onExportMyData"
+            @open-sync-center="onOpenSyncCenter"
+            @delete-account="onOpenDeleteAccountConfirm"
+            @sign-out="onOpenLogoutConfirm"
+          />
+          <component
+            :is="Component"
+            v-else
             :key="viewRoute.fullPath"
           />
         </Transition>
