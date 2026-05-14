@@ -39,6 +39,7 @@ const route = useRoute()
 const { t, locale } = useI18n()
 useReadingPlanReminders()
 
+const showInitialAuthLoader = computed(() => !authStore.initialized)
 const showChrome = computed(() => route.name !== 'login')
 const currentLocale = computed(() => locale.value as AppLocale)
 const nextLocale = computed<AppLocale>(() => (currentLocale.value === 'es' ? 'en' : 'es'))
@@ -269,7 +270,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <div
+    v-if="showInitialAuthLoader"
+    class="bm-initial-loader"
+    role="status"
+    aria-live="polite"
+  >
+    <div class="bm-initial-loader-mark" aria-hidden="true">
+      <BookOpen :size="30" />
+    </div>
+    <p class="bm-initial-loader-title">BookMemory</p>
+    <p class="bm-initial-loader-message">{{ t('common.initializingApp') }}</p>
+    <span class="bm-initial-loader-spinner" aria-hidden="true" />
+  </div>
   <AppShell
+    v-else
     :nav-items="navItems"
     :show-chrome="showChrome"
     :sync-visible="showSyncBanner"

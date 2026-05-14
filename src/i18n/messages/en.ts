@@ -9,6 +9,7 @@ export const en = {
     spanishFull: 'Spanish',
     englishFull: 'English',
     switchLanguage: 'Switch to {language}',
+    initializingApp: 'Preparing your library...',
     syncOffline: 'You are offline. Pending operations: {count}. They will sync when you are back online.',
     syncPending: 'Pending sync: {count} operations waiting to be sent.',
     syncOk: 'Sync is up to date.',
