@@ -39,7 +39,8 @@ const route = useRoute()
 const { t, locale } = useI18n()
 useReadingPlanReminders()
 
-const showInitialAuthLoader = computed(() => !authStore.initialized)
+const initialRouteReady = ref(false)
+const showInitialAppLoader = computed(() => !authStore.initialized || !initialRouteReady.value)
 const showChrome = computed(() => route.name !== 'login')
 const currentLocale = computed(() => locale.value as AppLocale)
 const nextLocale = computed<AppLocale>(() => (currentLocale.value === 'es' ? 'en' : 'es'))
@@ -251,6 +252,9 @@ function installGlobalErrorHandlers() {
 onMounted(() => {
   refreshSyncStatus()
   installGlobalErrorHandlers()
+  void router.isReady().finally(() => {
+    initialRouteReady.value = true
+  })
   if (typeof window !== 'undefined') {
     window.addEventListener('online', refreshSyncStatus)
     window.addEventListener('offline', refreshSyncStatus)
@@ -271,7 +275,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    v-if="showInitialAuthLoader"
+    v-if="showInitialAppLoader"
     class="bm-initial-loader"
     role="status"
     aria-live="polite"

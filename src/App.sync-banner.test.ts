@@ -12,6 +12,7 @@ const routeState = vi.hoisted(() => ({
 
 const mockRouter = vi.hoisted(() => ({
   push: vi.fn(),
+  isReady: vi.fn(() => Promise.resolve()),
 }))
 
 const mockAuthStore = vi.hoisted(() => ({
@@ -78,6 +79,7 @@ describe('App sync banner', () => {
     routeState.name = 'home'
     routeState.fullPath = '/'
     mockAuthStore.initialized = true
+    mockRouter.isReady.mockResolvedValue(undefined)
     vi.stubGlobal('navigator', { onLine: true })
     mockOfflineQueueService.getOfflineQueueCount.mockReturnValue(0)
     mockOfflineQueueService.getOfflineConflictCount.mockReturnValue(0)
@@ -145,6 +147,40 @@ describe('App sync banner', () => {
     expect(wrapper.text()).toContain('Preparando tu biblioteca...')
     expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Sin conexión. Operaciones pendientes: 2.')
+  })
+
+  it('keeps the app shell hidden until the initial route is ready', async () => {
+    let resolveInitialRoute!: () => void
+    mockRouter.isReady.mockReturnValue(new Promise<void>((resolve) => {
+      resolveInitialRoute = resolve
+    }))
+
+    const wrapper = shallowMount(App, {
+      global: {
+        plugins: [makeI18n()],
+        stubs: {
+          AppNotifications: true,
+          AppShell: {
+            template: '<div data-test="app-shell"><slot /></div>',
+          },
+          ConfirmModal: true,
+          RouterLink: {
+            template: '<a><slot /></a>',
+          },
+          RouterView: true,
+        },
+      },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Preparando tu biblioteca...')
+    expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(false)
+
+    resolveInitialRoute()
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Preparando tu biblioteca...')
   })
 
   it('renders the app shell after initial auth is initialized', async () => {
