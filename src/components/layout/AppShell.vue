@@ -185,7 +185,7 @@ watch(
     <main
       v-else
       ref="mainScrollTarget"
-      class="bm-main bm-main-auth"
+      class="bm-main bm-main-auth bm-auth-layout"
     >
       <div class="bm-content">
         <slot />

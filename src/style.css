@@ -255,6 +255,13 @@ a {
 
 .bm-main-auth .bm-content {
   flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.bm-auth-layout {
+  min-height: 0;
+  padding-block: 1rem;
 }
 
 .bm-content {
@@ -1193,6 +1200,11 @@ a {
     padding: 1rem 1rem calc(5.25rem + env(safe-area-inset-bottom));
   }
 
+  .bm-auth-layout {
+    align-items: flex-start;
+    padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem max(0.75rem, env(safe-area-inset-bottom));
+  }
+
   .bm-footer-with-bottom-nav {
     display: none;
   }
@@ -1208,6 +1220,15 @@ a {
 }
 
 @media (max-width: 639px) {
+  .bm-auth-layout + .bm-footer {
+    font-size: 0.72rem;
+  }
+
+  .bm-auth-layout + .bm-footer > div {
+    gap: 0.25rem;
+    padding-block: 0.65rem;
+  }
+
   .bm-home-stats {
     gap: 0.5rem;
   }
