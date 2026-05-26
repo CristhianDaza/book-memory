@@ -1,6 +1,7 @@
 export type BookSource = 'openlibrary' | 'google' | 'manual'
 export type LibraryBookStatus = 'reading' | 'finished' | 'wishlist' | 'paused' | 'abandoned'
 export type ReadingPlanStatus = 'no_plan' | 'on_track' | 'behind' | 'ahead' | 'completed' | 'inactive'
+export type BookRating = 0 | 0.5 | 1 | 1.5 | 2 | 2.5 | 3 | 3.5 | 4 | 4.5 | 5
 
 export interface ReadingPlan {
   targetDate: string | null
@@ -64,7 +65,7 @@ export interface LibraryBook {
   currentPage: number
   status: LibraryBookStatus
   completedAt?: unknown
-  rating: 1 | 2 | 3 | 4 | 5 | null
+  rating: BookRating | null
   note: string | null
   readingPlan: ReadingPlan | null
   abandonedReason?: string | null

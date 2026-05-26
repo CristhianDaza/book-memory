@@ -327,7 +327,7 @@ export const es = {
     noteLabel: 'Nota',
     notePlaceholder: 'Nota opcional sobre este libro...',
     ratingModalTitle: 'Califica este libro finalizado',
-    ratingModalSubtitle: 'Elige de 1 a 5 estrellas y opcionalmente agrega una nota.',
+    ratingModalSubtitle: 'Elige de 0 a 5 estrellas y opcionalmente agrega una nota.',
     ratingRequired: 'Selecciona una calificación antes de guardar.',
     saveRatingAction: 'Guardar calificación',
     saveMetadata: 'Guardar cambios',

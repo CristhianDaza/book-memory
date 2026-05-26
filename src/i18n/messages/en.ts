@@ -327,7 +327,7 @@ export const en = {
     noteLabel: 'Note',
     notePlaceholder: 'Optional note about this book...',
     ratingModalTitle: 'Rate this completed book',
-    ratingModalSubtitle: 'Choose 1 to 5 stars and optionally add a note.',
+    ratingModalSubtitle: 'Choose 0 to 5 stars and optionally add a note.',
     ratingRequired: 'Please select a rating before saving.',
     saveRatingAction: 'Save rating',
     saveMetadata: 'Save changes',

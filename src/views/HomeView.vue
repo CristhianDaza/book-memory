@@ -492,7 +492,7 @@ onUnmounted(() => {
             <p class="bm-muted line-clamp-1 text-[11px]">
               {{ t('books.by') }} {{ item.authors.join(', ') || t('books.unknownAuthor') }}
             </p>
-            <div v-if="item.rating">
+            <div v-if="item.rating !== null">
               <StarRating
                 :model-value="item.rating"
                 readonly

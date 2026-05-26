@@ -1,4 +1,4 @@
-import type { ReadingPlan } from './books'
+import type { BookRating, ReadingPlan } from './books'
 
 export interface QueuedReadingStatePayload {
   selectedBookId: string
@@ -46,7 +46,7 @@ export interface QueuedLibraryMetadataPayload {
   currentPage: number
   status: 'reading' | 'finished' | 'wishlist' | 'paused' | 'abandoned'
   completedAt?: string | null
-  rating?: 1 | 2 | 3 | 4 | 5 | null
+  rating?: BookRating | null
   note?: string | null
   readingPlan?: ReadingPlan | null
   abandonedReason?: string | null

@@ -2,6 +2,7 @@
   "name": "book-memory",
   "private": true,
   "version": "1.4.5",
+  "packageManager": "pnpm@11.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +13,7 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest",
     "test:run": "vitest run",
-    "smoke:mvp": "npm run lint && npm run typecheck && npm run test:run && npm run build"
+    "smoke:mvp": "pnpm run lint && pnpm run typecheck && pnpm run test:run && pnpm run build"
   },
   "dependencies": {
     "dayjs": "^1.11.20",
