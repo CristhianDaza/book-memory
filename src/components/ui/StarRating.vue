@@ -27,6 +27,7 @@ function normalizeRating(value: number): BookRating {
 }
 
 function getValueFromPointer(value: number, event?: MouseEvent): BookRating {
+  if (!event) return normalizeRating(value)
   const target = event?.currentTarget as HTMLElement | null | undefined
   const rect = target?.getBoundingClientRect()
   if (!rect || rect.width <= 0) return normalizeRating(value)
