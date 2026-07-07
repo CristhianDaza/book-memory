@@ -124,10 +124,26 @@ function mountView() {
     global: {
       plugins: [makeI18n()],
       stubs: {
-        ConfirmModal: true,
+        ConfirmModal: {
+          name: 'ConfirmModal',
+          props: ['open', 'title', 'message', 'confirmLabel', 'cancelLabel', 'loading', 'danger'],
+          emits: ['cancel', 'confirm'],
+          template: `
+            <div v-if="open" class="confirm-modal-stub">
+              <p>{{ title }}</p>
+              <p>{{ message }}</p>
+              <button type="button" @click="$emit('cancel')">{{ cancelLabel }}</button>
+              <button type="button" @click="$emit('confirm')">{{ confirmLabel }}</button>
+            </div>
+          `,
+        },
         IconButton: {
           props: ['label'],
           template: '<button type="button" @click="$emit(\'click\')">{{ label }}</button>',
+        },
+        ReadingPlanCard: {
+          name: 'ReadingPlanCard',
+          template: '<div data-test="reading-plan-card">Reading plan card</div>',
         },
         StatusBadge: true,
         StarRating: {
@@ -335,6 +351,108 @@ describe('BookDetailView reading pace', () => {
     await editButton!.trigger('click')
 
     expect(wrapper.find('input[type="date"]').exists()).toBe(true)
+  })
+
+  it('hides reading plan and shows reread action for finished books', async () => {
+    mocks.activeBook.value = {
+      ...mocks.activeBook.value!,
+      status: 'finished',
+      currentPage: 300,
+      completedAt: '2026-01-01T12:00:00.000Z',
+      rating: 4,
+      readingPlan: {
+        targetDate: null,
+        dailyPagesGoal: 20,
+        reminderEnabled: false,
+        reminderTime: null,
+        reminderDays: null,
+        startDate: '2026-01-01',
+        startPage: 0,
+      },
+    }
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="reading-plan-card"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Read again')
+  })
+
+  it('opens reread confirmation and does nothing when cancelled', async () => {
+    mocks.activeBook.value = {
+      ...mocks.activeBook.value!,
+      status: 'finished',
+      currentPage: 300,
+      completedAt: '2026-01-01T12:00:00.000Z',
+      rating: 4,
+    }
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const rereadButton = wrapper.findAll('button').find((button) => button.text().includes('Read again'))
+    expect(rereadButton).toBeDefined()
+    await rereadButton!.trigger('click')
+
+    expect(wrapper.text()).toContain('Read this book again?')
+
+    const cancelButton = wrapper.findAll('button').find((button) => button.text().includes('Cancel'))
+    expect(cancelButton).toBeDefined()
+    await cancelButton!.trigger('click')
+
+    expect(mocks.updateBookMetadata).not.toHaveBeenCalled()
+    expect(mocks.routerPush).not.toHaveBeenCalledWith({ name: 'reading', query: { bookId: 'book-1' } })
+  })
+
+  it('moves finished book back to reading and navigates when reread is confirmed', async () => {
+    mocks.activeBook.value = {
+      ...mocks.activeBook.value!,
+      status: 'finished',
+      currentPage: 300,
+      completedAt: '2026-01-01T12:00:00.000Z',
+      rating: 4.5,
+      note: 'great',
+      readingPlan: {
+        targetDate: null,
+        dailyPagesGoal: 20,
+        reminderEnabled: false,
+        reminderTime: null,
+        reminderDays: null,
+        startDate: '2026-01-01',
+        startPage: 0,
+      },
+    }
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const rereadButton = wrapper.findAll('button').find((button) => button.text().includes('Read again'))
+    expect(rereadButton).toBeDefined()
+    await rereadButton!.trigger('click')
+
+    const confirmButton = wrapper.findAll('.confirm-modal-stub button').find((button) => button.text().includes('Read again'))
+    expect(confirmButton).toBeDefined()
+    await confirmButton!.trigger('click')
+
+    expect(mocks.updateBookMetadata).toHaveBeenCalledWith('book-1', {
+      coverUrl: null,
+      totalPages: 300,
+      currentPage: 0,
+      status: 'reading',
+      rating: 4.5,
+      note: 'great',
+      readingPlan: {
+        targetDate: null,
+        dailyPagesGoal: 20,
+        reminderEnabled: false,
+        reminderTime: null,
+        reminderDays: null,
+        startDate: '2026-01-01',
+        startPage: 0,
+      },
+      abandonedReason: null,
+    })
+    expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'reading', query: { bookId: 'book-1' } })
   })
 
   it('blocks completion modal save when completed date is in the future', async () => {
