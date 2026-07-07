@@ -130,7 +130,16 @@ function mountView() {
           template: '<button type="button" @click="$emit(\'click\')">{{ label }}</button>',
         },
         StatusBadge: true,
-        StarRating: true,
+        StarRating: {
+          name: 'StarRating',
+          props: {
+            modelValue: Number,
+            readonly: Boolean,
+            size: Number,
+          },
+          emits: ['update:modelValue'],
+          template: '<span class="star-rating-stub">{{ modelValue }}</span>',
+        },
         RouterLink: true,
       },
     },
@@ -388,6 +397,88 @@ describe('BookDetailView reading pace', () => {
         status: 'finished',
         rating: expect.any(Number),
         completedAt: expect.any(Date),
+      }),
+    )
+  })
+
+  it('allows saving 0 stars when completing a book', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
+    expect(editButton).toBeDefined()
+    await editButton!.trigger('click')
+    await wrapper.find('select').setValue('finished')
+    await wrapper.findAll('button').find((button) => button.text().includes('Save changes'))!.trigger('click')
+
+    const ratingInput = wrapper.findAllComponents({ name: 'StarRating' }).find((item) => !item.props('readonly'))
+    expect(ratingInput).toBeDefined()
+    ratingInput!.vm.$emit('update:modelValue', 0)
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text().includes('Save rating'))!.trigger('click')
+
+    expect(mocks.notificationsError).not.toHaveBeenCalled()
+    expect(mocks.updateBookMetadata).toHaveBeenCalledWith(
+      'book-1',
+      expect.objectContaining({
+        status: 'finished',
+        rating: 0,
+      }),
+    )
+  })
+
+  it('saves half-star rating when completing a book', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
+    expect(editButton).toBeDefined()
+    await editButton!.trigger('click')
+    await wrapper.find('select').setValue('finished')
+    await wrapper.findAll('button').find((button) => button.text().includes('Save changes'))!.trigger('click')
+
+    const ratingInput = wrapper.findAllComponents({ name: 'StarRating' }).find((item) => !item.props('readonly'))
+    expect(ratingInput).toBeDefined()
+    ratingInput!.vm.$emit('update:modelValue', 4.5)
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text().includes('Save rating'))!.trigger('click')
+
+    expect(mocks.updateBookMetadata).toHaveBeenCalledWith(
+      'book-1',
+      expect.objectContaining({
+        status: 'finished',
+        rating: 4.5,
+      }),
+    )
+  })
+
+  it('saves half-star rating when editing an already finished book', async () => {
+    mocks.activeBook.value = {
+      ...mocks.activeBook.value!,
+      status: 'finished',
+      currentPage: 300,
+      completedAt: '2026-01-01T12:00:00.000Z',
+      rating: 4,
+    }
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
+    expect(editButton).toBeDefined()
+    await editButton!.trigger('click')
+
+    const ratingInput = wrapper.findAllComponents({ name: 'StarRating' }).find((item) => !item.props('readonly'))
+    expect(ratingInput).toBeDefined()
+    ratingInput!.vm.$emit('update:modelValue', 4.5)
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text().includes('Save changes'))!.trigger('click')
+
+    expect(mocks.updateBookMetadata).toHaveBeenCalledWith(
+      'book-1',
+      expect.objectContaining({
+        status: 'finished',
+        rating: 4.5,
       }),
     )
   })

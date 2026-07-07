@@ -572,7 +572,7 @@ onBeforeUnmount(() => {
                 {{ t('books.by') }} {{ item.authors.join(', ') || t('books.unknownAuthor') }}
               </p>
               <div
-                v-if="item.rating"
+                v-if="item.rating !== null"
                 class="mt-1"
               >
                 <StarRating

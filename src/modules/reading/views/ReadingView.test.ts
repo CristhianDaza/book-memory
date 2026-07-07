@@ -114,6 +114,7 @@ const mocks = vi.hoisted(() => {
     resetSession,
     notificationsSuccess,
     notificationsError,
+    notificationsInfo,
     markTodayActivity,
     routeQuery,
     authStore,
@@ -191,6 +192,38 @@ describe('ReadingView', () => {
     mocks.routerPush.mockResolvedValue(undefined)
     mocks.markTodayActivity.mockResolvedValue(false)
     mocks.routeQuery.bookId = ''
+    mocks.booksStore.library.value = [
+      {
+        id: 'book-1',
+        source: 'manual',
+        externalId: 'book-1',
+        title: 'Deep Work',
+        authors: ['Cal Newport'],
+        coverUrl: null,
+        currentPage: 12,
+        totalPages: 300,
+        favorite: false,
+        status: 'reading',
+        rating: null,
+        note: null,
+        readingPlan: null,
+      },
+      {
+        id: 'book-2',
+        source: 'manual',
+        externalId: 'book-2',
+        title: 'Cuentos completos',
+        authors: ['Jorge Luis Borges'],
+        coverUrl: 'https://example.com/cuentos.jpg',
+        currentPage: 10,
+        totalPages: 400,
+        favorite: false,
+        status: 'reading',
+        rating: null,
+        note: null,
+        readingPlan: null,
+      },
+    ]
     mocks.readingStore.selectedBookId.value = 'book-1'
     mocks.readingStore.sessionBookId.value = 'book-1'
     mocks.readingStore.startPage.value = 10
@@ -263,6 +296,104 @@ describe('ReadingView', () => {
     expect(mocks.markTodayActivity).toHaveBeenCalledWith('reading_session_finished')
     expect(mocks.notificationsSuccess).toHaveBeenCalledWith('Offline: session queued for sync.')
     expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'book-detail', params: { id: 'book-1' } })
+  })
+
+  it('shows the current page in the start page input when it is zero', async () => {
+    mocks.readingStore.hasActiveSession.value = false
+    mocks.readingStore.running.value = false
+    mocks.readingStore.sessionBookId.value = null
+    mocks.readingStore.sessionStartedAt.value = null
+    mocks.readingStore.startPage.value = 0
+    mocks.booksStore.library.value[0] = {
+      ...mocks.booksStore.library.value[0],
+      currentPage: 0,
+    }
+
+    const wrapper = mount(ReadingView, {
+      global: {
+        plugins: [makeI18n()],
+      },
+    })
+    await flushPromises()
+
+    const startPageInput = wrapper.find('input[type="number"]')
+    expect((startPageInput.element as HTMLInputElement).value).toBe('0')
+  })
+
+  it('opens finish input empty with the current page as placeholder', async () => {
+    const wrapper = mount(ReadingView, {
+      global: {
+        plugins: [makeI18n()],
+      },
+    })
+    await flushPromises()
+
+    const finishButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Finish')
+    if (!finishButton) {
+      throw new Error('missing finish button')
+    }
+    await finishButton.trigger('click')
+    await flushPromises()
+
+    const numberInputs = wrapper.findAll('input[type="number"]')
+    const endPageInput = numberInputs[numberInputs.length - 1]
+    if (!endPageInput) {
+      throw new Error('missing end page input')
+    }
+
+    expect((endPageInput.element as HTMLInputElement).value).toBe('')
+    expect(endPageInput.attributes('placeholder')).toBe('12')
+  })
+
+  it('allows finishing below the current start page and shows a warning', async () => {
+    const wrapper = mount(ReadingView, {
+      global: {
+        plugins: [makeI18n()],
+      },
+    })
+    await flushPromises()
+
+    const finishButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Finish')
+    if (!finishButton) {
+      throw new Error('missing finish button')
+    }
+    await finishButton.trigger('click')
+    await flushPromises()
+
+    const numberInputs = wrapper.findAll('input[type="number"]')
+    const endPageInput = numberInputs[numberInputs.length - 1]
+    if (!endPageInput) {
+      throw new Error('missing end page input')
+    }
+    await endPageInput.setValue('8')
+
+    expect(wrapper.text()).toContain('End page is lower than the current page (12). It will be saved anyway.')
+
+    const confirmButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Confirm finish')
+    if (!confirmButton) {
+      throw new Error('missing confirm finish button')
+    }
+    await confirmButton.trigger('click')
+    await flushPromises()
+
+    expect(mocks.notificationsInfo).toHaveBeenCalledWith(
+      'End page is lower than the current page (12). It will be saved anyway.',
+    )
+    expect(mocks.enqueueOfflineFinishReadingSession).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        startPage: 10,
+        endPage: 8,
+        pagesRead: 0,
+        currentPage: 8,
+      }),
+    )
   })
 
   it('keeps the visible selection tied to the active session book', async () => {

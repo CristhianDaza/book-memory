@@ -40,7 +40,7 @@ const { showBookCompletion } = useBookCompletionOverlay()
 const saving = ref(false)
 const localError = ref<string | null>(null)
 const showFinishModal = ref(false)
-const finishEndPage = ref<string>('0')
+const finishEndPage = ref<string>('')
 const bookSelectionLockedByRoute = ref(false)
 
 const routeBookId = computed(() => (typeof route.query.bookId === 'string' ? route.query.bookId : ''))
@@ -71,12 +71,24 @@ const formattedElapsed = computed(() => {
 
 const startPageInput = computed(() => {
   if (!selectedBook.value) return ''
-  return startPage.value > 0 ? String(startPage.value) : ''
+  return String(startPage.value)
+})
+
+const suggestedFinishEndPage = computed(() => {
+  if (!effectiveSessionBook.value) return startPage.value
+  return Math.max(startPage.value, effectiveSessionBook.value.currentPage)
 })
 
 const finishEndPageNumber = computed(() => {
+  if (String(finishEndPage.value).trim() === '') return suggestedFinishEndPage.value
   const parsed = Number(finishEndPage.value)
   return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
+})
+
+const finishEndPageWarning = computed(() => {
+  if (!showFinishModal.value || String(finishEndPage.value).trim() === '') return ''
+  if (finishEndPageNumber.value >= suggestedFinishEndPage.value) return ''
+  return t('reading.warningEndBeforeCurrent', { page: suggestedFinishEndPage.value })
 })
 
 const remainingPages = computed(() => {
@@ -182,7 +194,7 @@ function onOpenFinish() {
     notificationsStore.error(localError.value)
     return
   }
-  finishEndPage.value = String(Math.max(startPage.value, effectiveSessionBook.value.currentPage))
+  finishEndPage.value = ''
   showFinishModal.value = true
 }
 
@@ -328,10 +340,8 @@ async function onConfirmFinish() {
 
   const start = Math.max(0, Math.floor(startPage.value))
   const end = finishEndPageNumber.value
-  if (end < start) {
-    localError.value = t('reading.errorEndBeforeStart')
-    notificationsStore.error(localError.value)
-    return
+  if (end < start && finishEndPageWarning.value) {
+    notificationsStore.info(finishEndPageWarning.value)
   }
   if (!sessionStartedAt.value) {
     localError.value = t('reading.errorNoActive')
@@ -605,6 +615,7 @@ onMounted(async () => {
       :cancel-label="t('reading.cancelFinish')"
       :value="finishEndPage"
       :input-label="t('reading.endPage')"
+      :input-placeholder="String(suggestedFinishEndPage)"
       input-type="number"
       input-min="0"
       :loading="saving"
@@ -621,6 +632,12 @@ onMounted(async () => {
           <p class="mt-1">
             {{ t('reading.remainingPercent') }}:
             {{ remainingPercent === null ? t('reading.unknownRemaining') : `${remainingPercent}%` }}
+          </p>
+          <p
+            v-if="finishEndPageWarning"
+            class="mt-2 text-xs font-semibold text-(--app-warning)"
+          >
+            {{ finishEndPageWarning }}
           </p>
         </div>
       </template>

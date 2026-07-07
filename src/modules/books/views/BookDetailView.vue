@@ -15,7 +15,7 @@ import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
 import { useReadingPlanHistoryStore } from '../../../stores/readingPlanHistory'
 import { useSessionsStore } from '../../../stores/sessions'
-import type { ReadingPlan } from '../../../types/books'
+import type { BookRating, ReadingPlan } from '../../../types/books'
 import type { ReadingSessionRecord } from '../../../types/reading'
 
 const { t } = useI18n()
@@ -40,7 +40,7 @@ const formCurrentPage = ref<string>('0')
 const formCoverUrl = ref<string>('')
 const formStatus = ref<'reading' | 'finished' | 'wishlist' | 'paused' | 'abandoned'>('reading')
 const formCompletedAt = ref<string>('')
-const formRating = ref<1 | 2 | 3 | 4 | 5 | null>(null)
+const formRating = ref<BookRating | null>(null)
 const formNote = ref<string>('')
 const formAbandonedReason = ref<string>('')
 const completedAtError = ref('')
@@ -57,13 +57,13 @@ const deletingSessionId = ref<string | null>(null)
 const removingBookModalOpen = ref(false)
 const removingSessionId = ref<string | null>(null)
 const showCompletionRatingModal = ref(false)
-const completionRating = ref<1 | 2 | 3 | 4 | 5 | null>(null)
+const completionRating = ref<BookRating | null>(null)
 const completionDate = ref('')
 const completionNote = ref('')
 const completionRatingError = ref('')
 const completionDateError = ref('')
 const canEditCompletedMetadata = computed(() => editingStartedAsFinished.value)
-const showRatingDisplay = computed(() => Boolean(book.value && book.value.status === 'finished' && book.value.rating))
+const showRatingDisplay = computed(() => Boolean(book.value && book.value.status === 'finished' && book.value.rating !== null))
 const maxCompletedAtDate = computed(() => {
   const today = new Date()
   const month = String(today.getMonth() + 1).padStart(2, '0')
@@ -365,7 +365,7 @@ async function onSaveReadingPlan(plan: ReadingPlan | null) {
 
 async function onConfirmCompletionRating() {
   if (!book.value) return
-  if (!completionRating.value) {
+  if (completionRating.value === null) {
     completionRatingError.value = t('books.ratingRequired')
     return
   }
