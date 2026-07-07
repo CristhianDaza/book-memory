@@ -557,11 +557,11 @@ onMounted(async () => {
       {{ localError }}
     </p>
 
-    <div class="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
       <button
+        v-if="!running && canStartReading"
         type="button"
         class="bm-button bm-button-primary bm-reading-action"
-        :disabled="running || !canStartReading"
         @click="onStart"
       >
         <Play
@@ -572,9 +572,9 @@ onMounted(async () => {
       </button>
 
       <button
+        v-if="running"
         type="button"
         class="bm-button"
-        :disabled="!running"
         @click="onPause"
       >
         <Pause
@@ -585,9 +585,9 @@ onMounted(async () => {
       </button>
 
       <button
+        v-if="hasActiveSession && !saving"
         type="button"
         class="bm-button"
-        :disabled="!hasActiveSession || saving"
         @click="onReset"
       >
         <RotateCcw
@@ -598,9 +598,10 @@ onMounted(async () => {
       </button>
 
       <button
+        v-if="hasActiveSession"
         type="button"
         class="bm-button bm-button-success bm-reading-action"
-        :disabled="!hasActiveSession || saving"
+        :disabled="saving"
         @click="onOpenFinish"
       >
         {{ saving ? t('reading.savingSession') : t('reading.finish') }}
