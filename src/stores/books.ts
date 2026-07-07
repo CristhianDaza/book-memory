@@ -268,6 +268,7 @@ export const useBooksStore = defineStore('books', () => {
     const authStore = useAuthStore()
     const uid = authStore.user?.uid
     if (!uid) {
+      loadingLibrary.value = false
       library.value = []
       libraryLoadedForUid.value = null
       libraryLoadedAt.value = 0
@@ -278,9 +279,9 @@ export const useBooksStore = defineStore('books', () => {
     const force = options?.force === true
     const maxAgeMs = options?.maxAgeMs ?? LIBRARY_CACHE_MAX_AGE_MS
     const sameUid = libraryLoadedForUid.value === uid
-    const hasData = library.value.length > 0
+    const hasLoadedLibrary = libraryLoadedAt.value > 0
     const cacheFresh = Date.now() - libraryLoadedAt.value <= maxAgeMs
-    if (!force && sameUid && hasData && cacheFresh) return
+    if (!force && sameUid && hasLoadedLibrary && cacheFresh) return
 
     if (libraryLoadPromise) {
       await libraryLoadPromise
