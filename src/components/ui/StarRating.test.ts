@@ -73,6 +73,29 @@ describe('StarRating', () => {
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([3.5])
   })
 
+  it('emits half value from touch pointer events on mobile', async () => {
+    const wrapper = mount(StarRating, {
+      props: {
+        modelValue: null,
+      },
+    })
+
+    const stars = wrapper.findAll('button')
+    mockStarRect(stars[3]!)
+    const PointerEventCtor = globalThis.PointerEvent ?? MouseEvent
+    stars[3]?.element.dispatchEvent(
+      new PointerEventCtor('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        clientX: 8,
+      }),
+    )
+    await wrapper.vm.$nextTick()
+    await stars[3]?.trigger('click', { clientX: 28 })
+
+    expect(wrapper.emitted('update:modelValue')).toEqual([[3.5]])
+  })
+
   it('does not emit in readonly mode', async () => {
     const wrapper = mount(StarRating, {
       props: {
