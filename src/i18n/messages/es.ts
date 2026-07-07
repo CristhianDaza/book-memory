@@ -437,6 +437,7 @@ export const es = {
     lockedBookHint: 'La sesión activa está vinculada a: {title}',
     errorNoBook: 'Debes seleccionar un libro para registrar la sesión.',
     errorEndBeforeStart: 'La página final no puede ser menor a la inicial.',
+    warningEndBeforeCurrent: 'La página final es menor que la página actual ({page}). Se guardará de todos modos.',
     errorNoActive: 'No hay sesión activa para finalizar.',
     errorSaveSession: 'No se pudo guardar la sesión.',
   },

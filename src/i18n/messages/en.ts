@@ -437,6 +437,7 @@ export const en = {
     lockedBookHint: 'Active session is locked to: {title}',
     errorNoBook: 'You must select a book to save a session.',
     errorEndBeforeStart: 'End page cannot be lower than start page.',
+    warningEndBeforeCurrent: 'End page is lower than the current page ({page}). It will be saved anyway.',
     errorNoActive: 'No active session to finish.',
     errorSaveSession: 'Could not save session.',
   },
