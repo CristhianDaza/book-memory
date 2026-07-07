@@ -56,6 +56,7 @@ const savingSessionEdit = ref(false)
 const deletingSessionId = ref<string | null>(null)
 const removingBookModalOpen = ref(false)
 const removingSessionId = ref<string | null>(null)
+const rereadConfirmOpen = ref(false)
 const showCompletionRatingModal = ref(false)
 const completionRating = ref<BookRating | null>(null)
 const completionDate = ref('')
@@ -429,6 +430,8 @@ const canStartReadingFromPendingOrPaused = computed(() => {
   return !(book.value.totalPages !== null && book.value.currentPage >= book.value.totalPages);
 })
 
+const canStartRereading = computed(() => book.value?.status === 'finished')
+
 async function onStartReadingSession() {
   if (!canStartReadingSession.value) return
   if (!book.value) return
@@ -454,6 +457,38 @@ async function onStartReadingFromPendingOrPaused() {
     return
   }
 
+  await router.push({ name: 'reading', query: { bookId: book.value.id } })
+}
+
+function onRequestReread() {
+  if (!canStartRereading.value) return
+  rereadConfirmOpen.value = true
+}
+
+function onCancelReread() {
+  rereadConfirmOpen.value = false
+}
+
+async function onConfirmReread() {
+  if (!book.value) return
+  rereadConfirmOpen.value = false
+
+  await booksStore.updateBookMetadata(book.value.id, {
+    coverUrl: book.value.coverUrl,
+    totalPages: book.value.totalPages,
+    currentPage: 0,
+    status: 'reading',
+    rating: book.value.rating,
+    note: book.value.note,
+    readingPlan: book.value.readingPlan,
+    abandonedReason: null,
+  })
+  if (booksStore.errorKey) {
+    notificationsStore.error(t(booksStore.errorKey))
+    return
+  }
+
+  showQueuedFeedbackIfAny()
   await router.push({ name: 'reading', query: { bookId: book.value.id } })
 }
 
@@ -692,6 +727,7 @@ onMounted(async () => {
           </div>
 
           <ReadingPlanCard
+            v-if="book.status !== 'finished'"
             :book="book"
             :records="planHistoryRecords"
             :saving="isMetadataUpdating()"
@@ -724,6 +760,19 @@ onMounted(async () => {
                 aria-hidden="true"
               />
               {{ t('books.startReading') }}
+            </button>
+            <button
+              v-else-if="canStartRereading"
+              type="button"
+              class="bm-button bm-button-primary"
+              :disabled="isMetadataUpdating()"
+              @click="onRequestReread"
+            >
+              <Play
+                :size="17"
+                aria-hidden="true"
+              />
+              {{ t('books.rereadAction') }}
             </button>
 
             <button
@@ -1128,6 +1177,17 @@ onMounted(async () => {
     danger
     @cancel="onCancelDeleteSession"
     @confirm="onConfirmDeleteSession"
+  />
+
+  <ConfirmModal
+    :open="rereadConfirmOpen"
+    :title="t('books.rereadConfirmTitle')"
+    :message="t('books.rereadConfirmMessage')"
+    :confirm-label="t('books.rereadAction')"
+    :cancel-label="t('common.cancel')"
+    :loading="isMetadataUpdating()"
+    @cancel="onCancelReread"
+    @confirm="onConfirmReread"
   />
 
   <Transition name="bm-modal">

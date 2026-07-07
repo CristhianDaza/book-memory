@@ -17,6 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const hoverValue = ref<number | null>(null)
+const pointerSelected = ref(false)
 const displayValue = computed(() => hoverValue.value ?? props.modelValue ?? 0)
 const stars = [1, 2, 3, 4, 5] as const
 const interactiveBoxSize = computed(() => Math.max(36, props.size + 12))
@@ -26,7 +27,7 @@ function normalizeRating(value: number): BookRating {
   return normalized as BookRating
 }
 
-function getValueFromPointer(value: number, event?: MouseEvent): BookRating {
+function getValueFromPointer(value: number, event?: MouseEvent | PointerEvent): BookRating {
   if (!event) return normalizeRating(value)
   const target = event?.currentTarget as HTMLElement | null | undefined
   const rect = target?.getBoundingClientRect()
@@ -41,14 +42,27 @@ function getFillPercent(value: number): number {
   return Math.max(0, Math.min(100, filled * 100))
 }
 
-function setHover(value: number | null, event?: MouseEvent) {
+function setHover(value: number | null, event?: MouseEvent | PointerEvent) {
   if (props.readonly) return
   hoverValue.value = value === null ? null : getValueFromPointer(value, event)
 }
 
-function setValue(value: 1 | 2 | 3 | 4 | 5, event: MouseEvent) {
+function setValue(value: 1 | 2 | 3 | 4 | 5, event?: MouseEvent | PointerEvent) {
   if (props.readonly) return
   emit('update:modelValue', getValueFromPointer(value, event))
+}
+
+function setPointerValue(value: 1 | 2 | 3 | 4 | 5, event: PointerEvent) {
+  pointerSelected.value = true
+  setValue(value, event)
+}
+
+function setClickValue(value: 1 | 2 | 3 | 4 | 5, event: MouseEvent) {
+  if (pointerSelected.value) {
+    pointerSelected.value = false
+    return
+  }
+  setValue(value, event)
 }
 </script>
 
@@ -66,10 +80,11 @@ function setValue(value: 1 | 2 | 3 | 4 | 5, event: MouseEvent) {
       :style="{ width: `${interactiveBoxSize}px`, height: `${interactiveBoxSize}px` }"
       :disabled="readonly"
       @mouseenter="setHover(value, $event)"
-      @mousemove="setHover(value, $event)"
+      @pointermove="setHover(value, $event)"
       @focus="setHover(value)"
       @blur="setHover(null)"
-      @click="setValue(value, $event)"
+      @pointerdown.prevent="setPointerValue(value, $event)"
+      @click="setClickValue(value, $event)"
     >
       <span class="relative inline-flex">
         <Star

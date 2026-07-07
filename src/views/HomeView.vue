@@ -28,6 +28,7 @@ const { latestSessionMillisByBook } = storeToRefs(sessionsStore)
 const { currentStreakDays, bestStreakDays } = storeToRefs(streakStore)
 const isMobileDashboard = ref(false)
 const includePausedInPending = ref(false)
+const dashboardLoading = ref(true)
 const planComplianceSummary = computed(() => summarizeReadingPlanCompliance(readingPlanHistoryStore.records, library.value))
 const atRiskBookIds = computed(() => new Set(planComplianceSummary.value.atRiskBookIds))
 const atRiskBooks = computed(() =>
@@ -108,7 +109,10 @@ async function onToggleFavorite(bookId: string) {
 }
 
 function updateDashboardViewport() {
-  isMobileDashboard.value = typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
+  isMobileDashboard.value =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(max-width: 639px)').matches
 }
 
 onMounted(async () => {
@@ -116,10 +120,14 @@ onMounted(async () => {
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', updateDashboardViewport)
   }
-  await booksStore.ensureLibraryLoaded()
-  if (!user.value?.uid) return
-  await Promise.all([sessionsStore.ensureSessionsLoaded(), readingPlanHistoryStore.ensureHistoryLoaded()])
-  await streakStore.migrateFromSessions(sessionsStore.allSessions)
+  try {
+    await booksStore.ensureLibraryLoaded()
+    if (!user.value?.uid) return
+    await Promise.all([sessionsStore.ensureSessionsLoaded(), readingPlanHistoryStore.ensureHistoryLoaded()])
+    await streakStore.migrateFromSessions(sessionsStore.allSessions)
+  } finally {
+    dashboardLoading.value = false
+  }
 })
 
 onUnmounted(() => {
@@ -296,6 +304,26 @@ onUnmounted(() => {
             {{ t('home.openBookDetail') }}
           </RouterLink>
         </div>
+      </div>
+
+      <div
+        v-else-if="dashboardLoading || loadingLibrary"
+        class="grid animate-pulse gap-4 rounded-2xl border border-(--app-border) bg-(--app-surface-muted) p-4 sm:grid-cols-[minmax(0,1fr)_auto]"
+        aria-busy="true"
+        role="status"
+      >
+        <div>
+          <div class="h-6 w-36 rounded-full bg-(--app-surface-raised)" />
+          <div class="mt-4 h-8 w-3/4 rounded bg-(--app-surface-raised)" />
+          <div class="mt-3 h-4 w-1/2 rounded bg-(--app-surface-raised)" />
+          <div class="mt-4 h-4 w-40 rounded bg-(--app-surface-raised)" />
+          <div class="mt-2 h-3 w-32 rounded bg-(--app-surface-raised)" />
+        </div>
+        <div class="flex flex-wrap items-end gap-2 sm:flex-col sm:justify-end">
+          <div class="h-10 w-36 rounded-lg bg-(--app-surface-raised)" />
+          <div class="h-10 w-32 rounded-lg bg-(--app-surface-raised)" />
+        </div>
+        <span class="sr-only">{{ t('books.loadingLibrary') }}</span>
       </div>
 
       <EmptyState

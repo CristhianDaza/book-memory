@@ -14,6 +14,10 @@ vi.mock('pinia', async () => {
 })
 
 const mocks = vi.hoisted(() => {
+  function refLike<T>(value: T) {
+    return { value, __v_isRef: true }
+  }
+
   const enqueueOfflineFinishReadingSession = vi.fn()
   const enqueueOfflineReadingPlanDayUpdate = vi.fn()
   const createSession = vi.fn()
@@ -30,12 +34,12 @@ const mocks = vi.hoisted(() => {
   const routeQuery: Record<string, string> = {}
 
   const authStore = {
-    user: { value: { uid: 'user-1' } },
+    user: refLike({ uid: 'user-1' }),
   }
 
   const booksStore = {
-    library: {
-      value: [
+    library: refLike(
+      [
         {
           id: 'book-1',
           source: 'manual',
@@ -67,20 +71,20 @@ const mocks = vi.hoisted(() => {
           readingPlan: null,
         },
       ],
-    },
+    ),
     ensureLibraryLoaded,
     updateBookMetadata,
   }
 
   const readingStore = {
-    selectedBookId: { value: 'book-1' },
-    sessionBookId: { value: 'book-1' as string | null },
-    startPage: { value: 10 },
-    endPage: { value: 10 },
-    elapsedSeconds: { value: 120 },
-    running: { value: true },
-    hasActiveSession: { value: true },
-    sessionStartedAt: { value: new Date('2026-03-04T12:00:00.000Z') as Date | null },
+    selectedBookId: refLike('book-1'),
+    sessionBookId: refLike('book-1' as string | null),
+    startPage: refLike(10),
+    endPage: refLike(10),
+    elapsedSeconds: refLike(120),
+    running: refLike(true),
+    hasActiveSession: refLike(true),
+    sessionStartedAt: refLike(new Date('2026-03-04T12:00:00.000Z') as Date | null),
     setSelectedBook: vi.fn((value: string) => {
       readingStore.selectedBookId.value = value
     }),
@@ -451,7 +455,7 @@ describe('ReadingView', () => {
     expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'book-detail', params: { id: 'book-1' } })
   })
 
-  it('disables start button when selected book status is paused', async () => {
+  it('hides unavailable session controls when no action can be pressed', async () => {
     mocks.readingStore.hasActiveSession.value = false
     mocks.readingStore.running.value = false
     mocks.readingStore.sessionBookId.value = null
@@ -468,12 +472,43 @@ describe('ReadingView', () => {
     })
     await flushPromises()
 
-    const actionButtons = wrapper.findAll('.mt-5.grid button')
-    const startButton = actionButtons[0]
-    if (!startButton) {
-      throw new Error('missing start button')
-    }
+    const actionButtonText = wrapper.findAll('.mt-5.grid button').map((button) => button.text().trim())
+    expect(actionButtonText).not.toContain('Start')
+    expect(actionButtonText).not.toContain('Pause')
+    expect(actionButtonText).not.toContain('Reset')
+    expect(actionButtonText).not.toContain('Finish')
+  })
 
-    expect(startButton.attributes('disabled')).toBeDefined()
+  it('shows only pause, reset and finish while the timer is running', async () => {
+    const wrapper = mount(ReadingView, {
+      global: {
+        plugins: [makeI18n()],
+      },
+    })
+    await flushPromises()
+
+    const actionButtonText = wrapper.findAll('.mt-5.grid button').map((button) => button.text().trim())
+    expect(actionButtonText).not.toContain('Resume')
+    expect(actionButtonText).not.toContain('Start')
+    expect(actionButtonText).toContain('Pause')
+    expect(actionButtonText).toContain('Reset')
+    expect(actionButtonText).toContain('Finish')
+  })
+
+  it('shows resume, reset and finish for a paused active session', async () => {
+    mocks.readingStore.running.value = false
+
+    const wrapper = mount(ReadingView, {
+      global: {
+        plugins: [makeI18n()],
+      },
+    })
+    await flushPromises()
+
+    const actionButtonText = wrapper.findAll('.mt-5.grid button').map((button) => button.text().trim())
+    expect(actionButtonText).toContain('Resume')
+    expect(actionButtonText).not.toContain('Pause')
+    expect(actionButtonText).toContain('Reset')
+    expect(actionButtonText).toContain('Finish')
   })
 })
