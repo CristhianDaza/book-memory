@@ -373,6 +373,7 @@ export const en = {
     pendingBooksSection: 'Pending books',
     showPausedBooks: 'Show paused books',
     pendingBooksSubtitle: 'Only pending books are shown (and paused when enabled).',
+    viewFinishedBooks: 'View read books',
     finishedBooksTitle: 'Read books',
     finishedBooksSubtitle: 'Your finished books sorted by latest read.',
     finishedBooksEmptyTitle: 'No read books yet',

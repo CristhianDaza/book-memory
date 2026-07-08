@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Check, Heart, Plus, Search, Shuffle, X } from 'lucide-vue-next'
+import { BookOpenCheck, Check, Heart, Plus, Search, Shuffle, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import type { BookSearchResult, LibraryBook } from '../../../types/books'
@@ -432,6 +432,16 @@ onBeforeUnmount(() => {
       :subtitle="t('books.librarySubtitle')"
     >
       <template #actions>
+        <RouterLink
+          :to="{ name: 'finished-books' }"
+          class="bm-button"
+        >
+          <BookOpenCheck
+            :size="17"
+            aria-hidden="true"
+          />
+          {{ t('books.viewFinishedBooks') }}
+        </RouterLink>
         <button
           type="button"
           class="bm-button bm-button-primary"

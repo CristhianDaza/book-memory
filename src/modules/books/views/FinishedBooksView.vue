@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
+import { ArrowLeft } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import EmptyState from '../../../components/ui/EmptyState.vue'
 import PageHeader from '../../../components/ui/PageHeader.vue'
@@ -128,7 +129,20 @@ watch(pageSize, () => {
       :eyebrow="t('modules.achievementsLabel')"
       :title="t('books.finishedBooksTitle')"
       :subtitle="t('books.finishedBooksSubtitle')"
-    />
+    >
+      <template #actions>
+        <RouterLink
+          :to="{ name: 'books' }"
+          class="bm-button"
+        >
+          <ArrowLeft
+            :size="17"
+            aria-hidden="true"
+          />
+          {{ t('books.backToLibrary') }}
+        </RouterLink>
+      </template>
+    </PageHeader>
 
     <SurfaceCard>
       <p

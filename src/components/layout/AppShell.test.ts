@@ -26,6 +26,7 @@ function mountShell() {
   return mount(AppShell, {
     props: {
       navItems: [],
+      mobileNavItems: [],
       showChrome: true,
       syncVisible: false,
       syncTone: 'success',

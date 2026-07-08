@@ -373,6 +373,7 @@ export const es = {
     pendingBooksSection: 'Libros pendientes',
     showPausedBooks: 'Mostrar libros pausados',
     pendingBooksSubtitle: 'Solo se muestran libros pendientes (y pausados si activas la opción).',
+    viewFinishedBooks: 'Ver libros leídos',
     finishedBooksTitle: 'Libros leídos',
     finishedBooksSubtitle: 'Tus libros finalizados ordenados por última lectura.',
     finishedBooksEmptyTitle: 'Aún no hay libros leídos',

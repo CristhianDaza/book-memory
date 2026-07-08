@@ -21,6 +21,7 @@ interface ShellNavItem {
 
 defineProps<{
   navItems: ShellNavItem[]
+  mobileNavItems: ShellNavItem[]
   showChrome: boolean
   syncVisible: boolean
   syncTone: 'success' | 'warning' | 'danger'
@@ -221,7 +222,7 @@ watch(
         aria-label="Mobile primary"
       >
         <NavItem
-          v-for="item in navItems"
+          v-for="item in mobileNavItems"
           :key="`mobile-${item.to}`"
           v-bind="item"
         />
