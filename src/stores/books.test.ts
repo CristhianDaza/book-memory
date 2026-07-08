@@ -260,6 +260,24 @@ describe('books store', () => {
     expect(store.library[0]?.status).toBe('finished')
   })
 
+  it('treats an empty library as loaded for a new account', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    vi.mocked(fetchLibraryBooks).mockResolvedValue([])
+    const store = useBooksStore()
+
+    await store.ensureLibraryLoaded()
+
+    expect(store.library).toEqual([])
+    expect(store.loadingLibrary).toBe(false)
+    expect(fetchLibraryBooks).toHaveBeenCalledTimes(1)
+
+    await store.ensureLibraryLoaded()
+
+    expect(fetchLibraryBooks).toHaveBeenCalledTimes(1)
+    expect(store.loadingLibrary).toBe(false)
+  })
+
   it('keeps paused books out of reading status while preserving progress', async () => {
     const auth = useAuthStore()
     auth.user = { uid: 'user-1' } as never

@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BooksView from './BooksView.vue'
 import type { BookSearchResult, LibraryBook } from '../../../types/books'
+import { useBooksPaginationPreference } from '../../../composables/useBooksPagination'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { addBookToLibrary, fetchLibraryBooks } from '../../../services/libraryService'
@@ -167,6 +168,24 @@ const abandonedBook: LibraryBook = {
   abandonedReason: 'not_for_me',
 }
 
+function makeWishlistBook(index: number): LibraryBook {
+  return {
+    id: `wishlist-book-${index}`,
+    source: 'google',
+    externalId: `wishlist-book-${index}`,
+    title: `Wishlist Book ${index}`,
+    authors: [`Wishlist Author ${index}`],
+    coverUrl: null,
+    totalPages: 200 + index,
+    favorite: index === 1,
+    currentPage: 0,
+    status: 'wishlist',
+    rating: null,
+    note: null,
+    readingPlan: null,
+  }
+}
+
 function mountView() {
   setActivePinia(createPinia())
   const authStore = useAuthStore()
@@ -215,6 +234,9 @@ async function openSearchResultPagesModal(wrapper: ReturnType<typeof mountView>)
 describe('BooksView add flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
+    useBooksPaginationPreference().setPageSize(12)
+    localStorage.clear()
     vi.mocked(fetchLibraryBooks).mockResolvedValue([])
     vi.mocked(searchBooks).mockResolvedValue({ items: [searchResult], totalItems: 1 })
     vi.mocked(addBookToLibrary).mockResolvedValue(savedBook)
@@ -276,6 +298,9 @@ describe('BooksView add flow', () => {
 describe('BooksView random picker flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
+    useBooksPaginationPreference().setPageSize(12)
+    localStorage.clear()
     vi.mocked(fetchLibraryBooks).mockResolvedValue([wishlistBookA, wishlistBookB, readingBookA])
     vi.mocked(searchBooks).mockResolvedValue({ items: [], totalItems: 0 })
     vi.mocked(addBookToLibrary).mockResolvedValue(savedBook)
@@ -404,5 +429,73 @@ describe('BooksView random picker flow', () => {
     await flushPromises()
 
     expect(routerPush).toHaveBeenCalledWith({ name: 'book-detail', params: { id: 'paused-book' } })
+  })
+})
+
+describe('BooksView pagination', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    useBooksPaginationPreference().setPageSize(12)
+    localStorage.clear()
+    vi.mocked(fetchLibraryBooks).mockResolvedValue(Array.from({ length: 14 }, (_, index) => makeWishlistBook(index + 1)))
+    vi.mocked(searchBooks).mockResolvedValue({ items: [], totalItems: 0 })
+    vi.mocked(addBookToLibrary).mockResolvedValue(savedBook)
+  })
+
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('shows 12 pending books by default', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.findAll('.bm-book-card')).toHaveLength(12)
+    expect(wrapper.text()).toContain('Wishlist Book 12')
+    expect(wrapper.text()).not.toContain('Wishlist Book 13')
+  })
+
+  it('persists the selected page size in localStorage', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.find('.bm-pagination-select').setValue('24')
+    await flushPromises()
+
+    expect(localStorage.getItem('bookmemory-books-page-size')).toBe('24')
+    expect(wrapper.findAll('.bm-book-card')).toHaveLength(14)
+    expect(wrapper.text()).toContain('Wishlist Book 14')
+  })
+
+  it('navigates to the next page', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.find('[aria-label="books.nextPage"]').trigger('click')
+    await flushPromises()
+
+    const cards = wrapper.findAll('.bm-book-card')
+    expect(cards).toHaveLength(2)
+    expect(cards[0].text()).toContain('Wishlist Book 13')
+    expect(cards[1].text()).toContain('Wishlist Book 14')
+    expect(wrapper.text()).toContain('Wishlist Book 13')
+    expect(wrapper.text()).toContain('Wishlist Book 14')
+  })
+
+  it('resets to the first page when filters change', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.find('[aria-label="books.nextPage"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Wishlist Book 13')
+
+    await wrapper.find('input[type="checkbox"]').setValue(true)
+    await flushPromises()
+
+    expect(wrapper.findAll('.bm-book-card')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Wishlist Book 1')
+    expect(wrapper.text()).not.toContain('Wishlist Book 13')
   })
 })

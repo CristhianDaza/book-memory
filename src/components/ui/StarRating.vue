@@ -20,7 +20,7 @@ const hoverValue = ref<number | null>(null)
 const pointerSelected = ref(false)
 const displayValue = computed(() => hoverValue.value ?? props.modelValue ?? 0)
 const stars = [1, 2, 3, 4, 5] as const
-const interactiveBoxSize = computed(() => Math.max(36, props.size + 12))
+const interactiveBoxSize = computed(() => (props.readonly ? props.size : Math.max(36, props.size + 12)))
 
 function normalizeRating(value: number): BookRating {
   const normalized = Math.max(0, Math.min(5, Math.round(value * 2) / 2))

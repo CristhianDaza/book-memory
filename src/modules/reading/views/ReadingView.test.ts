@@ -31,6 +31,8 @@ const mocks = vi.hoisted(() => {
   const notificationsError = vi.fn()
   const notificationsInfo = vi.fn()
   const markTodayActivity = vi.fn()
+  const ensureMemoriesLoaded = vi.fn()
+  const addMemory = vi.fn()
   const routeQuery: Record<string, string> = {}
 
   const authStore = {
@@ -120,6 +122,8 @@ const mocks = vi.hoisted(() => {
     notificationsError,
     notificationsInfo,
     markTodayActivity,
+    ensureMemoriesLoaded,
+    addMemory,
     routeQuery,
     authStore,
     booksStore,
@@ -166,10 +170,26 @@ vi.mock('../../../stores/notifications', () => ({
   useNotificationsStore: () => mocks.notificationsStore,
 }))
 
+vi.mock('../../../stores/memories', () => ({
+  useMemoriesStore: () => ({
+    saving: false,
+    errorKey: null,
+    ensureMemoriesLoaded: mocks.ensureMemoriesLoaded,
+    addMemory: mocks.addMemory,
+  }),
+}))
+
 vi.mock('../../../stores/streak', () => ({
   useStreakStore: () => ({
     markTodayActivity: mocks.markTodayActivity,
   }),
+}))
+
+vi.mock('../../memories/components/QuickMemoryForm.vue', () => ({
+  default: {
+    name: 'QuickMemoryForm',
+    template: '<div data-test="quick-memory-form" />',
+  },
 }))
 
 vi.mock('vue-router', () => ({

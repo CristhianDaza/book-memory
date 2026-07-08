@@ -5,6 +5,7 @@ import { BookOpen, Pause, Play, RotateCcw, TimerReset } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import PromptModal from '../../../components/PromptModal.vue'
+import QuickMemoryForm from '../../memories/components/QuickMemoryForm.vue'
 import {
   enqueueOfflineFinishReadingSession,
   enqueueOfflineReadingPlanDayUpdate,
@@ -12,11 +13,13 @@ import {
 import { useBookCompletionOverlay } from '../../../composables/useBookCompletionOverlay'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
+import { useMemoriesStore } from '../../../stores/memories'
 import { useNotificationsStore } from '../../../stores/notifications'
 import { useReadingStore } from '../../../stores/reading'
 import { useReadingPlanHistoryStore } from '../../../stores/readingPlanHistory'
 import { useSessionsStore } from '../../../stores/sessions'
 import { useStreakStore } from '../../../stores/streak'
+import type { CreateBookMemoryInput } from '../../../types/memories'
 import { buildReadingPlanDayRecord } from '../../../utils/readingPlan'
 
 const { t } = useI18n()
@@ -24,6 +27,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const booksStore = useBooksStore()
+const memoriesStore = useMemoriesStore()
 const readingStore = useReadingStore()
 const readingPlanHistoryStore = useReadingPlanHistoryStore()
 const sessionsStore = useSessionsStore()
@@ -155,6 +159,15 @@ function onSelectBook(bookId: string) {
 
 function onOpenBookDetail(bookId: string) {
   void router.push({ name: 'book-detail', params: { id: bookId } }).catch(() => {})
+}
+
+async function onSaveMemory(payload: CreateBookMemoryInput) {
+  await memoriesStore.addMemory(payload)
+  if (memoriesStore.errorKey) {
+    notificationsStore.error(t(memoriesStore.errorKey))
+    return
+  }
+  notificationsStore.success(t('memories.saved'))
 }
 
 function onStart() {
@@ -427,6 +440,7 @@ async function onConfirmFinish() {
 onMounted(async () => {
   await readingStore.hydrateFromCloud()
   await loadContext()
+  await memoriesStore.ensureMemoriesLoaded()
 })
 </script>
 
@@ -534,6 +548,15 @@ onMounted(async () => {
             @input="readingStore.setStartPage(Number(($event.target as HTMLInputElement).value))"
           >
         </label>
+
+        <QuickMemoryForm
+          v-if="effectiveSessionBook"
+          :book-id="effectiveSessionBook.id"
+          :default-page="startPage"
+          :saving="memoriesStore.saving"
+          compact
+          @save="onSaveMemory"
+        />
       </div>
 
       <div

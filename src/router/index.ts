@@ -35,6 +35,12 @@ export const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/memories',
+      name: 'memories',
+      component: () => import('../modules/memories/views/MemoriesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/stats',
       name: 'stats',
       component: () => import('../modules/stats/views/StatsView.vue'),

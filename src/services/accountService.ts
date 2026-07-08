@@ -1,5 +1,6 @@
 import { getFirebaseDb } from '../lib/firebase'
 import { fetchLibraryBooks } from './libraryService'
+import { fetchMemories } from './memoryService'
 import { fetchReadingState } from './readingStateService'
 import { fetchUserSessions } from './readingSessionService'
 import { fetchStatsGoals } from './statsGoalsService'
@@ -41,8 +42,9 @@ async function deleteCollectionByChunks(uid: string, collectionName: string) {
 }
 
 export async function exportUserData(uid: string): Promise<UserDataExport> {
-  const [library, sessions, readingState, goals, streakDays] = await Promise.all([
+  const [library, memories, sessions, readingState, goals, streakDays] = await Promise.all([
     fetchLibraryBooks(uid),
+    fetchMemories(uid),
     fetchUserSessions(uid),
     fetchReadingState(uid),
     fetchStatsGoals(uid),
@@ -53,6 +55,7 @@ export async function exportUserData(uid: string): Promise<UserDataExport> {
     exportedAt: new Date().toISOString(),
     uid,
     library,
+    memories,
     sessions,
     readingState,
     goals,
@@ -62,6 +65,7 @@ export async function exportUserData(uid: string): Promise<UserDataExport> {
 
 export async function deleteUserData(uid: string): Promise<void> {
   await deleteCollectionByChunks(uid, 'library')
+  await deleteCollectionByChunks(uid, 'memories')
   await deleteCollectionByChunks(uid, 'sessions')
   await deleteCollectionByChunks(uid, 'reading_state')
   await deleteCollectionByChunks(uid, 'stats')
