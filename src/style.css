@@ -553,6 +553,53 @@ a {
   padding: 0.9rem;
 }
 
+.bm-disclosure {
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 0.95rem;
+  background: var(--app-surface-muted);
+}
+
+.bm-disclosure summary {
+  display: flex;
+  min-height: 3rem;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem;
+}
+
+.bm-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.bm-disclosure summary svg {
+  flex: 0 0 auto;
+  color: var(--app-text-muted);
+  transition: transform 0.18s ease;
+}
+
+.bm-disclosure[open] summary {
+  border-bottom: 1px solid var(--app-border);
+}
+
+.bm-disclosure[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.bm-disclosure-body {
+  padding: 0.9rem;
+}
+
+.bm-disclosure-body-flush > .bm-subtle-panel {
+  margin-top: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
 .bm-sidebar-section {
   display: grid;
   gap: 0.65rem;

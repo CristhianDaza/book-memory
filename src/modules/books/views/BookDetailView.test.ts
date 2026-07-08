@@ -263,6 +263,28 @@ describe('BookDetailView reading pace', () => {
     expect(wrapper.text()).not.toContain('Start Reading')
   })
 
+  it('keeps the primary reading action visible and secondary sections collapsed', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const startReadingButton = wrapper.findAll('button').find((button) => button.text().includes('Start reading session'))
+    expect(startReadingButton).toBeDefined()
+
+    const disclosures = wrapper.findAll('details.bm-disclosure')
+    expect(disclosures).toHaveLength(6)
+    expect(disclosures.every((disclosure) => !disclosure.attributes('open'))).toBe(true)
+
+    const summaryText = disclosures.map((disclosure) => disclosure.find('summary').text())
+    expect(summaryText).toEqual([
+      'Reading pace',
+      'Reading plan',
+      'Save memory',
+      'Recent memories',
+      'Edit metadata',
+      'Recent sessions',
+    ])
+  })
+
   it('shows Start Reading and updates status for wishlist books before navigating', async () => {
     mocks.activeBook.value = {
       ...mocks.activeBook.value!,
