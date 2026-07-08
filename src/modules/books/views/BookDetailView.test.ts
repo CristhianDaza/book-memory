@@ -33,6 +33,9 @@ const mocks = vi.hoisted(() => {
     ensureHistoryLoaded: vi.fn(),
     getRecordsForBook: vi.fn(() => []),
     syncBookDay: vi.fn(),
+    ensureMemoriesLoaded: vi.fn(),
+    getMemoriesForBook: vi.fn(() => []),
+    addMemory: vi.fn(),
     updateBookMetadata: vi.fn(),
     removeFromLibrary: vi.fn(),
     toggleFavorite: vi.fn(),
@@ -101,6 +104,16 @@ vi.mock('../../../stores/notifications', () => ({
   }),
 }))
 
+vi.mock('../../../stores/memories', () => ({
+  useMemoriesStore: () => ({
+    saving: false,
+    errorKey: null,
+    ensureMemoriesLoaded: mocks.ensureMemoriesLoaded,
+    getMemoriesForBook: mocks.getMemoriesForBook,
+    addMemory: mocks.addMemory,
+  }),
+}))
+
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: mocks.routeParams }),
   useRouter: () => ({ push: mocks.routerPush }),
@@ -145,6 +158,7 @@ function mountView() {
           name: 'ReadingPlanCard',
           template: '<div data-test="reading-plan-card">Reading plan card</div>',
         },
+        QuickMemoryForm: true,
         StatusBadge: true,
         StarRating: {
           name: 'StarRating',

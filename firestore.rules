@@ -230,6 +230,78 @@ service cloud.firestore {
       && data.updatedAt is timestamp;
     }
 
+    function isValidMemoryKind(value) {
+      return value in ['quote', 'idea', 'question', 'summary'];
+    }
+
+    function isValidMemoryReviewStatus(value) {
+      return value in ['pending', 'reviewed'];
+    }
+
+    function isValidMemoryData(data) {
+      return data.keys().hasOnly([
+        'bookId',
+        'kind',
+        'content',
+        'page',
+        'tags',
+        'favorite',
+        'reviewStatus',
+        'nextReviewAt',
+        'createdAt',
+        'updatedAt',
+      ])
+      && data.keys().hasAll([
+        'bookId',
+        'kind',
+        'content',
+        'page',
+        'tags',
+        'favorite',
+        'reviewStatus',
+        'nextReviewAt',
+        'createdAt',
+        'updatedAt',
+      ])
+      && data.bookId is string
+      && isValidMemoryKind(data.kind)
+      && data.content is string
+      && data.content.size() > 0
+      && data.content.size() <= 5000
+      && (data.page == null || isNonNegativeInt(data.page))
+      && data.tags is list
+      && data.tags.size() <= 12
+      && data.favorite is bool
+      && isValidMemoryReviewStatus(data.reviewStatus)
+      && data.nextReviewAt is timestamp
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidMemoryUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'kind',
+        'content',
+        'page',
+        'tags',
+        'favorite',
+        'reviewStatus',
+        'nextReviewAt',
+        'updatedAt',
+      ])
+      && request.resource.data.updatedAt is timestamp
+      && (!('kind' in request.resource.data) || isValidMemoryKind(request.resource.data.kind))
+      && (!('content' in request.resource.data) || request.resource.data.content is string)
+      && (!('content' in request.resource.data) || request.resource.data.content.size() > 0)
+      && (!('content' in request.resource.data) || request.resource.data.content.size() <= 5000)
+      && (!('page' in request.resource.data) || request.resource.data.page == null || isNonNegativeInt(request.resource.data.page))
+      && (!('tags' in request.resource.data) || request.resource.data.tags is list)
+      && (!('tags' in request.resource.data) || request.resource.data.tags.size() <= 12)
+      && (!('favorite' in request.resource.data) || request.resource.data.favorite is bool)
+      && (!('reviewStatus' in request.resource.data) || isValidMemoryReviewStatus(request.resource.data.reviewStatus))
+      && (!('nextReviewAt' in request.resource.data) || request.resource.data.nextReviewAt is timestamp);
+    }
+
     function isValidAppLogData(data) {
       return data.keys().hasOnly([
         'kind',
@@ -264,6 +336,16 @@ service cloud.firestore {
           && isValidSessionCreateData(request.resource.data)
           && request.resource.data.createdAt == request.time;
         allow update: if isOwner(uid) && isValidSessionUpdateData();
+        allow delete: if isOwner(uid);
+      }
+
+      match /memories/{memoryId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && isValidMemoryData(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if isOwner(uid) && isValidMemoryUpdate();
         allow delete: if isOwner(uid);
       }
 

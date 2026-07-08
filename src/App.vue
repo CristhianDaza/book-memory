@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { BarChart3, BookOpen, Home, Library, TimerReset } from 'lucide-vue-next'
+import { BarChart3, BookMarked, BookOpen, Home, Library, TimerReset } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from './components/layout/AppShell.vue'
@@ -90,6 +90,12 @@ const navItems = computed(() => [
     label: t('home.reading'),
     active: route.name === 'reading',
     icon: TimerReset,
+  },
+  {
+    to: '/memories',
+    label: t('home.memories'),
+    active: route.name === 'memories',
+    icon: BookMarked,
   },
   {
     to: '/stats',

@@ -7,15 +7,18 @@ import { useRoute, useRouter } from 'vue-router'
 import ConfirmModal from '../../../components/ConfirmModal.vue'
 import { useBookCompletionOverlay } from '../../../composables/useBookCompletionOverlay'
 import IconButton from '../../../components/ui/IconButton.vue'
+import QuickMemoryForm from '../../memories/components/QuickMemoryForm.vue'
 import ReadingPlanCard from '../components/ReadingPlanCard.vue'
 import StatusBadge from '../../../components/ui/StatusBadge.vue'
 import StarRating from '../../../components/ui/StarRating.vue'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
+import { useMemoriesStore } from '../../../stores/memories'
 import { useNotificationsStore } from '../../../stores/notifications'
 import { useReadingPlanHistoryStore } from '../../../stores/readingPlanHistory'
 import { useSessionsStore } from '../../../stores/sessions'
 import type { BookRating, ReadingPlan } from '../../../types/books'
+import type { CreateBookMemoryInput } from '../../../types/memories'
 import type { ReadingSessionRecord } from '../../../types/reading'
 
 const { t } = useI18n()
@@ -24,6 +27,7 @@ const router = useRouter()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const sessionsStore = useSessionsStore()
+const memoriesStore = useMemoriesStore()
 const readingPlanHistoryStore = useReadingPlanHistoryStore()
 const notificationsStore = useNotificationsStore()
 
@@ -34,6 +38,7 @@ const { showBookCompletion } = useBookCompletionOverlay()
 const bookId = computed(() => String(route.params.id ?? ''))
 const book = computed(() => booksStore.getLibraryBookById(bookId.value))
 const planHistoryRecords = computed(() => readingPlanHistoryStore.getRecordsForBook(bookId.value).slice(0, 7))
+const recentMemories = computed(() => memoriesStore.getMemoriesForBook(bookId.value).slice(0, 4))
 const editMode = ref(false)
 const formTotalPages = ref<string>('')
 const formCurrentPage = ref<string>('0')
@@ -364,6 +369,15 @@ async function onSaveReadingPlan(plan: ReadingPlan | null) {
   notificationsStore.success(t('notifications.metadataSaved'))
 }
 
+async function onSaveMemory(payload: CreateBookMemoryInput) {
+  await memoriesStore.addMemory(payload)
+  if (memoriesStore.errorKey) {
+    notificationsStore.error(t(memoriesStore.errorKey))
+    return
+  }
+  notificationsStore.success(t('memories.saved'))
+}
+
 async function onConfirmCompletionRating() {
   if (!book.value) return
   if (completionRating.value === null) {
@@ -594,6 +608,7 @@ watch(
     editMode.value = false
     editingStartedAsFinished.value = false
     await loadSessions()
+    await memoriesStore.ensureMemoriesLoaded()
   },
   { immediate: true },
 )
@@ -603,6 +618,7 @@ watch([formStatus, formTotalPages], syncFinishedProgressField)
 onMounted(async () => {
   await booksStore.ensureLibraryLoaded()
   await readingPlanHistoryStore.ensureHistoryLoaded()
+  await memoriesStore.ensureMemoriesLoaded()
   if (bookId.value) booksStore.selectLibraryBook(bookId.value)
 })
 </script>
@@ -734,6 +750,49 @@ onMounted(async () => {
             @save="onSaveReadingPlan"
             @clear="onSaveReadingPlan(null)"
           />
+
+          <QuickMemoryForm
+            class="mt-4"
+            :book-id="book.id"
+            :default-page="displayCurrentPage"
+            :saving="memoriesStore.saving"
+            compact
+            @save="onSaveMemory"
+          />
+
+          <div class="bm-subtle-panel mt-4">
+            <div class="mb-2 flex items-center justify-between gap-2">
+              <p class="bm-eyebrow">{{ t('memories.recentForBook') }}</p>
+              <RouterLink
+                class="bm-button text-xs"
+                :to="{ name: 'memories' }"
+              >
+                {{ t('memories.viewAll') }}
+              </RouterLink>
+            </div>
+            <ul
+              v-if="recentMemories.length > 0"
+              class="space-y-2"
+            >
+              <li
+                v-for="memory in recentMemories"
+                :key="memory.id"
+                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2"
+              >
+                <p class="text-xs font-bold text-(--app-primary-strong)">
+                  {{ t(`memories.kind_${memory.kind}`) }}
+                  <template v-if="memory.page !== null">- {{ t('memories.pageShort', { page: memory.page }) }}</template>
+                </p>
+                <p class="bm-muted mt-1 line-clamp-3 whitespace-pre-line text-sm">{{ memory.content }}</p>
+              </li>
+            </ul>
+            <p
+              v-else
+              class="bm-muted text-sm"
+            >
+              {{ t('memories.emptyForBook') }}
+            </p>
+          </div>
 
           <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
