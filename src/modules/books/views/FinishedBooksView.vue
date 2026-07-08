@@ -1,18 +1,23 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import EmptyState from '../../../components/ui/EmptyState.vue'
 import PageHeader from '../../../components/ui/PageHeader.vue'
+import PaginationControls from '../../../components/ui/PaginationControls.vue'
 import StarRating from '../../../components/ui/StarRating.vue'
 import SurfaceCard from '../../../components/ui/SurfaceCard.vue'
+import { useBooksPaginationPreference } from '../../../composables/useBooksPagination'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
 
 const { t } = useI18n()
 const booksStore = useBooksStore()
 const notificationsStore = useNotificationsStore()
+const { pageSize, pageSizeModel, pageSizeOptions, setPageSize } = useBooksPaginationPreference()
 const { library, loadingLibrary, metadataUpdatingIds } = storeToRefs(booksStore)
+const finishedBooksPage = ref(1)
+const abandonedBooksPage = ref(1)
 
 function toMillis(value: unknown): number {
   if (!value) return 0
@@ -49,6 +54,14 @@ const abandonedBooks = computed(() =>
       return a.title.localeCompare(b.title)
     }),
 )
+const paginatedFinishedBooks = computed(() => {
+  const start = (finishedBooksPage.value - 1) * pageSize.value
+  return finishedBooks.value.slice(start, start + pageSize.value)
+})
+const paginatedAbandonedBooks = computed(() => {
+  const start = (abandonedBooksPage.value - 1) * pageSize.value
+  return abandonedBooks.value.slice(start, start + pageSize.value)
+})
 
 function formatCompletedAt(value: unknown): string {
   const millis = toMillis(value)
@@ -58,6 +71,12 @@ function formatCompletedAt(value: unknown): string {
 
 function isUpdating(bookId: string): boolean {
   return metadataUpdatingIds.value.includes(bookId)
+}
+
+function onPageSizeChange(value: number) {
+  setPageSize(value)
+  finishedBooksPage.value = 1
+  abandonedBooksPage.value = 1
 }
 
 async function onRetryAbandoned(bookId: string) {
@@ -82,6 +101,25 @@ async function onRetryAbandoned(bookId: string) {
 onMounted(async () => {
   await booksStore.ensureLibraryLoaded()
 })
+
+watch([finishedBooks, pageSize], () => {
+  const totalPages = Math.max(1, Math.ceil(finishedBooks.value.length / pageSize.value))
+  if (finishedBooksPage.value > totalPages) {
+    finishedBooksPage.value = totalPages
+  }
+})
+
+watch([abandonedBooks, pageSize], () => {
+  const totalPages = Math.max(1, Math.ceil(abandonedBooks.value.length / pageSize.value))
+  if (abandonedBooksPage.value > totalPages) {
+    abandonedBooksPage.value = totalPages
+  }
+})
+
+watch(pageSize, () => {
+  finishedBooksPage.value = 1
+  abandonedBooksPage.value = 1
+})
 </script>
 
 <template>
@@ -100,14 +138,17 @@ onMounted(async () => {
         {{ t('books.loadingLibrary') }}
       </p>
 
-      <div
+      <TransitionGroup
         v-else-if="finishedBooks.length > 0"
+        name="bm-stagger"
+        tag="div"
         class="bm-book-grid"
       >
         <RouterLink
-          v-for="item in finishedBooks"
+          v-for="(item, index) in paginatedFinishedBooks"
           :key="item.id"
           class="bm-book-card"
+          :style="{ transitionDelay: `${Math.min(index, 10) * 24}ms` }"
           :to="{ name: 'book-detail', params: { id: item.id } }"
         >
           <div class="bm-book-cover">
@@ -143,7 +184,17 @@ onMounted(async () => {
             </p>
           </div>
         </RouterLink>
-      </div>
+      </TransitionGroup>
+
+      <PaginationControls
+        v-if="!loadingLibrary && finishedBooks.length > 0"
+        v-model:page="finishedBooksPage"
+        :page-size="pageSizeModel"
+        :page-size-options="pageSizeOptions"
+        :total-items="finishedBooks.length"
+        class="mt-4"
+        @update:page-size="onPageSizeChange"
+      />
 
       <EmptyState
         v-else
@@ -158,14 +209,17 @@ onMounted(async () => {
         <p class="bm-muted text-xs">{{ t('books.abandonedRetrySubtitle') }}</p>
       </div>
 
-      <div
+      <TransitionGroup
         v-if="abandonedBooks.length > 0"
+        name="bm-stagger"
+        tag="div"
         class="bm-book-grid"
       >
         <article
-          v-for="item in abandonedBooks"
+          v-for="(item, index) in paginatedAbandonedBooks"
           :key="item.id"
           class="bm-book-card"
+          :style="{ transitionDelay: `${Math.min(index, 10) * 24}ms` }"
         >
           <RouterLink :to="{ name: 'book-detail', params: { id: item.id } }">
             <div class="bm-book-cover">
@@ -211,7 +265,17 @@ onMounted(async () => {
             </button>
           </div>
         </article>
-      </div>
+      </TransitionGroup>
+
+      <PaginationControls
+        v-if="abandonedBooks.length > 0"
+        v-model:page="abandonedBooksPage"
+        :page-size="pageSizeModel"
+        :page-size-options="pageSizeOptions"
+        :total-items="abandonedBooks.length"
+        class="mt-4"
+        @update:page-size="onPageSizeChange"
+      />
 
       <EmptyState
         v-else

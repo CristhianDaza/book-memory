@@ -7,10 +7,12 @@ import { useRouter } from 'vue-router'
 import type { BookSearchResult, LibraryBook } from '../../../types/books'
 import EmptyState from '../../../components/ui/EmptyState.vue'
 import PageHeader from '../../../components/ui/PageHeader.vue'
+import PaginationControls from '../../../components/ui/PaginationControls.vue'
 import PromptModal from '../../../components/PromptModal.vue'
 import SurfaceCard from '../../../components/ui/SurfaceCard.vue'
 import StarRating from '../../../components/ui/StarRating.vue'
 import { withBodyScrollLock } from '../../../composables/useBodyScrollLock'
+import { useBooksPaginationPreference } from '../../../composables/useBooksPagination'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
@@ -20,6 +22,7 @@ const router = useRouter()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
+const { pageSize, pageSizeModel, pageSizeOptions, setPageSize } = useBooksPaginationPreference()
 const queryInput = ref('')
 const showAddModal = ref(false)
 const searchInputRef = ref<HTMLInputElement | null>(null)
@@ -41,6 +44,7 @@ const isAnimating = ref(false)
 const randomAnimationKey = ref(0)
 const randomAnimationTimeoutId = ref<number | null>(null)
 const randomConfirmButtonRef = ref<HTMLButtonElement | null>(null)
+const pendingBooksPage = ref(1)
 
 const {
   query,
@@ -80,6 +84,10 @@ const pendingLibrary = computed(() => {
     return base
   }
   return [...base].sort((a, b) => Number(b.favorite) - Number(a.favorite))
+})
+const paginatedPendingLibrary = computed(() => {
+  const start = (pendingBooksPage.value - 1) * pageSize.value
+  return pendingLibrary.value.slice(start, start + pageSize.value)
 })
 const randomCandidates = computed(() =>
   filteredSortedLibrary.value.filter(
@@ -237,6 +245,11 @@ function isFavoriteUpdating(bookId: string): boolean {
   return favoriteUpdatingIds.value.includes(bookId)
 }
 
+function onPendingBooksPageSizeChange(value: number) {
+  setPageSize(value)
+  pendingBooksPage.value = 1
+}
+
 async function onAddBook(bookId: string) {
   const target = searchResults.value.find((item) => item.id === bookId)
   if (!target) return
@@ -379,6 +392,30 @@ watch(showRandomPickerModal, async (isOpen) => {
   randomConfirmButtonRef.value?.focus()
 })
 
+watch(
+  [
+    pendingLibrary,
+    pageSize,
+    showOnlyFavorites,
+    librarySearchQuery,
+    librarySortMode,
+    includePausedInPendingBooks,
+  ],
+  () => {
+    const totalPages = Math.max(1, Math.ceil(pendingLibrary.value.length / pageSize.value))
+    if (pendingBooksPage.value > totalPages) {
+      pendingBooksPage.value = totalPages
+    }
+  },
+)
+
+watch(
+  [showOnlyFavorites, librarySearchQuery, librarySortMode, includePausedInPendingBooks, pageSize],
+  () => {
+    pendingBooksPage.value = 1
+  },
+)
+
 withBodyScrollLock(showAddModal)
 withBodyScrollLock(showRandomPickerModal)
 
@@ -507,7 +544,7 @@ onBeforeUnmount(() => {
         class="bm-book-grid mt-4"
       >
         <article
-          v-for="(item, index) in pendingLibrary"
+          v-for="(item, index) in paginatedPendingLibrary"
           :key="item.id"
           class="bm-book-card overflow-visible"
           :style="{ transitionDelay: `${Math.min(index, 10) * 24}ms` }"
@@ -585,6 +622,16 @@ onBeforeUnmount(() => {
           </div>
         </article>
       </TransitionGroup>
+
+      <PaginationControls
+        v-if="!loadingLibrary && pendingLibrary.length > 0"
+        v-model:page="pendingBooksPage"
+        :page-size="pageSizeModel"
+        :page-size-options="pageSizeOptions"
+        :total-items="pendingLibrary.length"
+        class="mt-4"
+        @update:page-size="onPendingBooksPageSizeChange"
+      />
 
       <EmptyState
         v-if="!loadingLibrary && pendingLibrary.length === 0"

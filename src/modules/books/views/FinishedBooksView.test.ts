@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FinishedBooksView from './FinishedBooksView.vue'
 import type { LibraryBook } from '../../../types/books'
+import { useBooksPaginationPreference } from '../../../composables/useBooksPagination'
 import { useAuthStore } from '../../../stores/auth'
 import { useBooksStore } from '../../../stores/books'
 import { useNotificationsStore } from '../../../stores/notifications'
@@ -98,13 +99,35 @@ const readingBook: LibraryBook = {
   readingPlan: null,
 }
 
-function mountView() {
+function makeFinishedBook(index: number): LibraryBook {
+  return {
+    ...finishedBook,
+    id: `finished-${index}`,
+    externalId: `finished-${index}`,
+    title: `Finished Book ${index}`,
+    completedAt: `2026-03-${String(index).padStart(2, '0')}T00:00:00.000Z`,
+    updatedAt: `2026-03-${String(index).padStart(2, '0')}T00:00:00.000Z`,
+  }
+}
+
+function makeAbandonedBook(index: number): LibraryBook {
+  return {
+    ...abandonedBook,
+    id: `abandoned-${index}`,
+    externalId: `abandoned-${index}`,
+    title: `Abandoned Book ${index}`,
+    abandonedReason: `Reason ${index}`,
+    updatedAt: `2026-04-${String(index).padStart(2, '0')}T00:00:00.000Z`,
+  }
+}
+
+function mountView(initialLibrary: LibraryBook[] = [finishedBook, abandonedBook, readingBook]) {
   setActivePinia(createPinia())
   const authStore = useAuthStore()
   authStore.user = { uid: 'user-1' } as never
   authStore.initialized = true
   const booksStore = useBooksStore()
-  booksStore.library = [finishedBook, abandonedBook, readingBook]
+  booksStore.library = initialLibrary
 
   return mount(FinishedBooksView, {
     global: {
@@ -148,6 +171,9 @@ function mountView() {
 describe('FinishedBooksView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
+    useBooksPaginationPreference().setPageSize(12)
+    localStorage.clear()
     vi.mocked(fetchLibraryBooks).mockResolvedValue([finishedBook, abandonedBook, readingBook])
   })
 
@@ -190,5 +216,60 @@ describe('FinishedBooksView', () => {
     })
     expect(successSpy).toHaveBeenCalledWith('notifications.abandonedBookRetried')
     expect(errorSpy).not.toHaveBeenCalled()
+  })
+
+  it('paginates finished and abandoned books separately by default', async () => {
+    const library = [
+      ...Array.from({ length: 14 }, (_, index) => makeFinishedBook(index + 1)),
+      ...Array.from({ length: 14 }, (_, index) => makeAbandonedBook(index + 1)),
+    ]
+    vi.mocked(fetchLibraryBooks).mockResolvedValue(library)
+    const wrapper = mountView(library)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Finished Book 14')
+    expect(wrapper.text()).toContain('Finished Book 3')
+    expect(wrapper.text()).not.toContain('Finished Book 2')
+    expect(wrapper.text()).toContain('Abandoned Book 14')
+    expect(wrapper.text()).toContain('Abandoned Book 3')
+    expect(wrapper.text()).not.toContain('Abandoned Book 2')
+  })
+
+  it('uses one persisted page size preference for both sections', async () => {
+    const library = [
+      ...Array.from({ length: 14 }, (_, index) => makeFinishedBook(index + 1)),
+      ...Array.from({ length: 14 }, (_, index) => makeAbandonedBook(index + 1)),
+    ]
+    vi.mocked(fetchLibraryBooks).mockResolvedValue(library)
+    const wrapper = mountView(library)
+    await flushPromises()
+
+    await wrapper.find('.bm-pagination-select').setValue('24')
+    await flushPromises()
+
+    expect(localStorage.getItem('bookmemory-books-page-size')).toBe('24')
+    expect(wrapper.text()).toContain('Finished Book 1')
+    expect(wrapper.text()).toContain('Abandoned Book 1')
+  })
+
+  it('keeps page navigation independent per section', async () => {
+    const library = [
+      ...Array.from({ length: 14 }, (_, index) => makeFinishedBook(index + 1)),
+      ...Array.from({ length: 14 }, (_, index) => makeAbandonedBook(index + 1)),
+    ]
+    vi.mocked(fetchLibraryBooks).mockResolvedValue(library)
+    const wrapper = mountView(library)
+    await flushPromises()
+
+    const nextButtons = wrapper.findAll('[aria-label="books.nextPage"]')
+    expect(nextButtons).toHaveLength(2)
+    await nextButtons[0].trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Finished Book 2')
+    expect(wrapper.text()).toContain('Finished Book 1')
+    expect(wrapper.text()).not.toContain('Finished Book 14')
+    expect(wrapper.text()).toContain('Abandoned Book 14')
+    expect(wrapper.text()).not.toContain('Abandoned Book 2')
   })
 })
