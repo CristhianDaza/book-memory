@@ -36,6 +36,19 @@ function startOfDay(date: Date): number {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
 }
 
+function startOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1)
+}
+
+function addMonths(date: Date, offset: number): Date {
+  return new Date(date.getFullYear(), date.getMonth() + offset, 1)
+}
+
+function monthKeyFromParts(year: number, monthIndex: number): string {
+  const month = String(monthIndex + 1).padStart(2, '0')
+  return `${year}-${month}`
+}
+
 function startOfWeek(date: Date): Date {
   const target = new Date(date)
   const day = target.getDay()
@@ -45,10 +58,15 @@ function startOfWeek(date: Date): Date {
   return target
 }
 
-function monthKeyFromDate(date: Date): string {
+function dateKeyFromDate(date: Date): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
-  return `${year}-${month}`
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function monthKeyFromDate(date: Date): string {
+  return monthKeyFromParts(date.getFullYear(), date.getMonth())
 }
 
 export const useStatsStore = defineStore('stats', () => {
@@ -74,38 +92,115 @@ export const useStatsStore = defineStore('stats', () => {
       .filter((session): session is ReadingSessionWithDate => session !== null),
   )
 
-  const filteredSessions = computed(() => {
-    if (range.value === 'all') return sessionsWithDates.value
-    const now = Date.now()
+  const rangeStart = computed<number | null>(() => {
+    if (range.value === 'all') return null
     const days = range.value === '7d' ? 7 : 30
-    const threshold = now - days * 86400000
-    return sessionsWithDates.value.filter((session) => session.startedAtDate.getTime() >= threshold)
+    return startOfDay(new Date()) - (days - 1) * 86400000
+  })
+
+  const filteredSessions = computed(() => {
+    const start = rangeStart.value
+    if (start === null) return sessionsWithDates.value
+    return sessionsWithDates.value.filter((session) => session.startedAtDate.getTime() >= start)
   })
 
   const activitySeries = computed<StatsActivityPoint[]>(() => {
-    const dayWindow = range.value === '7d' ? 7 : range.value === '30d' ? 30 : null
-    const todayStart = startOfDay(new Date())
-    const firstSessionDay =
-      sessionsWithDates.value.length > 0
-        ? Math.min(...sessionsWithDates.value.map((session) => startOfDay(session.startedAtDate)))
-        : todayStart
-    const threshold = dayWindow === null ? firstSessionDay : todayStart - (dayWindow - 1) * 86400000
-    const totalDays = Math.max(1, Math.floor((todayStart - threshold) / 86400000) + 1)
+    if (range.value === '7d') {
+      const todayStart = startOfDay(new Date())
+      const threshold = todayStart - 6 * 86400000
+      const buckets = new Map<number, StatsActivityPoint>()
 
-    const buckets = new Map<number, StatsActivityPoint>()
-    for (let offset = 0; offset < totalDays; offset += 1) {
-      const dayStart = threshold + offset * 86400000
-      buckets.set(dayStart, {
-        dayStart,
+      for (let offset = 0; offset < 7; offset += 1) {
+        const periodStart = threshold + offset * 86400000
+        const date = new Date(periodStart)
+        buckets.set(periodStart, {
+          periodStart,
+          periodKey: dateKeyFromDate(date),
+          granularity: 'day',
+          sessionCount: 0,
+          pagesRead: 0,
+          minutesRead: 0,
+        })
+      }
+
+      filteredSessions.value.forEach((session) => {
+        const periodStart = startOfDay(session.startedAtDate)
+        const bucket = buckets.get(periodStart)
+        if (!bucket) return
+        bucket.sessionCount += 1
+        bucket.pagesRead += Math.max(0, session.pagesRead ?? 0)
+        bucket.minutesRead += Math.floor(Math.max(0, session.durationSeconds ?? 0) / 60)
+      })
+
+      return Array.from(buckets.values())
+    }
+
+    if (range.value === '30d') {
+      const today = new Date()
+      const firstDay = new Date(startOfDay(today) - 29 * 86400000)
+      const firstWeek = startOfWeek(firstDay)
+      const currentWeek = startOfWeek(today)
+      const totalWeeks = Math.max(
+        1,
+        Math.floor((currentWeek.getTime() - firstWeek.getTime()) / (7 * 86400000)) + 1,
+      )
+      const buckets = new Map<number, StatsActivityPoint>()
+
+      for (let offset = 0; offset < totalWeeks; offset += 1) {
+        const date = new Date(firstWeek.getTime() + offset * 7 * 86400000)
+        const periodStart = date.getTime()
+        buckets.set(periodStart, {
+          periodStart,
+          periodKey: dateKeyFromDate(date),
+          granularity: 'week',
+          sessionCount: 0,
+          pagesRead: 0,
+          minutesRead: 0,
+        })
+      }
+
+      filteredSessions.value.forEach((session) => {
+        const periodStart = startOfWeek(session.startedAtDate).getTime()
+        const bucket = buckets.get(periodStart)
+        if (!bucket) return
+        bucket.sessionCount += 1
+        bucket.pagesRead += Math.max(0, session.pagesRead ?? 0)
+        bucket.minutesRead += Math.floor(Math.max(0, session.durationSeconds ?? 0) / 60)
+      })
+
+      return Array.from(buckets.values())
+    }
+
+    const todayMonth = startOfMonth(new Date())
+    const firstSessionMonth =
+      sessionsWithDates.value.length > 0
+        ? startOfMonth(
+            new Date(
+              Math.min(...sessionsWithDates.value.map((session) => session.startedAtDate.getTime())),
+            ),
+          )
+        : todayMonth
+    const totalMonths =
+      (todayMonth.getFullYear() - firstSessionMonth.getFullYear()) * 12 +
+      (todayMonth.getMonth() - firstSessionMonth.getMonth()) +
+      1
+    const buckets = new Map<string, StatsActivityPoint>()
+
+    for (let offset = 0; offset < Math.max(1, totalMonths); offset += 1) {
+      const date = addMonths(firstSessionMonth, offset)
+      const periodKey = monthKeyFromDate(date)
+      buckets.set(periodKey, {
+        periodStart: date.getTime(),
+        periodKey,
+        granularity: 'month',
         sessionCount: 0,
         pagesRead: 0,
         minutesRead: 0,
       })
     }
 
-    sessionsWithDates.value.forEach((session) => {
-      const dayStart = startOfDay(session.startedAtDate)
-      const bucket = buckets.get(dayStart)
+    filteredSessions.value.forEach((session) => {
+      const bucket = buckets.get(monthKeyFromDate(session.startedAtDate))
       if (!bucket) return
       bucket.sessionCount += 1
       bucket.pagesRead += Math.max(0, session.pagesRead ?? 0)
@@ -126,6 +221,7 @@ export const useStatsStore = defineStore('stats', () => {
     const totalMinutes = Math.floor(
       filteredSessions.value.reduce((acc, item) => acc + Math.max(0, item.durationSeconds ?? 0), 0) / 60,
     )
+    const activeDays = new Set(filteredSessions.value.map((session) => startOfDay(session.startedAtDate))).size
 
     const sessionsThisWeek = sessionsWithDates.value.filter(
       (session) => session.startedAtDate.getTime() >= currentWeekStart,
@@ -155,6 +251,7 @@ export const useStatsStore = defineStore('stats', () => {
       totalSessions,
       totalPages,
       totalMinutes,
+      activeDays,
       currentStreakDays: streakStore.currentStreakDays,
       bestStreakDays: streakStore.bestStreakDays,
       sessionsThisWeek,
@@ -167,7 +264,7 @@ export const useStatsStore = defineStore('stats', () => {
   const topBooks = computed<BookStatsEntry[]>(() => {
     const byBook = new Map<string, Omit<BookStatsEntry, 'avgPagesPerSession' | 'avgMinutesPerSession'>>()
 
-    sessionsWithDates.value.forEach((session) => {
+    filteredSessions.value.forEach((session) => {
       const current = byBook.get(session.bookId) ?? {
         bookId: session.bookId,
         title: libraryTitles.value[session.bookId] ?? 'Unknown',
@@ -384,6 +481,10 @@ export const useStatsStore = defineStore('stats', () => {
     selectedTimelineYear.value = year
   }
 
+  function getBookTitle(bookId: string) {
+    return libraryTitles.value[bookId] ?? 'Unknown'
+  }
+
   return {
     sessions,
     loading,
@@ -406,6 +507,7 @@ export const useStatsStore = defineStore('stats', () => {
     setWeeklyPagesGoal,
     setMonthlyMinutesGoal,
     setSelectedTimelineYear,
+    getBookTitle,
     loadStats,
   }
 })

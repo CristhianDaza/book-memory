@@ -151,7 +151,141 @@ describe('stats store', () => {
 
     store.setRange('all')
     await store.loadStats()
-    expect(store.activitySeries.length).toBeGreaterThan(30)
+    expect(store.activitySeries.every((point) => point.granularity === 'month')).toBe(true)
+    expect(store.activitySeries.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('builds a daily 7 day trend and weekly 30 day trend', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const books = useBooksStore()
+    const sessions = useSessionsStore()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-08T12:00:00.000Z'))
+
+    try {
+      vi.mocked(fetchLibraryBooks).mockResolvedValue([])
+      vi.mocked(fetchUserSessions).mockResolvedValue([
+        { id: 's1', bookId: 'x', startedAt: new Date('2026-07-08T10:00:00.000Z'), pagesRead: 10, durationSeconds: 600 },
+        { id: 's2', bookId: 'x', startedAt: new Date('2026-06-20T10:00:00.000Z'), pagesRead: 20, durationSeconds: 1200 },
+      ] as never)
+      vi.mocked(fetchStatsGoals).mockResolvedValue(null)
+
+      await books.ensureLibraryLoaded()
+      await sessions.ensureSessionsLoaded()
+      const store = useStatsStore()
+      await store.loadStats()
+
+      expect(store.activitySeries).toHaveLength(7)
+      expect(store.activitySeries.every((point) => point.granularity === 'day')).toBe(true)
+      expect(store.summary.totalSessions).toBe(1)
+      expect(store.summary.totalPages).toBe(10)
+
+      store.setRange('30d')
+
+      expect(store.activitySeries).toHaveLength(5)
+      expect(store.activitySeries.every((point) => point.granularity === 'week')).toBe(true)
+      expect(store.summary.totalSessions).toBe(2)
+      expect(store.summary.totalPages).toBe(30)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('groups all range activity by month instead of day', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const books = useBooksStore()
+    const sessions = useSessionsStore()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-08T12:00:00.000Z'))
+
+    try {
+      vi.mocked(fetchLibraryBooks).mockResolvedValue([])
+      vi.mocked(fetchUserSessions).mockResolvedValue([
+        { id: 's1', bookId: 'x', startedAt: new Date('2026-05-10T10:00:00.000Z'), pagesRead: 10, durationSeconds: 600 },
+        { id: 's2', bookId: 'x', startedAt: new Date('2026-07-08T10:00:00.000Z'), pagesRead: 20, durationSeconds: 1200 },
+      ] as never)
+      vi.mocked(fetchStatsGoals).mockResolvedValue(null)
+
+      await books.ensureLibraryLoaded()
+      await sessions.ensureSessionsLoaded()
+      const store = useStatsStore()
+      store.setRange('all')
+      await store.loadStats()
+
+      expect(store.activitySeries.map((point) => point.periodKey)).toEqual(['2026-05', '2026-06', '2026-07'])
+      expect(store.activitySeries.every((point) => point.granularity === 'month')).toBe(true)
+      expect(store.activitySeries.map((point) => point.sessionCount)).toEqual([1, 0, 1])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps summary and top books scoped to the selected range', async () => {
+    const auth = useAuthStore()
+    auth.user = { uid: 'user-1' } as never
+    const books = useBooksStore()
+    const sessions = useSessionsStore()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-08T12:00:00.000Z'))
+
+    try {
+      vi.mocked(fetchLibraryBooks).mockResolvedValue([
+        {
+          id: 'recent',
+          source: 'google',
+          externalId: 'recent',
+          title: 'Recent Book',
+          authors: ['A'],
+          coverUrl: null,
+          totalPages: 100,
+          favorite: false,
+          currentPage: 10,
+          status: 'reading',
+          rating: null,
+          note: null,
+          readingPlan: null,
+        },
+        {
+          id: 'old',
+          source: 'google',
+          externalId: 'old',
+          title: 'Old Book',
+          authors: ['B'],
+          coverUrl: null,
+          totalPages: 300,
+          favorite: false,
+          currentPage: 250,
+          status: 'reading',
+          rating: null,
+          note: null,
+          readingPlan: null,
+        },
+      ])
+      vi.mocked(fetchUserSessions).mockResolvedValue([
+        { id: 's1', bookId: 'recent', startedAt: new Date('2026-07-08T10:00:00.000Z'), pagesRead: 20, durationSeconds: 1200 },
+        { id: 's2', bookId: 'old', startedAt: new Date('2026-05-08T10:00:00.000Z'), pagesRead: 200, durationSeconds: 7200 },
+      ] as never)
+      vi.mocked(fetchStatsGoals).mockResolvedValue(null)
+
+      await books.ensureLibraryLoaded()
+      await sessions.ensureSessionsLoaded()
+      const store = useStatsStore()
+      await store.loadStats()
+
+      expect(store.summary.totalSessions).toBe(1)
+      expect(store.summary.totalPages).toBe(20)
+      expect(store.topBooks.map((entry) => entry.bookId)).toEqual(['recent'])
+
+      store.setRange('all')
+
+      expect(store.summary.totalSessions).toBe(2)
+      expect(store.summary.totalPages).toBe(220)
+      expect(store.topBooks.map((entry) => entry.bookId)).toEqual(['old', 'recent'])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('aggregates purchased and finished books by month and year', async () => {

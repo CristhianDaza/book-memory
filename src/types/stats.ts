@@ -1,5 +1,6 @@
 export type StatsRange = '7d' | '30d' | 'all'
 export type StatsActivityMetric = 'sessions' | 'pages' | 'minutes'
+export type StatsActivityGranularity = 'day' | 'week' | 'month'
 
 export interface FirestoreDateLike {
   toDate: () => Date
@@ -16,7 +17,9 @@ export interface ReadingSessionWithDate {
 }
 
 export interface StatsActivityPoint {
-  dayStart: number
+  periodStart: number
+  periodKey: string
+  granularity: StatsActivityGranularity
   sessionCount: number
   pagesRead: number
   minutesRead: number
@@ -26,6 +29,7 @@ export interface StatsSummary {
   totalSessions: number
   totalPages: number
   totalMinutes: number
+  activeDays: number
   currentStreakDays: number
   bestStreakDays: number
   sessionsThisWeek: number

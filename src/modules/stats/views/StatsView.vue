@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import PageHeader from '../../../components/ui/PageHeader.vue'
 import SurfaceCard from '../../../components/ui/SurfaceCard.vue'
 import { useStatsStore } from '../../../stores/stats'
-import type { StatsActivityMetric, StatsRange } from '../../../types/stats'
+import type { StatsActivityMetric, StatsActivityPoint, StatsRange } from '../../../types/stats'
 
 const { t, locale } = useI18n()
 const statsStore = useStatsStore()
@@ -24,8 +24,7 @@ const {
   timelineYears,
   timelineMonthlyBySelectedYear,
   selectedYearSummary,
-} =
-  storeToRefs(statsStore)
+} = storeToRefs(statsStore)
 const weeklyGoalInput = ref(100)
 const monthlyGoalInput = ref(600)
 
@@ -33,24 +32,48 @@ const mappedError = computed(() => (errorKey.value ? t(errorKey.value) : null))
 const maxActivityValue = computed(() =>
   activitySeries.value.reduce((max, point) => Math.max(max, getActivityValue(point)), 0),
 )
-const totalActivitySessions = computed(() =>
-  activitySeries.value.reduce((total, point) => total + point.sessionCount, 0),
-)
-const activeDays = computed(() => activitySeries.value.filter((point) => point.sessionCount > 0).length)
-const averageDailySessions = computed(() => {
+const averageActivity = computed(() => {
   if (activitySeries.value.length === 0) return 0
-  return totalActivitySessions.value / activitySeries.value.length
+  const total = activitySeries.value.reduce((sum, point) => sum + getActivityValue(point), 0)
+  return total / activitySeries.value.length
 })
 const peakActivity = computed(() => {
   if (activitySeries.value.length === 0) return null
-  return [...activitySeries.value].sort((a, b) => b.sessionCount - a.sessionCount)[0] ?? null
+  return [...activitySeries.value].sort((a, b) => getActivityValue(b) - getActivityValue(a))[0] ?? null
+})
+const activitySubtitle = computed(() =>
+  range.value === 'all'
+    ? t('stats.activityMonthlySubtitle')
+    : range.value === '30d'
+      ? t('stats.activityWeeklySubtitle')
+      : t('stats.activityDailySubtitle'),
+)
+const activityAverageLabel = computed(() =>
+  range.value === 'all'
+    ? t('stats.avgMonthlyActivity')
+    : range.value === '30d'
+      ? t('stats.avgWeeklyActivity')
+      : t('stats.avgDailyActivity'),
+)
+const activityGridStyle = computed(() => ({
+  gridTemplateColumns: `repeat(${Math.max(1, activitySeries.value.length)}, minmax(0, 1fr))`,
+}))
+const activityLabelStep = computed(() => {
+  const points = activitySeries.value.length
+  if (points <= 12) return 1
+  if (points <= 24) return 2
+  return Math.ceil(points / 12)
 })
 const maxTimelineMonthValue = computed(() =>
-  timelineMonthlyBySelectedYear.value.reduce(
-    (max, entry) => Math.max(max, entry.finishedCount),
-    0,
-  ),
+  timelineMonthlyBySelectedYear.value.reduce((max, entry) => Math.max(max, entry.finishedCount), 0),
 )
+
+const statCards = computed(() => [
+  { label: t('stats.totalSessions'), value: summary.value.totalSessions },
+  { label: t('stats.totalPages'), value: summary.value.totalPages },
+  { label: t('stats.totalMinutes'), value: summary.value.totalMinutes },
+  { label: t('stats.activeDays'), value: summary.value.activeDays },
+])
 
 function onChangeRange(nextRange: StatsRange) {
   statsStore.setRange(nextRange)
@@ -66,7 +89,7 @@ function onChangeTimelineYear(event: Event) {
   statsStore.setSelectedTimelineYear(value)
 }
 
-function getActivityValue(point: { sessionCount: number; pagesRead: number; minutesRead: number }): number {
+function getActivityValue(point: StatsActivityPoint): number {
   if (activityMetric.value === 'pages') return point.pagesRead
   if (activityMetric.value === 'minutes') return point.minutesRead
   return point.sessionCount
@@ -84,12 +107,29 @@ function barHeight(value: number): string {
   return `${Math.max(8, Math.round((value / max) * 100))}%`
 }
 
-function formatDayLabel(dayStart: number): string {
-  return new Intl.DateTimeFormat(locale.value, { weekday: 'short' }).format(new Date(dayStart))
+function formatActivityLabel(point: StatsActivityPoint): string {
+  const date = new Date(point.periodStart)
+  if (point.granularity === 'month') {
+    return new Intl.DateTimeFormat(locale.value, { month: 'short' }).format(date)
+  }
+  if (point.granularity === 'week') {
+    return new Intl.DateTimeFormat(locale.value, { month: 'short', day: 'numeric' }).format(date)
+  }
+  return new Intl.DateTimeFormat(locale.value, { weekday: 'short' }).format(date)
 }
 
-function formatDayTitle(dayStart: number): string {
-  return new Intl.DateTimeFormat(locale.value, { month: 'short', day: 'numeric' }).format(new Date(dayStart))
+function formatActivityTitle(point: StatsActivityPoint): string {
+  const date = new Date(point.periodStart)
+  if (point.granularity === 'month') {
+    return new Intl.DateTimeFormat(locale.value, { month: 'long', year: 'numeric' }).format(date)
+  }
+  if (point.granularity === 'week') {
+    const end = new Date(point.periodStart + 6 * 86400000)
+    const startLabel = new Intl.DateTimeFormat(locale.value, { month: 'short', day: 'numeric' }).format(date)
+    const endLabel = new Intl.DateTimeFormat(locale.value, { month: 'short', day: 'numeric' }).format(end)
+    return `${startLabel} - ${endLabel}`
+  }
+  return new Intl.DateTimeFormat(locale.value, { month: 'short', day: 'numeric' }).format(date)
 }
 
 function formatDecimal(value: number): string {
@@ -107,14 +147,33 @@ function timelineBarHeight(value: number): string {
   return `${Math.max(8, Math.round((value / max) * 100))}%`
 }
 
-function isToday(dayStart: number): boolean {
+function isCurrentPeriod(point: StatsActivityPoint): boolean {
   const today = new Date()
-  const target = new Date(dayStart)
+  const target = new Date(point.periodStart)
+  if (point.granularity === 'month') {
+    return target.getMonth() === today.getMonth() && target.getFullYear() === today.getFullYear()
+  }
+  if (point.granularity === 'week') {
+    return target.getTime() === startOfWeek(today).getTime()
+  }
   return (
     target.getDate() === today.getDate() &&
     target.getMonth() === today.getMonth() &&
     target.getFullYear() === today.getFullYear()
   )
+}
+
+function startOfWeek(date: Date): Date {
+  const target = new Date(date)
+  const day = target.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  target.setDate(target.getDate() + diff)
+  target.setHours(0, 0, 0, 0)
+  return target
+}
+
+function shouldShowActivityLabel(index: number): boolean {
+  return index === 0 || index === activitySeries.value.length - 1 || index % activityLabelStep.value === 0
 }
 
 function onUpdateWeeklyGoal() {
@@ -133,10 +192,9 @@ function formatCsvCell(value: string | number): string {
 function onExportCsv() {
   const header = ['date', 'book', 'bookId', 'pagesRead', 'minutesRead', 'startPage', 'endPage']
   const rows = filteredSessions.value.map((session) => {
-    const bookTitle = topBooks.value.find((entry) => entry.bookId === session.bookId)?.title ?? 'Unknown'
     return [
       session.startedAtDate.toISOString(),
-      bookTitle,
+      statsStore.getBookTitle(session.bookId),
       session.bookId,
       Math.max(0, session.pagesRead ?? 0),
       Math.floor(Math.max(0, session.durationSeconds ?? 0) / 60),
@@ -182,462 +240,353 @@ onMounted(async () => {
     </PageHeader>
 
     <SurfaceCard>
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <div class="inline-flex rounded-xl border border-(--app-border) bg-(--app-surface-muted) p-1">
-        <button
-          type="button"
-          class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
-          :class="
-            range === '7d'
-              ? 'bg-(--app-primary) text-(--app-primary-contrast)'
-              : 'text-(--app-text-muted) hover:bg-(--app-surface)'
-          "
-          @click="onChangeRange('7d')"
-        >
-          {{ t('stats.range7d') }}
-        </button>
-        <button
-          type="button"
-          class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
-          :class="
-            range === '30d'
-              ? 'bg-(--app-primary) text-(--app-primary-contrast)'
-              : 'text-(--app-text-muted) hover:bg-(--app-surface)'
-          "
-          @click="onChangeRange('30d')"
-        >
-          {{ t('stats.range30d') }}
-        </button>
-        <button
-          type="button"
-          class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
-          :class="
-            range === 'all'
-              ? 'bg-(--app-primary) text-(--app-primary-contrast)'
-              : 'text-(--app-text-muted) hover:bg-(--app-surface)'
-          "
-          @click="onChangeRange('all')"
-        >
-          {{ t('stats.rangeAll') }}
-        </button>
-      </div>
-    </div>
-
-    <p
-      v-if="mappedError"
-      class="mt-4 rounded-lg border border-(--app-danger) bg-(--app-danger-soft) p-2 text-xs text-(--app-danger)"
-    >
-      {{ mappedError }}
-    </p>
-
-    <p
-      v-if="loading"
-      class="bm-muted mt-4 text-sm"
-    >
-      {{ t('stats.loading') }}
-    </p>
-
-    <div
-      v-else
-      class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4"
-    >
-      <article class="bm-stat-card">
-        <p class="bm-stat-label">
-          {{ t('stats.totalSessions') }}
-        </p>
-        <p class="bm-stat-value mt-1">
-          {{ summary.totalSessions }}
-        </p>
-      </article>
-      <article class="bm-stat-card">
-        <p class="bm-stat-label">
-          {{ t('stats.totalPages') }}
-        </p>
-        <p class="bm-stat-value mt-1">
-          {{ summary.totalPages }}
-        </p>
-      </article>
-      <article class="bm-stat-card">
-        <p class="bm-stat-label">
-          {{ t('stats.totalMinutes') }}
-        </p>
-        <p class="bm-stat-value mt-1">
-          {{ summary.totalMinutes }}
-        </p>
-      </article>
-      <article class="bm-stat-card">
-        <p class="bm-stat-label">
-          {{ t('stats.currentStreak') }}
-        </p>
-        <p class="bm-stat-value mt-1">
-          {{ summary.currentStreakDays }}
-        </p>
-      </article>
-    </div>
-
-    <div
-      v-if="!loading"
-      class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3"
-    >
-      <article class="bm-stat-card">
-        <p class="bm-stat-label">
-          {{ t('stats.bestStreak') }}
-        </p>
-        <p class="mt-1 text-lg font-semibold text-(--app-text)">
-          {{ summary.bestStreakDays }}
-        </p>
-      </article>
-      <article class="bm-stat-card">
-        <p class="bm-stat-label">
-          {{ t('stats.sessionsThisWeek') }}
-        </p>
-        <p class="mt-1 text-lg font-semibold text-(--app-text)">
-          {{ summary.sessionsThisWeek }}
-        </p>
-      </article>
-      <article class="bm-stat-card">
-        <p class="bm-stat-label">
-          {{ t('stats.sessionsThisMonth') }}
-        </p>
-        <p class="mt-1 text-lg font-semibold text-(--app-text)">
-          {{ summary.sessionsThisMonth }}
-        </p>
-      </article>
-    </div>
-
-    <div
-      v-if="!loading"
-      class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3"
-    >
-      <article class="bm-stat-card">
-        <p class="bm-stat-label">
-          {{ t('stats.planAdherence') }}
-        </p>
-        <p class="mt-1 text-lg font-semibold text-(--app-text)">
-          {{ readingPlanSummary.adherencePercent }}%
-        </p>
-      </article>
-      <article class="bm-stat-card">
-        <p class="bm-stat-label">
-          {{ t('stats.planMetDays') }}
-        </p>
-        <p class="mt-1 text-lg font-semibold text-(--app-success)">
-          {{ readingPlanSummary.metDays }} / {{ readingPlanSummary.totalDays }}
-        </p>
-      </article>
-      <article class="bm-stat-card">
-        <p class="bm-stat-label">
-          {{ t('stats.planAtRiskBooks') }}
-        </p>
-        <p class="mt-1 text-lg font-semibold text-(--app-danger)">
-          {{ readingPlanSummary.atRiskBooks }}
-        </p>
-      </article>
-    </div>
-
-    <section
-      v-if="!loading"
-      class="bm-subtle-panel mt-4"
-    >
-      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p class="bm-section-title">
-          {{ t('stats.timelineTitle') }}
-        </p>
-        <label class="bm-label text-xs">
-          {{ t('stats.timelineYearLabel') }}
-          <select
-            class="bm-input mt-1 py-1 text-xs"
-            :value="selectedTimelineYear ?? ''"
-            :disabled="timelineYears.length === 0"
-            @change="onChangeTimelineYear"
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="inline-flex rounded-xl border border-(--app-border) bg-(--app-surface-muted) p-1">
+          <button
+            v-for="option in (['7d', '30d', 'all'] as StatsRange[])"
+            :key="option"
+            type="button"
+            class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+            :class="
+              range === option
+                ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+                : 'text-(--app-text-muted) hover:bg-(--app-surface)'
+            "
+            @click="onChangeRange(option)"
           >
-            <option
-              v-for="year in timelineYears"
-              :key="year"
-              :value="year"
-            >
-              {{ year }}
-            </option>
-          </select>
-        </label>
-      </div>
-
-      <div
-        v-if="selectedYearSummary"
-        class="mb-3 grid grid-cols-1 gap-2"
-      >
-        <article class="bm-card p-2">
-          <p class="bm-stat-label text-[10px]">
-            {{ t('stats.timelineFinishedYear') }}
-          </p>
-          <p class="mt-1 text-sm font-semibold text-(--app-text)">
-            {{ selectedYearSummary.finishedCount }}
-          </p>
-        </article>
-      </div>
-
-      <p
-        v-if="timelineMonthlyBySelectedYear.length === 0"
-        class="bm-muted text-sm"
-      >
-        {{ t('stats.timelineEmpty') }}
-      </p>
-
-      <div
-        v-else
-        class="-mx-1 overflow-x-auto px-1"
-      >
-        <div class="flex h-48 min-w-max items-end gap-3 border-b border-(--app-border) pb-2">
-          <article
-            v-for="point in timelineMonthlyBySelectedYear"
-            :key="point.monthKey"
-            class="flex w-10 flex-col items-center gap-1"
-          >
-            <div class="flex h-36 w-full items-end rounded-md border border-(--app-border) bg-(--app-surface) p-1">
-              <div
-                class="w-full rounded-sm bg-(--app-secondary)"
-                :title="`${t('stats.timelineFinished')}: ${point.finishedCount}`"
-                :style="{ height: timelineBarHeight(point.finishedCount) }"
-              />
-            </div>
-            <span class="text-[10px] text-(--app-text-muted)">
-              {{ formatMonthLabel(point.month) }}
-            </span>
-          </article>
+            {{ t(`stats.range_${option}`) }}
+          </button>
         </div>
-      </div>
-
-      <div class="mt-3 flex items-center gap-3 text-[11px] text-(--app-text-muted)">
-        <span class="inline-flex items-center gap-1">
-          <span class="h-2 w-2 rounded-full bg-(--app-secondary)" />
-          {{ t('stats.timelineFinished') }}
-        </span>
-      </div>
-    </section>
-
-    <section
-      v-if="!loading"
-      class="bm-subtle-panel mt-4"
-    >
-      <p class="bm-section-title">
-        {{ t('stats.goalsTitle') }}
-      </p>
-      <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <article class="bm-card">
-          <label class="bm-label">
-            {{ t('stats.weeklyPagesGoal') }}
-            <input
-              v-model.number="weeklyGoalInput"
-              type="number"
-              min="1"
-              class="bm-input mt-1 py-1 text-sm"
-              @change="onUpdateWeeklyGoal"
-            >
-          </label>
-          <p class="bm-muted mt-2 text-xs">
-            {{ summary.pagesThisWeek }} / {{ goalsProgress.weeklyPagesGoal }} {{ t('stats.pagesShort') }}
-          </p>
-          <div class="bm-progress-track mt-1">
-            <div
-              class="bm-progress-fill"
-              :style="{ width: `${goalsProgress.weeklyPagesProgress}%` }"
-            />
-          </div>
-        </article>
-
-        <article class="bm-card">
-          <label class="bm-label">
-            {{ t('stats.monthlyMinutesGoal') }}
-            <input
-              v-model.number="monthlyGoalInput"
-              type="number"
-              min="1"
-              class="bm-input mt-1 py-1 text-sm"
-              @change="onUpdateMonthlyGoal"
-            >
-          </label>
-          <p class="bm-muted mt-2 text-xs">
-            {{ summary.minutesThisMonth }} / {{ goalsProgress.monthlyMinutesGoal }} {{ t('stats.minutesShort') }}
-          </p>
-          <div class="bm-progress-track mt-1">
-            <div
-              class="h-full rounded bg-(--app-accent)"
-              :style="{ width: `${goalsProgress.monthlyMinutesProgress}%` }"
-            />
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <section
-      v-if="!loading"
-      class="bm-subtle-panel mt-4"
-    >
-      <div class="mb-3 flex items-center justify-between gap-2">
-        <p class="bm-section-title">
-          {{ t('stats.activityTitle') }}
-        </p>
         <p class="bm-muted text-xs">
-          {{ t('stats.activitySubtitle') }}
+          {{ t('stats.rangeHint') }}
         </p>
       </div>
 
-      <div class="mb-3 inline-flex rounded-lg border border-(--app-border) bg-(--app-surface-muted) p-1">
-        <button
-          type="button"
-          class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
-          :class="
-            activityMetric === 'sessions'
-              ? 'bg-(--app-primary) text-(--app-primary-contrast)'
-              : 'text-(--app-text-muted) hover:bg-(--app-surface)'
-          "
-          @click="onChangeMetric('sessions')"
-        >
-          {{ t('stats.metricSessions') }}
-        </button>
-        <button
-          type="button"
-          class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
-          :class="
-            activityMetric === 'pages'
-              ? 'bg-(--app-primary) text-(--app-primary-contrast)'
-              : 'text-(--app-text-muted) hover:bg-(--app-surface)'
-          "
-          @click="onChangeMetric('pages')"
-        >
-          {{ t('stats.metricPages') }}
-        </button>
-        <button
-          type="button"
-          class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
-          :class="
-            activityMetric === 'minutes'
-              ? 'bg-(--app-primary) text-(--app-primary-contrast)'
-              : 'text-(--app-text-muted) hover:bg-(--app-surface)'
-          "
-          @click="onChangeMetric('minutes')"
-        >
-          {{ t('stats.metricMinutes') }}
-        </button>
-      </div>
+      <p
+        v-if="mappedError"
+        class="mt-4 rounded-lg border border-(--app-danger) bg-(--app-danger-soft) p-2 text-xs text-(--app-danger)"
+      >
+        {{ mappedError }}
+      </p>
 
-      <div class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <article class="bm-card p-2">
-          <p class="bm-stat-label text-[10px]">
-            {{ t('stats.avgDailySessions') }}
-          </p>
-          <p class="mt-1 text-sm font-semibold text-(--app-primary-strong)">
-            {{ formatDecimal(averageDailySessions) }}
-          </p>
-        </article>
-        <article class="bm-card p-2">
-          <p class="bm-stat-label text-[10px]">
-            {{ t('stats.activeDays') }}
-          </p>
-          <p class="mt-1 text-sm font-semibold text-(--app-text)">
-            {{ activeDays }}
-          </p>
-        </article>
-        <article class="bm-card col-span-2 p-2 sm:col-span-1">
-          <p class="bm-stat-label text-[10px]">
-            {{ t('stats.peakDay') }}
-          </p>
-          <p class="mt-1 text-sm font-semibold text-(--app-text)">
-            {{
-              peakActivity
-                ? `${formatDayTitle(peakActivity.dayStart)} · ${peakActivity.sessionCount} ${t('stats.sessionsShort')}`
-                : '—'
-            }}
-          </p>
-        </article>
-      </div>
+      <p
+        v-if="loading"
+        class="bm-muted mt-4 text-sm"
+      >
+        {{ t('stats.loading') }}
+      </p>
 
-      <div class="-mx-1 overflow-x-auto px-1">
-        <div class="flex h-48 min-w-max items-end gap-2 border-b border-(--app-border) pb-2 sm:gap-3">
+      <template v-else>
+        <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
           <article
-            v-for="point in activitySeries"
-            :key="point.dayStart"
-            class="flex w-8 flex-col items-center gap-1 sm:w-9"
-            :title="`${formatDayTitle(point.dayStart)}: ${getActivityValue(point)} ${metricUnitLabel()}`"
+            v-for="card in statCards"
+            :key="card.label"
+            class="bm-stat-card"
           >
-            <div class="relative flex h-36 w-full items-end rounded-md border border-(--app-border) bg-(--app-surface) p-1">
-              <div
-                class="w-full rounded-sm transition"
-                :class="
-                  getActivityValue(point) === 0
-                    ? 'bg-(--app-surface-muted)'
-                    : isToday(point.dayStart)
-                      ? 'bg-(--app-secondary)'
-                      : 'bg-(--app-accent)'
-                "
-                :style="{ height: barHeight(getActivityValue(point)) }"
-              />
-            </div>
-            <span
-              class="text-[10px]"
-              :class="isToday(point.dayStart) ? 'text-(--app-secondary-strong)' : 'text-(--app-text-muted)'"
-            >
-              {{ formatDayLabel(point.dayStart) }}
-            </span>
-            <span class="text-[10px] font-semibold text-(--app-text)">{{ getActivityValue(point) }}</span>
+            <p class="bm-stat-label">
+              {{ card.label }}
+            </p>
+            <p class="bm-stat-value mt-1">
+              {{ card.value }}
+            </p>
           </article>
         </div>
-      </div>
 
-      <div class="mt-3 flex items-center gap-3 text-[11px] text-(--app-text-muted)">
-        <span class="inline-flex items-center gap-1">
-          <span class="h-2 w-2 rounded-full bg-(--app-accent)" />
-          {{ t('stats.regularDay') }}
-        </span>
-        <span class="inline-flex items-center gap-1">
-          <span class="h-2 w-2 rounded-full bg-(--app-secondary)" />
-          {{ t('stats.today') }}
-        </span>
-      </div>
-    </section>
+        <section class="bm-subtle-panel mt-4">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p class="bm-section-title">
+                {{ t('stats.activityTitle') }}
+              </p>
+              <p class="bm-muted mt-1 text-xs">
+                {{ activitySubtitle }}
+              </p>
+            </div>
 
-    <section
-      v-if="!loading"
-      class="bm-subtle-panel mt-4"
-    >
-      <p class="bm-section-title">
-        {{ t('stats.topBooksTitle') }}
-      </p>
-      <p
-        v-if="topBooks.length === 0"
-        class="bm-muted mt-2 text-sm"
-      >
-        {{ t('stats.topBooksEmpty') }}
-      </p>
-      <ul
-        v-else
-        class="mt-2 space-y-2"
-      >
-        <li
-          v-for="entry in topBooks"
-          :key="entry.bookId"
-          class="bm-card"
+            <div class="inline-flex rounded-lg border border-(--app-border) bg-(--app-surface-muted) p-1">
+              <button
+                v-for="metric in (['sessions', 'pages', 'minutes'] as StatsActivityMetric[])"
+                :key="metric"
+                type="button"
+                class="cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
+                :class="
+                  activityMetric === metric
+                    ? 'bg-(--app-primary) text-(--app-primary-contrast)'
+                    : 'text-(--app-text-muted) hover:bg-(--app-surface)'
+                "
+                @click="onChangeMetric(metric)"
+              >
+                {{ t(`stats.metric_${metric}`) }}
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <article class="bm-card p-2">
+              <p class="bm-stat-label text-[10px]">
+                {{ activityAverageLabel }}
+              </p>
+              <p class="mt-1 text-sm font-semibold text-(--app-primary-strong)">
+                {{ formatDecimal(averageActivity) }}
+              </p>
+            </article>
+            <article class="bm-card p-2">
+              <p class="bm-stat-label text-[10px]">
+                {{ t('stats.currentStreak') }}
+              </p>
+              <p class="mt-1 text-sm font-semibold text-(--app-text)">
+                {{ summary.currentStreakDays }}
+              </p>
+            </article>
+            <article class="bm-card col-span-2 p-2 sm:col-span-1">
+              <p class="bm-stat-label text-[10px]">
+                {{ t('stats.peakPeriod') }}
+              </p>
+              <p class="mt-1 text-sm font-semibold text-(--app-text)">
+                {{
+                  peakActivity
+                    ? `${formatActivityTitle(peakActivity)} · ${getActivityValue(peakActivity)} ${metricUnitLabel()}`
+                    : '-'
+                }}
+              </p>
+            </article>
+          </div>
+
+          <div class="mt-3 min-w-0">
+            <div
+              class="grid h-44 items-end gap-1 border-b border-(--app-border) pb-2 sm:gap-2"
+              :style="activityGridStyle"
+            >
+              <article
+                v-for="(point, index) in activitySeries"
+                :key="point.periodKey"
+                class="flex min-w-0 flex-col items-center gap-1"
+                :title="`${formatActivityTitle(point)}: ${getActivityValue(point)} ${metricUnitLabel()}`"
+              >
+                <div class="relative flex h-32 w-full min-w-[5px] items-end rounded-md border border-(--app-border) bg-(--app-surface) p-0.5 sm:p-1">
+                  <div
+                    class="w-full rounded-sm transition"
+                    :class="
+                      getActivityValue(point) === 0
+                        ? 'bg-(--app-surface-muted)'
+                        : isCurrentPeriod(point)
+                          ? 'bg-(--app-secondary)'
+                          : 'bg-(--app-accent)'
+                    "
+                    :style="{ height: barHeight(getActivityValue(point)) }"
+                  />
+                </div>
+                <span
+                  class="min-h-3 max-w-full truncate text-[9px] sm:text-[10px]"
+                  :class="isCurrentPeriod(point) ? 'text-(--app-secondary-strong)' : 'text-(--app-text-muted)'"
+                >
+                  {{ shouldShowActivityLabel(index) ? formatActivityLabel(point) : '' }}
+                </span>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+          <div class="bm-subtle-panel">
+            <p class="bm-section-title">
+              {{ t('stats.topBooksTitle') }}
+            </p>
+            <p
+              v-if="topBooks.length === 0"
+              class="bm-muted mt-2 text-sm"
+            >
+              {{ t('stats.topBooksEmpty') }}
+            </p>
+            <ul
+              v-else
+              class="mt-2 space-y-2"
+            >
+              <li
+                v-for="entry in topBooks"
+                :key="entry.bookId"
+                class="bm-card"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="text-sm font-semibold text-(--app-text)">
+                      {{ entry.title }}
+                    </p>
+                    <p class="bm-muted mt-1 text-xs">
+                      {{ entry.sessionCount }} {{ t('stats.sessionsShort') }} ·
+                      {{ entry.totalPages }} {{ t('stats.pagesShort') }} ·
+                      {{ entry.totalMinutes }} {{ t('stats.minutesShort') }}
+                    </p>
+                  </div>
+                  <p class="text-sm font-semibold text-(--app-primary-strong)">
+                    {{ formatDecimal(entry.avgPagesPerSession) }}
+                  </p>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="bm-subtle-panel">
+            <p class="bm-section-title">
+              {{ t('stats.rhythmTitle') }}
+            </p>
+            <div class="mt-3 grid grid-cols-2 gap-2">
+              <article class="bm-card p-2">
+                <p class="bm-stat-label text-[10px]">
+                  {{ t('stats.bestStreak') }}
+                </p>
+                <p class="mt-1 text-sm font-semibold text-(--app-text)">
+                  {{ summary.bestStreakDays }}
+                </p>
+              </article>
+              <article class="bm-card p-2">
+                <p class="bm-stat-label text-[10px]">
+                  {{ t('stats.planAdherence') }}
+                </p>
+                <p class="mt-1 text-sm font-semibold text-(--app-text)">
+                  {{ readingPlanSummary.adherencePercent }}%
+                </p>
+              </article>
+              <article class="bm-card p-2">
+                <p class="bm-stat-label text-[10px]">
+                  {{ t('stats.planMetDays') }}
+                </p>
+                <p class="mt-1 text-sm font-semibold text-(--app-success)">
+                  {{ readingPlanSummary.metDays }} / {{ readingPlanSummary.totalDays }}
+                </p>
+              </article>
+              <article class="bm-card p-2">
+                <p class="bm-stat-label text-[10px]">
+                  {{ t('stats.planAtRiskBooks') }}
+                </p>
+                <p class="mt-1 text-sm font-semibold text-(--app-danger)">
+                  {{ readingPlanSummary.atRiskBooks }}
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="bm-subtle-panel mt-4">
+          <p class="bm-section-title">
+            {{ t('stats.goalsTitle') }}
+          </p>
+          <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <article class="bm-card">
+              <label class="bm-label">
+                {{ t('stats.weeklyPagesGoal') }}
+                <input
+                  v-model.number="weeklyGoalInput"
+                  type="number"
+                  min="1"
+                  class="bm-input mt-1 py-1 text-sm"
+                  @change="onUpdateWeeklyGoal"
+                >
+              </label>
+              <p class="bm-muted mt-2 text-xs">
+                {{ summary.pagesThisWeek }} / {{ goalsProgress.weeklyPagesGoal }} {{ t('stats.pagesShort') }}
+              </p>
+              <div class="bm-progress-track mt-1">
+                <div
+                  class="bm-progress-fill"
+                  :style="{ width: `${goalsProgress.weeklyPagesProgress}%` }"
+                />
+              </div>
+            </article>
+
+            <article class="bm-card">
+              <label class="bm-label">
+                {{ t('stats.monthlyMinutesGoal') }}
+                <input
+                  v-model.number="monthlyGoalInput"
+                  type="number"
+                  min="1"
+                  class="bm-input mt-1 py-1 text-sm"
+                  @change="onUpdateMonthlyGoal"
+                >
+              </label>
+              <p class="bm-muted mt-2 text-xs">
+                {{ summary.minutesThisMonth }} / {{ goalsProgress.monthlyMinutesGoal }} {{ t('stats.minutesShort') }}
+              </p>
+              <div class="bm-progress-track mt-1">
+                <div
+                  class="h-full rounded bg-(--app-accent)"
+                  :style="{ width: `${goalsProgress.monthlyMinutesProgress}%` }"
+                />
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="bm-subtle-panel mt-4">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p class="bm-section-title">
+              {{ t('stats.timelineTitle') }}
+            </p>
+            <label class="bm-label text-xs">
+              {{ t('stats.timelineYearLabel') }}
+              <select
+                class="bm-input mt-1 py-1 text-xs"
+                :value="selectedTimelineYear ?? ''"
+                :disabled="timelineYears.length === 0"
+                @change="onChangeTimelineYear"
+              >
+                <option
+                  v-for="year in timelineYears"
+                  :key="year"
+                  :value="year"
+                >
+                  {{ year }}
+                </option>
+              </select>
+            </label>
+          </div>
+
+          <p
+            v-if="timelineMonthlyBySelectedYear.length === 0"
+            class="bm-muted text-sm"
+          >
+            {{ t('stats.timelineEmpty') }}
+          </p>
+
+          <template v-else>
+            <p
+              v-if="selectedYearSummary"
+              class="bm-muted mb-3 text-xs"
+            >
+              {{ t('stats.timelineFinishedYear') }}: {{ selectedYearSummary.finishedCount }}
+            </p>
+
+            <div class="-mx-1 overflow-x-auto px-1">
+              <div class="flex h-36 min-w-max items-end gap-3 border-b border-(--app-border) pb-2">
+                <article
+                  v-for="point in timelineMonthlyBySelectedYear"
+                  :key="point.monthKey"
+                  class="flex w-10 flex-col items-center gap-1"
+                >
+                  <div class="flex h-24 w-full items-end rounded-md border border-(--app-border) bg-(--app-surface) p-1">
+                    <div
+                      class="w-full rounded-sm bg-(--app-secondary)"
+                      :title="`${t('stats.timelineFinished')}: ${point.finishedCount}`"
+                      :style="{ height: timelineBarHeight(point.finishedCount) }"
+                    />
+                  </div>
+                  <span class="text-[10px] text-(--app-text-muted)">
+                    {{ formatMonthLabel(point.month) }}
+                  </span>
+                </article>
+              </div>
+            </div>
+          </template>
+        </section>
+
+        <p
+          v-if="filteredSessions.length === 0"
+          class="bm-muted mt-4 text-sm"
         >
-          <p class="text-sm font-semibold text-(--app-text)">
-            {{ entry.title }}
-          </p>
-          <p class="bm-muted mt-1 text-xs">
-            {{ t('stats.totalPages') }}: {{ entry.totalPages }} · {{ t('stats.totalMinutes') }}: {{ entry.totalMinutes }}
-          </p>
-          <p class="bm-soft text-xs">
-            {{ t('stats.bookAvgPages') }}: {{ formatDecimal(entry.avgPagesPerSession) }} ·
-            {{ t('stats.bookAvgMinutes') }}: {{ formatDecimal(entry.avgMinutesPerSession) }}
-          </p>
-        </li>
-      </ul>
-    </section>
-
-    <p
-      v-if="!loading && filteredSessions.length === 0"
-      class="bm-muted mt-4 text-sm"
-    >
-      {{ t('stats.empty') }}
-    </p>
+          {{ t('stats.empty') }}
+        </p>
+      </template>
     </SurfaceCard>
   </div>
 </template>
