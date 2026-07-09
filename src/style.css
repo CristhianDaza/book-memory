@@ -1041,6 +1041,10 @@ a {
   padding-top: 0.9rem;
 }
 
+.bm-pagination-scroll-anchor {
+  scroll-margin-top: 1rem;
+}
+
 .bm-pagination-summary {
   margin: 0;
   color: var(--app-text-muted);
