@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { ArrowLeft } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import EmptyState from '../../../components/ui/EmptyState.vue'
@@ -19,6 +19,8 @@ const { pageSize, pageSizeModel, pageSizeOptions, setPageSize } = useBooksPagina
 const { library, loadingLibrary, metadataUpdatingIds } = storeToRefs(booksStore)
 const finishedBooksPage = ref(1)
 const abandonedBooksPage = ref(1)
+const finishedBooksSectionRef = ref<HTMLElement | null>(null)
+const abandonedBooksSectionRef = ref<HTMLElement | null>(null)
 
 function toMillis(value: unknown): number {
   if (!value) return 0
@@ -74,10 +76,37 @@ function isUpdating(bookId: string): boolean {
   return metadataUpdatingIds.value.includes(bookId)
 }
 
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
+
+async function scrollSectionIntoView(sectionRef: typeof finishedBooksSectionRef) {
+  await nextTick()
+  sectionRef.value?.scrollIntoView?.({
+    block: 'start',
+    behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+  })
+}
+
+function onFinishedBooksPageChange(value: number) {
+  finishedBooksPage.value = value
+  void scrollSectionIntoView(finishedBooksSectionRef)
+}
+
+function onAbandonedBooksPageChange(value: number) {
+  abandonedBooksPage.value = value
+  void scrollSectionIntoView(abandonedBooksSectionRef)
+}
+
 function onPageSizeChange(value: number) {
   setPageSize(value)
   finishedBooksPage.value = 1
   abandonedBooksPage.value = 1
+  void scrollSectionIntoView(finishedBooksSectionRef)
 }
 
 async function onRetryAbandoned(bookId: string) {
@@ -145,6 +174,7 @@ watch(pageSize, () => {
     </PageHeader>
 
     <SurfaceCard>
+      <div ref="finishedBooksSectionRef" class="bm-pagination-scroll-anchor" />
       <p
         v-if="loadingLibrary"
         class="bm-muted text-sm"
@@ -152,17 +182,14 @@ watch(pageSize, () => {
         {{ t('books.loadingLibrary') }}
       </p>
 
-      <TransitionGroup
+      <div
         v-else-if="finishedBooks.length > 0"
-        name="bm-stagger"
-        tag="div"
         class="bm-book-grid"
       >
         <RouterLink
-          v-for="(item, index) in paginatedFinishedBooks"
+          v-for="item in paginatedFinishedBooks"
           :key="item.id"
           class="bm-book-card"
-          :style="{ transitionDelay: `${Math.min(index, 10) * 24}ms` }"
           :to="{ name: 'book-detail', params: { id: item.id } }"
         >
           <div class="bm-book-cover">
@@ -198,15 +225,16 @@ watch(pageSize, () => {
             </p>
           </div>
         </RouterLink>
-      </TransitionGroup>
+      </div>
 
       <PaginationControls
         v-if="!loadingLibrary && finishedBooks.length > 0"
-        v-model:page="finishedBooksPage"
+        :page="finishedBooksPage"
         :page-size="pageSizeModel"
         :page-size-options="pageSizeOptions"
         :total-items="finishedBooks.length"
         class="mt-4"
+        @update:page="onFinishedBooksPageChange"
         @update:page-size="onPageSizeChange"
       />
 
@@ -218,22 +246,20 @@ watch(pageSize, () => {
     </SurfaceCard>
 
     <SurfaceCard>
+      <div ref="abandonedBooksSectionRef" class="bm-pagination-scroll-anchor" />
       <div class="mb-3">
         <h2 class="bm-section-title">{{ t('books.abandonedRetryTitle') }}</h2>
         <p class="bm-muted text-xs">{{ t('books.abandonedRetrySubtitle') }}</p>
       </div>
 
-      <TransitionGroup
+      <div
         v-if="abandonedBooks.length > 0"
-        name="bm-stagger"
-        tag="div"
         class="bm-book-grid"
       >
         <article
-          v-for="(item, index) in paginatedAbandonedBooks"
+          v-for="item in paginatedAbandonedBooks"
           :key="item.id"
           class="bm-book-card"
-          :style="{ transitionDelay: `${Math.min(index, 10) * 24}ms` }"
         >
           <RouterLink :to="{ name: 'book-detail', params: { id: item.id } }">
             <div class="bm-book-cover">
@@ -279,15 +305,16 @@ watch(pageSize, () => {
             </button>
           </div>
         </article>
-      </TransitionGroup>
+      </div>
 
       <PaginationControls
         v-if="abandonedBooks.length > 0"
-        v-model:page="abandonedBooksPage"
+        :page="abandonedBooksPage"
         :page-size="pageSizeModel"
         :page-size-options="pageSizeOptions"
         :total-items="abandonedBooks.length"
         class="mt-4"
+        @update:page="onAbandonedBooksPageChange"
         @update:page-size="onPageSizeChange"
       />
 

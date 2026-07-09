@@ -45,6 +45,7 @@ const randomAnimationKey = ref(0)
 const randomAnimationTimeoutId = ref<number | null>(null)
 const randomConfirmButtonRef = ref<HTMLButtonElement | null>(null)
 const pendingBooksPage = ref(1)
+const pendingBooksSectionRef = ref<HTMLElement | null>(null)
 
 const {
   query,
@@ -245,9 +246,31 @@ function isFavoriteUpdating(bookId: string): boolean {
   return favoriteUpdatingIds.value.includes(bookId)
 }
 
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
+
+async function scrollPendingBooksIntoView() {
+  await nextTick()
+  pendingBooksSectionRef.value?.scrollIntoView?.({
+    block: 'start',
+    behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+  })
+}
+
+function onPendingBooksPageChange(value: number) {
+  pendingBooksPage.value = value
+  void scrollPendingBooksIntoView()
+}
+
 function onPendingBooksPageSizeChange(value: number) {
   setPageSize(value)
   pendingBooksPage.value = 1
+  void scrollPendingBooksIntoView()
 }
 
 async function onAddBook(bookId: string) {
@@ -468,6 +491,7 @@ onBeforeUnmount(() => {
     </PageHeader>
 
     <SurfaceCard>
+      <div ref="pendingBooksSectionRef" class="bm-pagination-scroll-anchor" />
       <p
         v-if="mappedError"
         class="mb-3 rounded-lg border border-(--app-danger) bg-(--app-danger-soft) p-2 text-xs text-(--app-danger)"
@@ -547,17 +571,14 @@ onBeforeUnmount(() => {
         </article>
       </div>
 
-      <TransitionGroup
+      <div
         v-else
-        name="bm-stagger"
-        tag="div"
         class="bm-book-grid mt-4"
       >
         <article
-          v-for="(item, index) in paginatedPendingLibrary"
+          v-for="item in paginatedPendingLibrary"
           :key="item.id"
           class="bm-book-card overflow-visible"
-          :style="{ transitionDelay: `${Math.min(index, 10) * 24}ms` }"
         >
           <div class="bm-book-cover relative">
             <RouterLink
@@ -631,15 +652,16 @@ onBeforeUnmount(() => {
             </RouterLink>
           </div>
         </article>
-      </TransitionGroup>
+      </div>
 
       <PaginationControls
         v-if="!loadingLibrary && pendingLibrary.length > 0"
-        v-model:page="pendingBooksPage"
+        :page="pendingBooksPage"
         :page-size="pageSizeModel"
         :page-size-options="pageSizeOptions"
         :total-items="pendingLibrary.length"
         class="mt-4"
+        @update:page="onPendingBooksPageChange"
         @update:page-size="onPendingBooksPageSizeChange"
       />
 
