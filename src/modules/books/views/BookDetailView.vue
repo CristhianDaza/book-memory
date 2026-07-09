@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
-import { ArrowLeft, BookOpen, Heart, Pencil, Play, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, BookOpen, ChevronDown, Heart, Pencil, Play, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ConfirmModal from '../../../components/ConfirmModal.vue'
@@ -641,8 +641,8 @@ onMounted(async () => {
           {{ t('books.backToLibrary') }}
         </RouterLink>
       </div>
-      <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
-        <div class="mx-auto w-48 lg:mx-0">
+      <div class="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-[190px_1fr] lg:items-start">
+        <div class="mx-auto w-44 sm:w-48 lg:mx-0">
           <div class="bm-book-detail-cover overflow-hidden rounded-2xl border border-(--app-border) bg-(--app-surface-muted) shadow-lg">
             <img
               v-if="book.coverUrl"
@@ -659,33 +659,35 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="space-y-2">
-          <h1 class="bm-title">
-            {{ book.title }}
-          </h1>
-          <p class="bm-muted text-sm">
-            {{ t('books.by') }} {{ book.authors.join(', ') || t('books.unknownAuthor') }}
-          </p>
-          <div class="flex flex-wrap gap-2 pt-2">
-            <StatusBadge>{{ t('books.source') }}: {{ book.source }}</StatusBadge>
-            <StatusBadge>{{ t('books.status') }}: {{ t(`books.status_${book.status}`) }}</StatusBadge>
-            <StatusBadge :tone="book.favorite ? 'warning' : 'neutral'">
-              {{ book.favorite ? t('books.favorite') : t('books.notFavorite') }}
-            </StatusBadge>
-          </div>
-          <div
-            v-if="showRatingDisplay"
-            class="mt-2 flex items-center gap-2"
-          >
-            <span class="bm-muted text-sm">{{ t('books.ratingLabel') }}:</span>
-            <StarRating
-              :model-value="book.rating"
-              readonly
-              :size="16"
-            />
+        <div class="min-w-0 space-y-4">
+          <div>
+            <h1 class="bm-title">
+              {{ book.title }}
+            </h1>
+            <p class="bm-muted mt-1 text-sm">
+              {{ t('books.by') }} {{ book.authors.join(', ') || t('books.unknownAuthor') }}
+            </p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <StatusBadge>{{ t('books.source') }}: {{ book.source }}</StatusBadge>
+              <StatusBadge>{{ t('books.status') }}: {{ t(`books.status_${book.status}`) }}</StatusBadge>
+              <StatusBadge :tone="book.favorite ? 'warning' : 'neutral'">
+                {{ book.favorite ? t('books.favorite') : t('books.notFavorite') }}
+              </StatusBadge>
+            </div>
+            <div
+              v-if="showRatingDisplay"
+              class="mt-3 flex items-center gap-2"
+            >
+              <span class="bm-muted text-sm">{{ t('books.ratingLabel') }}:</span>
+              <StarRating
+                :model-value="book.rating"
+                readonly
+                :size="16"
+              />
+            </div>
           </div>
 
-          <div class="bm-subtle-panel mt-4">
+          <div class="bm-subtle-panel">
             <div class="flex items-center justify-between gap-3">
               <div>
                 <p class="bm-stat-label">{{ t('books.progress') }}</p>
@@ -717,88 +719,11 @@ onMounted(async () => {
             </p>
           </div>
 
-          <div class="bm-subtle-panel mt-4">
-            <p class="bm-eyebrow">{{ t('books.readingPaceTitle') }}</p>
-            <p
-              v-if="minutesPerPageDisplay === null"
-              class="bm-muted mt-2 text-sm"
-            >
-              {{ t('books.readingPaceNoData') }}
-            </p>
-            <template v-else>
-              <p class="bm-muted mt-2 text-sm">
-                {{ t('books.readingPaceMetric') }}: {{ minutesPerPageDisplay }} {{ t('books.readingPaceUnit') }}
-              </p>
-              <p class="bm-muted mt-1 text-sm">
-                {{ t('books.readingPaceTenPages') }}: {{ minutesPerTenPagesDisplay }} {{ t('books.readingMinutesUnit') }}
-              </p>
-              <p
-                v-if="estimatedRemainingMinutesDisplay !== null"
-                class="bm-muted mt-1 text-sm"
-              >
-                {{ t('books.readingPaceEstimatedRemaining') }}:
-                {{ estimatedRemainingMinutesDisplay }} {{ t('books.readingMinutesUnit') }}
-              </p>
-            </template>
-          </div>
-
-          <ReadingPlanCard
-            v-if="book.status !== 'finished'"
-            :book="book"
-            :records="planHistoryRecords"
-            :saving="isMetadataUpdating()"
-            @save="onSaveReadingPlan"
-            @clear="onSaveReadingPlan(null)"
-          />
-
-          <QuickMemoryForm
-            class="mt-4"
-            :book-id="book.id"
-            :default-page="displayCurrentPage"
-            :saving="memoriesStore.saving"
-            compact
-            @save="onSaveMemory"
-          />
-
-          <div class="bm-subtle-panel mt-4">
-            <div class="mb-2 flex items-center justify-between gap-2">
-              <p class="bm-eyebrow">{{ t('memories.recentForBook') }}</p>
-              <RouterLink
-                class="bm-button text-xs"
-                :to="{ name: 'memories' }"
-              >
-                {{ t('memories.viewAll') }}
-              </RouterLink>
-            </div>
-            <ul
-              v-if="recentMemories.length > 0"
-              class="space-y-2"
-            >
-              <li
-                v-for="memory in recentMemories"
-                :key="memory.id"
-                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2"
-              >
-                <p class="text-xs font-bold text-(--app-primary-strong)">
-                  {{ t(`memories.kind_${memory.kind}`) }}
-                  <template v-if="memory.page !== null">- {{ t('memories.pageShort', { page: memory.page }) }}</template>
-                </p>
-                <p class="bm-muted mt-1 line-clamp-3 whitespace-pre-line text-sm">{{ memory.content }}</p>
-              </li>
-            </ul>
-            <p
-              v-else
-              class="bm-muted text-sm"
-            >
-              {{ t('memories.emptyForBook') }}
-            </p>
-          </div>
-
-          <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <button
               v-if="canStartReadingSession"
               type="button"
-              class="bm-button bm-button-primary"
+              class="bm-button bm-button-primary sm:col-span-2"
               @click="onStartReadingSession"
             >
               <Play
@@ -810,7 +735,7 @@ onMounted(async () => {
             <button
               v-else-if="canStartReadingFromPendingOrPaused"
               type="button"
-              class="bm-button bm-button-primary"
+              class="bm-button bm-button-primary sm:col-span-2"
               :disabled="isMetadataUpdating()"
               @click="onStartReadingFromPendingOrPaused"
             >
@@ -823,7 +748,7 @@ onMounted(async () => {
             <button
               v-else-if="canStartRereading"
               type="button"
-              class="bm-button bm-button-primary"
+              class="bm-button bm-button-primary sm:col-span-2"
               :disabled="isMetadataUpdating()"
               @click="onRequestReread"
             >
@@ -856,7 +781,7 @@ onMounted(async () => {
 
             <button
               type="button"
-              class="bm-button bm-button-danger"
+              class="bm-button bm-button-danger sm:col-span-3"
               :disabled="isDeleting() || isFavoriteUpdating()"
               @click="onRequestRemoveBook"
             >
@@ -867,12 +792,136 @@ onMounted(async () => {
               {{ isDeleting() ? t('books.deletingBook') : t('books.removeBook') }}
             </button>
           </div>
+        </div>
+      </div>
 
-          <div class="bm-subtle-panel mt-4">
-            <div class="mb-2 flex items-center justify-between">
-              <p class="bm-eyebrow">
-                {{ t('books.editMetadata') }}
+      <div class="mt-5 grid gap-3">
+        <details class="bm-disclosure">
+          <summary>
+            <span class="bm-eyebrow">{{ t('books.readingPaceTitle') }}</span>
+            <ChevronDown
+              :size="17"
+              aria-hidden="true"
+            />
+          </summary>
+          <div class="bm-disclosure-body">
+            <p
+              v-if="minutesPerPageDisplay === null"
+              class="bm-muted text-sm"
+            >
+              {{ t('books.readingPaceNoData') }}
+            </p>
+            <template v-else>
+              <p class="bm-muted text-sm">
+                {{ t('books.readingPaceMetric') }}: {{ minutesPerPageDisplay }} {{ t('books.readingPaceUnit') }}
               </p>
+              <p class="bm-muted mt-1 text-sm">
+                {{ t('books.readingPaceTenPages') }}: {{ minutesPerTenPagesDisplay }} {{ t('books.readingMinutesUnit') }}
+              </p>
+              <p
+                v-if="estimatedRemainingMinutesDisplay !== null"
+                class="bm-muted mt-1 text-sm"
+              >
+                {{ t('books.readingPaceEstimatedRemaining') }}:
+                {{ estimatedRemainingMinutesDisplay }} {{ t('books.readingMinutesUnit') }}
+              </p>
+            </template>
+          </div>
+        </details>
+
+        <details
+          v-if="book.status !== 'finished'"
+          class="bm-disclosure"
+        >
+          <summary>
+            <span class="bm-eyebrow">{{ t('books.planTitle') }}</span>
+            <ChevronDown
+              :size="17"
+              aria-hidden="true"
+            />
+          </summary>
+          <div class="bm-disclosure-body bm-disclosure-body-flush">
+            <ReadingPlanCard
+              :book="book"
+              :records="planHistoryRecords"
+              :saving="isMetadataUpdating()"
+              @save="onSaveReadingPlan"
+              @clear="onSaveReadingPlan(null)"
+            />
+          </div>
+        </details>
+
+        <details class="bm-disclosure">
+          <summary>
+            <span class="bm-eyebrow">{{ t('memories.saveAction') }}</span>
+            <ChevronDown
+              :size="17"
+              aria-hidden="true"
+            />
+          </summary>
+          <div class="bm-disclosure-body">
+            <QuickMemoryForm
+              :book-id="book.id"
+              :default-page="displayCurrentPage"
+              :saving="memoriesStore.saving"
+              compact
+              @save="onSaveMemory"
+            />
+          </div>
+        </details>
+
+        <details class="bm-disclosure">
+          <summary>
+            <span class="bm-eyebrow">{{ t('memories.recentForBook') }}</span>
+            <ChevronDown
+              :size="17"
+              aria-hidden="true"
+            />
+          </summary>
+          <div class="bm-disclosure-body">
+            <div class="mb-2 flex justify-end">
+              <RouterLink
+                class="bm-button text-xs"
+                :to="{ name: 'memories' }"
+              >
+                {{ t('memories.viewAll') }}
+              </RouterLink>
+            </div>
+            <ul
+              v-if="recentMemories.length > 0"
+              class="space-y-2"
+            >
+              <li
+                v-for="memory in recentMemories"
+                :key="memory.id"
+                class="rounded-lg border border-(--app-border) bg-(--app-surface) px-3 py-2"
+              >
+                <p class="text-xs font-bold text-(--app-primary-strong)">
+                  {{ t(`memories.kind_${memory.kind}`) }}
+                  <template v-if="memory.page !== null">- {{ t('memories.pageShort', { page: memory.page }) }}</template>
+                </p>
+                <p class="bm-muted mt-1 line-clamp-3 whitespace-pre-line text-sm">{{ memory.content }}</p>
+              </li>
+            </ul>
+            <p
+              v-else
+              class="bm-muted text-sm"
+            >
+              {{ t('memories.emptyForBook') }}
+            </p>
+          </div>
+        </details>
+
+        <details class="bm-disclosure">
+          <summary>
+            <span class="bm-eyebrow">{{ t('books.editMetadata') }}</span>
+            <ChevronDown
+              :size="17"
+              aria-hidden="true"
+            />
+          </summary>
+          <div class="bm-disclosure-body">
+            <div class="mb-2 flex justify-end">
               <IconButton
                 v-if="!editMode"
                 :label="t('books.editAction')"
@@ -1070,22 +1119,36 @@ onMounted(async () => {
               </div>
             </template>
           </div>
+        </details>
 
-          <div
-            v-if="book.note"
-            class="bm-subtle-panel mt-4"
-          >
-            <p class="bm-eyebrow">{{ t('books.noteLabel') }}</p>
-            <p class="bm-muted mt-2 whitespace-pre-line text-sm">{{ book.note }}</p>
+        <details
+          v-if="book.note"
+          class="bm-disclosure"
+        >
+          <summary>
+            <span class="bm-eyebrow">{{ t('books.noteLabel') }}</span>
+            <ChevronDown
+              :size="17"
+              aria-hidden="true"
+            />
+          </summary>
+          <div class="bm-disclosure-body">
+            <p class="bm-muted whitespace-pre-line text-sm">{{ book.note }}</p>
           </div>
+        </details>
 
-          <div class="bm-subtle-panel mt-4">
-            <p class="bm-eyebrow">
-              {{ t('books.recentSessions') }}
-            </p>
+        <details class="bm-disclosure">
+          <summary>
+            <span class="bm-eyebrow">{{ t('books.recentSessions') }}</span>
+            <ChevronDown
+              :size="17"
+              aria-hidden="true"
+            />
+          </summary>
+          <div class="bm-disclosure-body">
             <p
               v-if="loadingSessions"
-              class="bm-muted mt-2 text-sm"
+              class="bm-muted text-sm"
             >
               {{ t('books.loadingSessions') }}
             </p>
@@ -1094,7 +1157,7 @@ onMounted(async () => {
               v-else-if="visibleSessions.length > 0"
               name="bm-stagger"
               tag="ul"
-              class="mt-2 space-y-2"
+              class="space-y-2"
             >
               <li
                 v-for="(session, index) in visibleSessions"
@@ -1184,7 +1247,7 @@ onMounted(async () => {
 
             <p
               v-else
-              class="bm-muted mt-2 text-sm"
+              class="bm-muted text-sm"
             >
               {{ t('books.noSessions') }}
             </p>
@@ -1197,7 +1260,7 @@ onMounted(async () => {
               {{ t('books.loadMoreSessions') }}
             </button>
           </div>
-        </div>
+        </details>
       </div>
     </template>
 

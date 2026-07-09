@@ -72,7 +72,7 @@ const syncTone = computed<'success' | 'warning' | 'danger'>(() => {
 })
 const currentYear = computed(() => new Date().getFullYear())
 const appVersion = computed(() => import.meta.env.VITE_APP_VERSION || 'v0.0.0')
-const navItems = computed(() => [
+const primaryNavItems = computed(() => [
   {
     to: '/',
     label: t('home.home'),
@@ -110,6 +110,7 @@ const navItems = computed(() => [
     icon: BookOpen,
   },
 ])
+const mobileNavItems = computed(() => primaryNavItems.value.filter((item) => item.to !== '/finished-books'))
 const syncMessage = computed(() => {
   if (conflictSyncCount.value > 0) {
     return t('common.syncConflict', { count: conflictSyncCount.value })
@@ -295,7 +296,8 @@ onBeforeUnmount(() => {
   </div>
   <AppShell
     v-else
-    :nav-items="navItems"
+    :nav-items="primaryNavItems"
+    :mobile-nav-items="mobileNavItems"
     :show-chrome="showChrome"
     :sync-visible="showSyncBanner"
     :sync-tone="syncTone"
