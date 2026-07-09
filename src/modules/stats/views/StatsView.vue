@@ -24,6 +24,7 @@ const {
   timelineYears,
   timelineMonthlyBySelectedYear,
   selectedYearSummary,
+  timelineSelectedSummary,
 } = storeToRefs(statsStore)
 const weeklyGoalInput = ref(100)
 const monthlyGoalInput = ref(600)
@@ -67,6 +68,15 @@ const activityLabelStep = computed(() => {
 const maxTimelineMonthValue = computed(() =>
   timelineMonthlyBySelectedYear.value.reduce((max, entry) => Math.max(max, entry.finishedCount), 0),
 )
+const timelineGridStyle = computed(() => ({
+  gridTemplateColumns: `repeat(${Math.max(1, timelineMonthlyBySelectedYear.value.length)}, minmax(0, 1fr))`,
+}))
+const timelineLabelStep = computed(() => {
+  const points = timelineMonthlyBySelectedYear.value.length
+  if (points <= 12) return 1
+  if (points <= 24) return 2
+  return Math.ceil(points / 12)
+})
 
 const statCards = computed(() => [
   { label: t('stats.totalSessions'), value: summary.value.totalSessions },
@@ -84,7 +94,12 @@ function onChangeMetric(nextMetric: StatsActivityMetric) {
 }
 
 function onChangeTimelineYear(event: Event) {
-  const value = Number((event.target as HTMLSelectElement).value)
+  const rawValue = (event.target as HTMLSelectElement).value
+  if (rawValue === 'all') {
+    statsStore.setSelectedTimelineYear('all')
+    return
+  }
+  const value = Number(rawValue)
   if (Number.isNaN(value)) return
   statsStore.setSelectedTimelineYear(value)
 }
@@ -136,8 +151,11 @@ function formatDecimal(value: number): string {
   return value.toFixed(1)
 }
 
-function formatMonthLabel(month: number): string {
-  const date = new Date(2020, month - 1, 1)
+function formatTimelineLabel(point: { year: number; month: number }): string {
+  const date = new Date(point.year, point.month - 1, 1)
+  if (selectedTimelineYear.value === 'all') {
+    return new Intl.DateTimeFormat(locale.value, { month: 'short', year: '2-digit' }).format(date)
+  }
   return new Intl.DateTimeFormat(locale.value, { month: 'short' }).format(date)
 }
 
@@ -174,6 +192,11 @@ function startOfWeek(date: Date): Date {
 
 function shouldShowActivityLabel(index: number): boolean {
   return index === 0 || index === activitySeries.value.length - 1 || index % activityLabelStep.value === 0
+}
+
+function shouldShowTimelineLabel(index: number): boolean {
+  const last = timelineMonthlyBySelectedYear.value.length - 1
+  return index === 0 || index === last || index % timelineLabelStep.value === 0
 }
 
 function onUpdateWeeklyGoal() {
@@ -531,6 +554,9 @@ onMounted(async () => {
                 :disabled="timelineYears.length === 0"
                 @change="onChangeTimelineYear"
               >
+                <option value="all">
+                  {{ t('stats.timelineAllYears') }}
+                </option>
                 <option
                   v-for="year in timelineYears"
                   :key="year"
@@ -556,23 +582,33 @@ onMounted(async () => {
             >
               {{ t('stats.timelineFinishedYear') }}: {{ selectedYearSummary.finishedCount }}
             </p>
+            <p
+              v-else
+              class="bm-muted mb-3 text-xs"
+            >
+              {{ t('stats.timelineFinishedAll') }}: {{ timelineSelectedSummary.finishedCount }}
+            </p>
 
-            <div class="-mx-1 overflow-x-auto px-1">
-              <div class="flex h-36 min-w-max items-end gap-3 border-b border-(--app-border) pb-2">
+            <div class="min-w-0">
+              <div
+                class="grid h-36 items-end gap-1 border-b border-(--app-border) pb-2 sm:gap-2"
+                :style="timelineGridStyle"
+              >
                 <article
-                  v-for="point in timelineMonthlyBySelectedYear"
+                  v-for="(point, index) in timelineMonthlyBySelectedYear"
                   :key="point.monthKey"
-                  class="flex w-10 flex-col items-center gap-1"
+                  class="flex min-w-0 flex-col items-center gap-1"
+                  :title="`${formatTimelineLabel(point)}: ${point.finishedCount}`"
                 >
-                  <div class="flex h-24 w-full items-end rounded-md border border-(--app-border) bg-(--app-surface) p-1">
+                  <div class="flex h-24 w-full min-w-[5px] items-end rounded-md border border-(--app-border) bg-(--app-surface) p-0.5 sm:p-1">
                     <div
                       class="w-full rounded-sm bg-(--app-secondary)"
                       :title="`${t('stats.timelineFinished')}: ${point.finishedCount}`"
                       :style="{ height: timelineBarHeight(point.finishedCount) }"
                     />
                   </div>
-                  <span class="text-[10px] text-(--app-text-muted)">
-                    {{ formatMonthLabel(point.month) }}
+                  <span class="min-h-3 max-w-full truncate text-[9px] text-(--app-text-muted) sm:text-[10px]">
+                    {{ shouldShowTimelineLabel(index) ? formatTimelineLabel(point) : '' }}
                   </span>
                 </article>
               </div>

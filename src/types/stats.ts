@@ -1,6 +1,7 @@
 export type StatsRange = '7d' | '30d' | 'all'
 export type StatsActivityMetric = 'sessions' | 'pages' | 'minutes'
 export type StatsActivityGranularity = 'day' | 'week' | 'month'
+export type StatsTimelineSelection = number | 'all'
 
 export interface FirestoreDateLike {
   toDate: () => Date
