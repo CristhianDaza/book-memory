@@ -374,6 +374,18 @@ describe('stats store', () => {
       purchasedCount: 2,
       finishedCount: 2,
     })
+
+    store.setSelectedTimelineYear('all')
+    expect(store.timelineMonthlyBySelectedYear.map((entry) => entry.monthKey)).toEqual([
+      '2025-12',
+      '2026-01',
+      '2026-02',
+    ])
+    expect(store.selectedYearSummary).toBeNull()
+    expect(store.timelineSelectedSummary).toMatchObject({
+      purchasedCount: 3,
+      finishedCount: 2,
+    })
   })
 
   it('ignores invalid timeline dates and keeps chronological month ordering', async () => {

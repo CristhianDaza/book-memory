@@ -15,6 +15,7 @@ import type {
   StatsActivityPoint,
   StatsRange,
   StatsSummary,
+  StatsTimelineSelection,
 } from '../types/stats'
 import { summarizeReadingPlanCompliance } from '../utils/readingPlan'
 import { useAuthStore } from './auth'
@@ -353,10 +354,11 @@ export const useStatsStore = defineStore('stats', () => {
     return Array.from(years).sort((a, b) => a - b)
   })
 
-  const selectedTimelineYear = ref<number | null>(null)
+  const selectedTimelineYear = ref<StatsTimelineSelection | null>(null)
 
   const timelineMonthlyBySelectedYear = computed<BooksTimelineMonthPoint[]>(() => {
     if (selectedTimelineYear.value === null) return []
+    if (selectedTimelineYear.value === 'all') return timelineMonths.value
     return timelineMonths.value.filter((entry) => entry.year === selectedTimelineYear.value)
   })
 
@@ -376,8 +378,16 @@ export const useStatsStore = defineStore('stats', () => {
   })
 
   const selectedYearSummary = computed<BooksTimelineYearSummary | null>(() => {
-    if (selectedTimelineYear.value === null) return null
+    if (selectedTimelineYear.value === null || selectedTimelineYear.value === 'all') return null
     return timelineYearlySummary.value.find((entry) => entry.year === selectedTimelineYear.value) ?? null
+  })
+
+  const timelineSelectedSummary = computed(() => {
+    const entries = timelineMonthlyBySelectedYear.value
+    return {
+      purchasedCount: entries.reduce((total, entry) => total + entry.purchasedCount, 0),
+      finishedCount: entries.reduce((total, entry) => total + entry.finishedCount, 0),
+    }
   })
 
   function queueSaveGoals() {
@@ -450,7 +460,7 @@ export const useStatsStore = defineStore('stats', () => {
         selectedTimelineYear.value = null
       } else if (
         selectedTimelineYear.value === null ||
-        !timelineYears.value.includes(selectedTimelineYear.value)
+        (selectedTimelineYear.value !== 'all' && !timelineYears.value.includes(selectedTimelineYear.value))
       ) {
         selectedTimelineYear.value = timelineYears.value.includes(currentYear)
           ? currentYear
@@ -476,9 +486,13 @@ export const useStatsStore = defineStore('stats', () => {
     }
   }
 
-  function setSelectedTimelineYear(year: number) {
-    if (!timelineYears.value.includes(year)) return
-    selectedTimelineYear.value = year
+  function setSelectedTimelineYear(selection: StatsTimelineSelection) {
+    if (selection === 'all') {
+      selectedTimelineYear.value = selection
+      return
+    }
+    if (!timelineYears.value.includes(selection)) return
+    selectedTimelineYear.value = selection
   }
 
   function getBookTitle(bookId: string) {
@@ -500,6 +514,7 @@ export const useStatsStore = defineStore('stats', () => {
     timelineMonthlyBySelectedYear,
     timelineYearlySummary,
     selectedYearSummary,
+    timelineSelectedSummary,
     filteredSessions,
     activitySeries,
     setRange,
