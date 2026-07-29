@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
-import { ArrowLeft, BookOpen, ChevronDown, Heart, Pencil, Play, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, BookOpen, Ellipsis, Heart, Pencil, Play, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ConfirmModal from '../../../components/ConfirmModal.vue'
@@ -20,6 +20,7 @@ import { useSessionsStore } from '../../../stores/sessions'
 import type { BookRating, ReadingPlan } from '../../../types/books'
 import type { CreateBookMemoryInput } from '../../../types/memories'
 import type { ReadingSessionRecord } from '../../../types/reading'
+import { getReadingPlanInsights } from '../../../utils/readingPlan'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -39,6 +40,10 @@ const bookId = computed(() => String(route.params.id ?? ''))
 const book = computed(() => booksStore.getLibraryBookById(bookId.value))
 const planHistoryRecords = computed(() => readingPlanHistoryStore.getRecordsForBook(bookId.value).slice(0, 7))
 const recentMemories = computed(() => memoriesStore.getMemoriesForBook(bookId.value).slice(0, 4))
+type DetailTab = 'summary' | 'memories' | 'activity'
+const activeTab = ref<DetailTab>('summary')
+const moreMenuOpen = ref(false)
+const metadataModalOpen = ref(false)
 const editMode = ref(false)
 const formTotalPages = ref<string>('')
 const formCurrentPage = ref<string>('0')
@@ -70,6 +75,7 @@ const completionRatingError = ref('')
 const completionDateError = ref('')
 const canEditCompletedMetadata = computed(() => editingStartedAsFinished.value)
 const showRatingDisplay = computed(() => Boolean(book.value && book.value.status === 'finished' && book.value.rating !== null))
+const planInsights = computed(() => (book.value ? getReadingPlanInsights(book.value) : null))
 const maxCompletedAtDate = computed(() => {
   const today = new Date()
   const month = String(today.getMonth() + 1).padStart(2, '0')
@@ -278,6 +284,36 @@ function onCancelEdit() {
   completedAtError.value = ''
 }
 
+function selectTab(tab: DetailTab) {
+  activeTab.value = tab
+}
+
+function onTabKeydown(event: KeyboardEvent) {
+  const tabs: DetailTab[] = ['summary', 'memories', 'activity']
+  const currentIndex = tabs.indexOf(activeTab.value)
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+
+  event.preventDefault()
+  const nextIndex = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? tabs.length - 1
+      : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length
+  selectTab(tabs[nextIndex])
+  document.getElementById(`book-tab-${tabs[nextIndex]}`)?.focus()
+}
+
+function onOpenMetadata() {
+  moreMenuOpen.value = false
+  onStartEdit()
+  metadataModalOpen.value = true
+}
+
+function onCloseMetadata() {
+  onCancelEdit()
+  metadataModalOpen.value = false
+}
+
 async function onSaveMetadata() {
   if (!book.value) return
 
@@ -340,6 +376,7 @@ async function onSaveMetadata() {
   syncFormFromBook()
   showQueuedFeedbackIfAny()
   editMode.value = false
+  metadataModalOpen.value = false
   notificationsStore.success(t('notifications.metadataSaved'))
 }
 
@@ -422,6 +459,7 @@ async function onConfirmCompletionRating() {
   showQueuedFeedbackIfAny()
   showCompletionRatingModal.value = false
   editMode.value = false
+  metadataModalOpen.value = false
   editingStartedAsFinished.value = false
   showBookCompletion({
     bookId: book.value.id,
@@ -630,16 +668,58 @@ onMounted(async () => {
         <p class="bm-eyebrow">
           {{ t('books.detailTitle') }}
         </p>
-        <RouterLink
-          class="bm-button w-full sm:w-fit"
-          :to="{ name: 'books' }"
-        >
-          <ArrowLeft
-            :size="17"
-            aria-hidden="true"
-          />
-          {{ t('books.backToLibrary') }}
-        </RouterLink>
+        <div class="relative flex w-full items-center justify-end gap-2 sm:w-fit">
+          <RouterLink
+            class="bm-button"
+            :to="{ name: 'books' }"
+          >
+            <ArrowLeft
+              :size="17"
+              aria-hidden="true"
+            />
+            {{ t('books.backToLibrary') }}
+          </RouterLink>
+          <button
+            type="button"
+            class="bm-icon-button"
+            :aria-label="t('books.moreActions')"
+            :aria-expanded="moreMenuOpen"
+            aria-haspopup="menu"
+            @click="moreMenuOpen = !moreMenuOpen"
+          >
+            <Ellipsis :size="20" aria-hidden="true" />
+          </button>
+          <div
+            v-if="moreMenuOpen"
+            class="absolute right-0 top-full z-20 mt-2 w-52 rounded-xl border border-(--app-border) bg-(--app-surface-raised) p-1 shadow-xl"
+            role="menu"
+          >
+            <button type="button" class="bm-menu-action" role="menuitem" @click="onOpenMetadata">
+              <Pencil :size="16" aria-hidden="true" />
+              {{ t('books.editMetadata') }}
+            </button>
+            <button
+              type="button"
+              class="bm-menu-action"
+              role="menuitem"
+              :disabled="isFavoriteUpdating() || isDeleting()"
+              @click="moreMenuOpen = false; onToggleFavorite()"
+            >
+              <Heart :size="16" :fill="book.favorite ? 'currentColor' : 'none'" aria-hidden="true" />
+              {{ book.favorite ? t('books.unmarkFavorite') : t('books.markFavorite') }}
+            </button>
+            <button
+              type="button"
+              class="bm-menu-action text-(--app-danger)"
+              role="menuitem"
+              :disabled="isDeleting() || isFavoriteUpdating()"
+              @click="moreMenuOpen = false; onRequestRemoveBook()"
+            >
+              <Trash2 :size="16" aria-hidden="true" />
+              {{ t('books.removeBook') }}
+            </button>
+          </div>
+        </div>
       </div>
       <div class="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-[190px_1fr] lg:items-start">
         <div class="mx-auto w-44 sm:w-48 lg:mx-0">
@@ -758,52 +838,101 @@ onMounted(async () => {
               />
               {{ t('books.rereadAction') }}
             </button>
-
-            <button
-              type="button"
-              class="bm-button bm-button-warm"
-              :disabled="isFavoriteUpdating() || isDeleting()"
-              @click="onToggleFavorite"
-            >
-              <Heart
-                :size="17"
-                :fill="book.favorite ? 'currentColor' : 'none'"
-                aria-hidden="true"
-              />
-              {{
-                isFavoriteUpdating()
-                  ? t('books.updatingFavorite')
-                  : book.favorite
-                    ? t('books.unmarkFavorite')
-                    : t('books.markFavorite')
-              }}
-            </button>
-
-            <button
-              type="button"
-              class="bm-button bm-button-danger sm:col-span-3"
-              :disabled="isDeleting() || isFavoriteUpdating()"
-              @click="onRequestRemoveBook"
-            >
-              <Trash2
-                :size="17"
-                aria-hidden="true"
-              />
-              {{ isDeleting() ? t('books.deletingBook') : t('books.removeBook') }}
-            </button>
           </div>
         </div>
       </div>
 
+      <div
+        class="mt-6 flex gap-1 overflow-x-auto border-b border-(--app-border)"
+        role="tablist"
+        :aria-label="t('books.detailTabsLabel')"
+        @keydown="onTabKeydown"
+      >
+        <button
+          id="book-tab-summary"
+          type="button"
+          class="bm-detail-tab"
+          :class="{ 'is-active': activeTab === 'summary' }"
+          role="tab"
+          :aria-selected="activeTab === 'summary'"
+          aria-controls="book-panel-summary"
+          :tabindex="activeTab === 'summary' ? 0 : -1"
+          @click="selectTab('summary')"
+        >
+          {{ t('books.tabSummary') }}
+        </button>
+        <button
+          id="book-tab-memories"
+          type="button"
+          class="bm-detail-tab"
+          :class="{ 'is-active': activeTab === 'memories' }"
+          role="tab"
+          :aria-selected="activeTab === 'memories'"
+          aria-controls="book-panel-memories"
+          :tabindex="activeTab === 'memories' ? 0 : -1"
+          @click="selectTab('memories')"
+        >
+          {{ t('books.tabMemories') }}
+        </button>
+        <button
+          id="book-tab-activity"
+          type="button"
+          class="bm-detail-tab"
+          :class="{ 'is-active': activeTab === 'activity' }"
+          role="tab"
+          :aria-selected="activeTab === 'activity'"
+          aria-controls="book-panel-activity"
+          :tabindex="activeTab === 'activity' ? 0 : -1"
+          @click="selectTab('activity')"
+        >
+          {{ t('books.tabPlanActivity') }}
+        </button>
+      </div>
+
+      <section
+        v-if="activeTab === 'summary'"
+        id="book-panel-summary"
+        class="mt-4"
+        role="tabpanel"
+        aria-labelledby="book-tab-summary"
+      >
+        <div
+          v-if="book.status !== 'finished'"
+          class="bm-subtle-panel"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="bm-eyebrow">{{ t('books.todayReadingTitle') }}</p>
+              <p class="bm-muted mt-1 text-sm">
+                {{ book.readingPlan ? t(`books.planStatus_${planInsights?.status ?? 'no_plan'}`) : t('books.todayNoPlan') }}
+              </p>
+            </div>
+            <StatusBadge v-if="book.readingPlan" :tone="planInsights?.status === 'behind' ? 'danger' : 'success'">
+              {{ t(`books.planStatus_${planInsights?.status ?? 'no_plan'}`) }}
+            </StatusBadge>
+          </div>
+          <template v-if="book.readingPlan">
+            <p class="mt-3 text-2xl font-black text-(--app-text)">
+              {{ planInsights?.requiredDailyPages ?? t('books.planUnknown') }}
+              <span class="text-sm font-semibold text-(--app-text-muted)">{{ t('books.todayPagesSuffix') }}</span>
+            </p>
+            <p class="bm-muted mt-1 text-sm">{{ t('books.todayPlanHint') }}</p>
+          </template>
+          <button type="button" class="bm-button mt-4 text-sm" @click="selectTab('activity')">
+            {{ book.readingPlan ? t('books.editPlan') : t('books.createPlan') }}
+          </button>
+        </div>
+      </section>
+
       <div class="mt-5 grid gap-3">
-        <details class="bm-disclosure">
-          <summary>
-            <span class="bm-eyebrow">{{ t('books.readingPaceTitle') }}</span>
-            <ChevronDown
-              :size="17"
-              aria-hidden="true"
-            />
-          </summary>
+        <section
+          v-if="activeTab === 'activity'"
+          id="book-panel-activity"
+          class="bm-disclosure"
+          role="tabpanel"
+          aria-labelledby="book-tab-activity"
+        >
+          <h2 class="bm-eyebrow">{{ t('books.readingPaceTitle') }}</h2>
           <div class="bm-disclosure-body">
             <p
               v-if="minutesPerPageDisplay === null"
@@ -827,19 +956,12 @@ onMounted(async () => {
               </p>
             </template>
           </div>
-        </details>
+        </section>
 
-        <details
-          v-if="book.status !== 'finished'"
+        <section
+          v-if="activeTab === 'activity' && book.status !== 'finished'"
           class="bm-disclosure"
         >
-          <summary>
-            <span class="bm-eyebrow">{{ t('books.planTitle') }}</span>
-            <ChevronDown
-              :size="17"
-              aria-hidden="true"
-            />
-          </summary>
           <div class="bm-disclosure-body bm-disclosure-body-flush">
             <ReadingPlanCard
               :book="book"
@@ -849,35 +971,28 @@ onMounted(async () => {
               @clear="onSaveReadingPlan(null)"
             />
           </div>
-        </details>
+        </section>
 
-        <details class="bm-disclosure">
-          <summary>
-            <span class="bm-eyebrow">{{ t('memories.saveAction') }}</span>
-            <ChevronDown
-              :size="17"
-              aria-hidden="true"
-            />
-          </summary>
-          <div class="bm-disclosure-body">
-            <QuickMemoryForm
-              :book-id="book.id"
-              :default-page="displayCurrentPage"
-              :saving="memoriesStore.saving"
-              compact
-              @save="onSaveMemory"
-            />
-          </div>
-        </details>
+        <section
+          v-if="activeTab === 'memories'"
+          id="book-panel-memories"
+          role="tabpanel"
+          aria-labelledby="book-tab-memories"
+        >
+          <QuickMemoryForm
+            :book-id="book.id"
+            :default-page="displayCurrentPage"
+            :saving="memoriesStore.saving"
+            compact
+            @save="onSaveMemory"
+          />
+        </section>
 
-        <details class="bm-disclosure">
-          <summary>
-            <span class="bm-eyebrow">{{ t('memories.recentForBook') }}</span>
-            <ChevronDown
-              :size="17"
-              aria-hidden="true"
-            />
-          </summary>
+        <section
+          v-if="activeTab === 'memories'"
+          class="bm-disclosure"
+        >
+          <h2 class="bm-eyebrow">{{ t('memories.recentForBook') }}</h2>
           <div class="bm-disclosure-body">
             <div class="mb-2 flex justify-end">
               <RouterLink
@@ -910,17 +1025,27 @@ onMounted(async () => {
               {{ t('memories.emptyForBook') }}
             </p>
           </div>
-        </details>
+        </section>
 
-        <details class="bm-disclosure">
-          <summary>
-            <span class="bm-eyebrow">{{ t('books.editMetadata') }}</span>
-            <ChevronDown
-              :size="17"
-              aria-hidden="true"
-            />
-          </summary>
-          <div class="bm-disclosure-body">
+        <Transition name="bm-modal">
+          <div
+            v-if="metadataModalOpen"
+            class="bm-modal-backdrop z-50"
+            @click.self="onCloseMetadata"
+          >
+            <section
+              class="bm-modal-sheet w-full max-w-2xl p-5 sm:p-6"
+              role="dialog"
+              aria-modal="true"
+              :aria-label="t('books.editMetadata')"
+            >
+              <div class="mb-4 flex items-center justify-between gap-3">
+                <h2 class="bm-section-title">{{ t('books.editMetadata') }}</h2>
+                <button type="button" class="bm-button text-xs" @click="onCloseMetadata">
+                  {{ t('common.cancel') }}
+                </button>
+              </div>
+              <div>
             <div class="mb-2 flex justify-end">
               <IconButton
                 v-if="!editMode"
@@ -1112,39 +1237,22 @@ onMounted(async () => {
                   type="button"
                   class="bm-button"
                   :disabled="isMetadataUpdating()"
-                  @click="onCancelEdit"
+                  @click="onCloseMetadata"
                 >
                   {{ t('books.cancelEdit') }}
                 </button>
               </div>
             </template>
+              </div>
+            </section>
           </div>
-        </details>
+        </Transition>
 
-        <details
-          v-if="book.note"
+        <section
+          v-if="activeTab === 'activity'"
           class="bm-disclosure"
         >
-          <summary>
-            <span class="bm-eyebrow">{{ t('books.noteLabel') }}</span>
-            <ChevronDown
-              :size="17"
-              aria-hidden="true"
-            />
-          </summary>
-          <div class="bm-disclosure-body">
-            <p class="bm-muted whitespace-pre-line text-sm">{{ book.note }}</p>
-          </div>
-        </details>
-
-        <details class="bm-disclosure">
-          <summary>
-            <span class="bm-eyebrow">{{ t('books.recentSessions') }}</span>
-            <ChevronDown
-              :size="17"
-              aria-hidden="true"
-            />
-          </summary>
+          <h2 class="bm-eyebrow">{{ t('books.recentSessions') }}</h2>
           <div class="bm-disclosure-body">
             <p
               v-if="loadingSessions"
@@ -1260,7 +1368,7 @@ onMounted(async () => {
               {{ t('books.loadMoreSessions') }}
             </button>
           </div>
-        </details>
+        </section>
       </div>
     </template>
 
