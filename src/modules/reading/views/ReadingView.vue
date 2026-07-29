@@ -5,6 +5,7 @@ import { BookOpen, Pause, Play, RotateCcw, TimerReset } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import PromptModal from '../../../components/PromptModal.vue'
+import StarRating from '../../../components/ui/StarRating.vue'
 import QuickMemoryForm from '../../memories/components/QuickMemoryForm.vue'
 import {
   enqueueOfflineFinishReadingSession,
@@ -19,6 +20,7 @@ import { useReadingStore } from '../../../stores/reading'
 import { useReadingPlanHistoryStore } from '../../../stores/readingPlanHistory'
 import { useSessionsStore } from '../../../stores/sessions'
 import { useStreakStore } from '../../../stores/streak'
+import type { BookRating } from '../../../types/books'
 import type { CreateBookMemoryInput } from '../../../types/memories'
 import { buildReadingPlanDayRecord } from '../../../utils/readingPlan'
 
@@ -47,6 +49,17 @@ const showFinishModal = ref(false)
 const finishEndPage = ref<string>('')
 const bookSelectionLockedByRoute = ref(false)
 const showMemoryForm = ref(false)
+const showCompletionRatingModal = ref(false)
+const completionRating = ref<BookRating | null>(null)
+const completionRatingError = ref('')
+const pendingCompletion = ref<{
+  bookId: string
+  title: string
+  authors: string[]
+  coverUrl: string | null
+  totalPages: number | null
+  currentPage: number
+} | null>(null)
 
 const routeBookId = computed(() => (typeof route.query.bookId === 'string' ? route.query.bookId : ''))
 const selectedBook = computed(() => library.value.find((book) => book.id === selectedBookId.value) ?? null)
@@ -216,6 +229,80 @@ function onCancelFinish() {
   showFinishModal.value = false
 }
 
+function openCompletionRating(book: {
+  id: string
+  title: string
+  authors: string[]
+  coverUrl?: string | null
+  totalPages: number | null
+  currentPage: number
+}) {
+  pendingCompletion.value = {
+    bookId: book.id,
+    title: book.title,
+    authors: book.authors,
+    coverUrl: book.coverUrl ?? null,
+    totalPages: book.totalPages,
+    currentPage: book.currentPage,
+  }
+  completionRating.value = null
+  completionRatingError.value = ''
+  showCompletionRatingModal.value = true
+}
+
+function showCompletionAndOpenBookDetail() {
+  const completion = pendingCompletion.value
+  if (!completion) return
+
+  showBookCompletion({
+    bookId: completion.bookId,
+    title: completion.title,
+    authors: completion.authors,
+    coverUrl: completion.coverUrl,
+  })
+  showCompletionRatingModal.value = false
+  pendingCompletion.value = null
+  void router.push({ name: 'book-detail', params: { id: completion.bookId } }).catch(() => {})
+}
+
+function onCancelCompletionRating() {
+  completionRatingError.value = ''
+  showCompletionAndOpenBookDetail()
+}
+
+async function onConfirmCompletionRating() {
+  const completion = pendingCompletion.value
+  if (!completion) return
+  if (completionRating.value === null) {
+    completionRatingError.value = t('books.ratingRequired')
+    return
+  }
+
+  saving.value = true
+  try {
+    await withTimeout(
+      booksStore.updateBookMetadata(completion.bookId, {
+        totalPages: completion.totalPages,
+        currentPage: completion.currentPage,
+        status: 'finished',
+        rating: completionRating.value,
+      }),
+      5000,
+      'network_timeout',
+    )
+    if (booksStore.errorKey) {
+      notificationsStore.error(t(booksStore.errorKey))
+      return
+    }
+    showCompletionAndOpenBookDetail()
+  } catch (error) {
+    localError.value = error instanceof Error ? error.message : t('reading.errorSaveSession')
+    notificationsStore.error(localError.value)
+  } finally {
+    saving.value = false
+  }
+}
+
 function createTransactionId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
@@ -263,7 +350,7 @@ function isOfflineQueueCandidate(error: unknown): boolean {
   )
 }
 
-function finishSessionQueuedOffline(
+async function finishSessionQueuedOffline(
   uid: string,
   bookId: string,
   startedAtIso: string,
@@ -323,21 +410,22 @@ function finishSessionQueuedOffline(
   showFinishModal.value = false
   notificationsStore.success(t('notifications.readingSessionQueuedOffline'))
 
-  void booksStore
-    .updateBookMetadata(bookId, {
-      totalPages,
-      currentPage: end,
-      status,
-    })
-    .catch(() => {})
+  await booksStore.updateBookMetadata(bookId, {
+    totalPages,
+    currentPage: end,
+    status,
+  })
 
   if (status === 'finished') {
-    showBookCompletion({
-      bookId,
+    openCompletionRating({
+      id: bookId,
       title: bookTitle ?? '',
       authors: bookAuthors,
       coverUrl: bookCoverUrl,
+      totalPages,
+      currentPage: end,
     })
+    return
   }
 
   void router.push({ name: 'book-detail', params: { id: bookId } }).catch(() => {})
@@ -373,7 +461,7 @@ async function onConfirmFinish() {
   try {
     readingStore.pauseTimer()
     if (isNavigatorOffline()) {
-      finishSessionQueuedOffline(uid, bookId, startedAtIso, endedAtIso, durationSeconds, start, end, totalPages)
+      await finishSessionQueuedOffline(uid, bookId, startedAtIso, endedAtIso, durationSeconds, start, end, totalPages)
       return
     }
     const pagesRead = Math.max(0, end - start)
@@ -413,22 +501,24 @@ async function onConfirmFinish() {
       await readingPlanHistoryStore.syncBookDay(updatedBook, sessionsStore.allSessions, now)
     }
 
-    if (status === 'finished') {
-      showBookCompletion({
-        bookId,
-        title: bookTitle ?? '',
-        authors: bookAuthors,
-        coverUrl: bookCoverUrl,
-      })
-    }
-
     readingStore.resetSession()
     showFinishModal.value = false
     notificationsStore.success(t('notifications.readingSessionSaved'))
+    if (status === 'finished') {
+      openCompletionRating({
+        id: bookId,
+        title: bookTitle ?? '',
+        authors: bookAuthors,
+        coverUrl: bookCoverUrl,
+        totalPages,
+        currentPage: end,
+      })
+      return
+    }
     void router.push({ name: 'book-detail', params: { id: bookId } }).catch(() => {})
   } catch (error) {
     if (isOfflineQueueCandidate(error)) {
-      finishSessionQueuedOffline(uid, bookId, startedAtIso, endedAtIso, durationSeconds, start, end, totalPages)
+      await finishSessionQueuedOffline(uid, bookId, startedAtIso, endedAtIso, durationSeconds, start, end, totalPages)
       return
     }
     localError.value = error instanceof Error ? error.message : t('reading.errorSaveSession')
@@ -651,6 +741,52 @@ onMounted(async () => {
         />
       </div>
     </div>
+
+    <Transition name="bm-modal">
+      <div
+        v-if="showCompletionRatingModal"
+        class="bm-modal-backdrop z-50"
+      >
+        <section
+          data-test="completion-rating-modal"
+          class="bm-modal-sheet w-full max-w-lg p-5 sm:p-6"
+        >
+          <h2 class="bm-section-title">{{ t('books.ratingModalTitle') }}</h2>
+          <p class="bm-muted mt-1 text-sm">{{ t('books.ratingModalSubtitle') }}</p>
+          <div class="mt-4">
+            <p class="bm-label">{{ t('books.ratingLabel') }}</p>
+            <StarRating
+              v-model="completionRating"
+              class="mt-2"
+            />
+            <p
+              v-if="completionRatingError"
+              class="mt-2 text-xs text-(--app-danger)"
+            >
+              {{ completionRatingError }}
+            </p>
+          </div>
+          <div class="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              class="bm-button"
+              :disabled="saving"
+              @click="onCancelCompletionRating"
+            >
+              {{ t('common.cancel') }}
+            </button>
+            <button
+              type="button"
+              class="bm-button bm-button-primary"
+              :disabled="saving"
+              @click="onConfirmCompletionRating"
+            >
+              {{ saving ? t('books.savingMetadata') : t('books.saveRatingAction') }}
+            </button>
+          </div>
+        </section>
+      </div>
+    </Transition>
 
     <PromptModal
       :open="showFinishModal"

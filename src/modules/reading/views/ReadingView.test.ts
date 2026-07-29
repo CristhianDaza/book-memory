@@ -556,4 +556,69 @@ describe('ReadingView', () => {
     expect(actionButtonText).toContain('Reset')
     expect(actionButtonText).toContain('Finish')
   })
+
+  it('asks for a rating before celebrating a completed book', async () => {
+    mocks.readingStore.startPage.value = 290
+    mocks.readingStore.endPage.value = 290
+    mocks.booksStore.library.value[0] = {
+      ...mocks.booksStore.library.value[0],
+      currentPage: 290,
+      totalPages: 300,
+    }
+
+    const wrapper = mount(ReadingView, {
+      global: {
+        plugins: [makeI18n()],
+      },
+    })
+    await flushPromises()
+
+    const finishButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Finish')
+    if (!finishButton) {
+      throw new Error('missing finish button')
+    }
+    await finishButton.trigger('click')
+    await flushPromises()
+
+    const numberInputs = wrapper.findAll('input[type="number"]')
+    const endPageInput = numberInputs[numberInputs.length - 1]
+    if (!endPageInput) {
+      throw new Error('missing end page input')
+    }
+    await endPageInput.setValue('300')
+
+    const confirmButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Confirm finish')
+    if (!confirmButton) {
+      throw new Error('missing confirm finish button')
+    }
+    await confirmButton.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="completion-rating-modal"]').exists()).toBe(true)
+    expect(mocks.routerPush).not.toHaveBeenCalled()
+
+    const ratingModal = wrapper.find('[data-test="completion-rating-modal"]')
+    const firstStar = ratingModal.find('button')
+    await firstStar.trigger('click')
+
+    const saveRatingButton = ratingModal
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Save rating')
+    if (!saveRatingButton) {
+      throw new Error('missing save rating button')
+    }
+    await saveRatingButton.trigger('click')
+    await flushPromises()
+
+    expect(mocks.updateBookMetadata).toHaveBeenLastCalledWith('book-1', expect.objectContaining({
+      status: 'finished',
+      currentPage: 300,
+      rating: 1,
+    }))
+    expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'book-detail', params: { id: 'book-1' } })
+  })
 })
