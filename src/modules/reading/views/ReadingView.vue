@@ -46,6 +46,7 @@ const localError = ref<string | null>(null)
 const showFinishModal = ref(false)
 const finishEndPage = ref<string>('')
 const bookSelectionLockedByRoute = ref(false)
+const showMemoryForm = ref(false)
 
 const routeBookId = computed(() => (typeof route.query.bookId === 'string' ? route.query.bookId : ''))
 const selectedBook = computed(() => library.value.find((book) => book.id === selectedBookId.value) ?? null)
@@ -548,15 +549,6 @@ onMounted(async () => {
             @input="readingStore.setStartPage(Number(($event.target as HTMLInputElement).value))"
           >
         </label>
-
-        <QuickMemoryForm
-          v-if="effectiveSessionBook"
-          :book-id="effectiveSessionBook.id"
-          :default-page="startPage"
-          :saving="memoriesStore.saving"
-          compact
-          @save="onSaveMemory"
-        />
       </div>
 
       <div
@@ -629,6 +621,35 @@ onMounted(async () => {
       >
         {{ saving ? t('reading.savingSession') : t('reading.finish') }}
       </button>
+    </div>
+
+    <div
+      v-if="effectiveSessionBook"
+      class="mt-4 border-t border-(--app-border) pt-4"
+    >
+      <button
+        type="button"
+        class="bm-button"
+        :aria-expanded="showMemoryForm"
+        aria-controls="reading-memory-form"
+        @click="showMemoryForm = !showMemoryForm"
+      >
+        {{ showMemoryForm ? t('reading.hideMemory') : t('reading.addMemory') }}
+      </button>
+
+      <div
+        v-if="showMemoryForm"
+        id="reading-memory-form"
+        class="mt-3"
+      >
+        <QuickMemoryForm
+          :book-id="effectiveSessionBook.id"
+          :default-page="startPage"
+          :saving="memoriesStore.saving"
+          compact
+          @save="onSaveMemory"
+        />
+      </div>
     </div>
 
     <PromptModal

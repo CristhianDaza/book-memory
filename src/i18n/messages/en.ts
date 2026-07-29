@@ -438,6 +438,8 @@ export const en = {
     pause: 'Pause',
     reset: 'Reset',
     finish: 'Finish',
+    addMemory: 'Add memory',
+    hideMemory: 'Hide memory',
     finishStepTitle: 'Finish session',
     finishStepSubtitle: 'Select the page you reached in this session.',
     confirmFinish: 'Confirm finish',

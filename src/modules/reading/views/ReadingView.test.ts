@@ -515,6 +515,31 @@ describe('ReadingView', () => {
     expect(actionButtonText).toContain('Finish')
   })
 
+  it('keeps the memory form hidden until it is requested', async () => {
+    const wrapper = mount(ReadingView, {
+      global: {
+        plugins: [makeI18n()],
+      },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="quick-memory-form"]').exists()).toBe(false)
+
+    const memoryButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Add memory')
+    if (!memoryButton) {
+      throw new Error('missing memory button')
+    }
+
+    expect(memoryButton.attributes('aria-expanded')).toBe('false')
+    await memoryButton.trigger('click')
+
+    expect(wrapper.find('[data-test="quick-memory-form"]').exists()).toBe(true)
+    expect(memoryButton.text().trim()).toBe('Hide memory')
+    expect(memoryButton.attributes('aria-expanded')).toBe('true')
+  })
+
   it('shows resume, reset and finish for a paused active session', async () => {
     mocks.readingStore.running.value = false
 
