@@ -176,6 +176,17 @@ function mountView() {
   })
 }
 
+async function openActivityTab(wrapper: ReturnType<typeof mountView>) {
+  await wrapper.find('#book-tab-activity').trigger('click')
+}
+
+async function openMetadataModal(wrapper: ReturnType<typeof mountView>) {
+  await wrapper.find('[aria-label="More book actions"]').trigger('click')
+  const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit metadata'))
+  expect(editButton).toBeDefined()
+  await editButton!.trigger('click')
+}
+
 describe('BookDetailView reading pace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -221,6 +232,7 @@ describe('BookDetailView reading pace', () => {
 
     const wrapper = mountView()
     await flushPromises()
+    await openActivityTab(wrapper)
 
     const text = wrapper.text()
     expect(text).toContain('Reading pace')
@@ -235,6 +247,7 @@ describe('BookDetailView reading pace', () => {
 
     const wrapper = mountView()
     await flushPromises()
+    await openActivityTab(wrapper)
 
     expect(wrapper.text()).toContain('Not enough data yet.')
   })
@@ -249,6 +262,7 @@ describe('BookDetailView reading pace', () => {
 
     const wrapper = mountView()
     await flushPromises()
+    await openActivityTab(wrapper)
 
     const text = wrapper.text()
     expect(text).toContain('Pace: 1.5 min/page')
@@ -263,26 +277,35 @@ describe('BookDetailView reading pace', () => {
     expect(wrapper.text()).not.toContain('Start Reading')
   })
 
-  it('keeps the primary reading action visible and secondary sections collapsed', async () => {
+  it('shows the summary first and switches sections through accessible tabs', async () => {
     const wrapper = mountView()
     await flushPromises()
 
     const startReadingButton = wrapper.findAll('button').find((button) => button.text().includes('Start reading session'))
     expect(startReadingButton).toBeDefined()
+    expect(wrapper.find('[role="tablist"]').exists()).toBe(true)
+    expect(wrapper.find('#book-tab-summary').attributes('aria-selected')).toBe('true')
+    expect(wrapper.text()).toContain('Today')
+    expect(wrapper.text()).not.toContain('Reading pace')
 
-    const disclosures = wrapper.findAll('details.bm-disclosure')
-    expect(disclosures).toHaveLength(6)
-    expect(disclosures.every((disclosure) => !disclosure.attributes('open'))).toBe(true)
+    await wrapper.find('#book-tab-memories').trigger('click')
+    expect(wrapper.find('#book-tab-memories').attributes('aria-selected')).toBe('true')
+    expect(wrapper.find('quick-memory-form-stub').exists()).toBe(true)
 
-    const summaryText = disclosures.map((disclosure) => disclosure.find('summary').text())
-    expect(summaryText).toEqual([
-      'Reading pace',
-      'Reading plan',
-      'Save memory',
-      'Recent memories',
-      'Edit metadata',
-      'Recent sessions',
-    ])
+    await openActivityTab(wrapper)
+    expect(wrapper.find('#book-tab-activity').attributes('aria-selected')).toBe('true')
+    expect(wrapper.text()).toContain('Reading pace')
+  })
+
+  it('moves between tabs with arrow keys', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.find('#book-tab-summary').trigger('keydown', { key: 'ArrowRight' })
+    expect(wrapper.find('#book-tab-memories').attributes('aria-selected')).toBe('true')
+
+    await wrapper.find('#book-tab-memories').trigger('keydown', { key: 'End' })
+    expect(wrapper.find('#book-tab-activity').attributes('aria-selected')).toBe('true')
   })
 
   it('shows Start Reading and updates status for wishlist books before navigating', async () => {
@@ -359,9 +382,7 @@ describe('BookDetailView reading pace', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
-    expect(editButton).toBeDefined()
-    await editButton!.trigger('click')
+    await openMetadataModal(wrapper)
     expect(wrapper.find('input[type="date"]').exists()).toBe(false)
 
     const statusSelect = wrapper.find('select')
@@ -382,9 +403,7 @@ describe('BookDetailView reading pace', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
-    expect(editButton).toBeDefined()
-    await editButton!.trigger('click')
+    await openMetadataModal(wrapper)
 
     expect(wrapper.find('input[type="date"]').exists()).toBe(true)
   })
@@ -499,9 +518,7 @@ describe('BookDetailView reading pace', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
-    expect(editButton).toBeDefined()
-    await editButton!.trigger('click')
+    await openMetadataModal(wrapper)
     await wrapper.find('select').setValue('finished')
     await wrapper.findAll('button').find((button) => button.text().includes('Save changes'))!.trigger('click')
 
@@ -528,9 +545,7 @@ describe('BookDetailView reading pace', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
-    expect(editButton).toBeDefined()
-    await editButton!.trigger('click')
+    await openMetadataModal(wrapper)
     await wrapper.find('select').setValue('finished')
     await wrapper.findAll('button').find((button) => button.text().includes('Save changes'))!.trigger('click')
 
@@ -559,9 +574,7 @@ describe('BookDetailView reading pace', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
-    expect(editButton).toBeDefined()
-    await editButton!.trigger('click')
+    await openMetadataModal(wrapper)
     await wrapper.find('select').setValue('finished')
     await wrapper.findAll('button').find((button) => button.text().includes('Save changes'))!.trigger('click')
 
@@ -585,9 +598,7 @@ describe('BookDetailView reading pace', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
-    expect(editButton).toBeDefined()
-    await editButton!.trigger('click')
+    await openMetadataModal(wrapper)
     await wrapper.find('select').setValue('finished')
     await wrapper.findAll('button').find((button) => button.text().includes('Save changes'))!.trigger('click')
 
@@ -618,9 +629,7 @@ describe('BookDetailView reading pace', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    const editButton = wrapper.findAll('button').find((button) => button.text().includes('Edit'))
-    expect(editButton).toBeDefined()
-    await editButton!.trigger('click')
+    await openMetadataModal(wrapper)
 
     const ratingInput = wrapper.findAllComponents({ name: 'StarRating' }).find((item) => !item.props('readonly'))
     expect(ratingInput).toBeDefined()
