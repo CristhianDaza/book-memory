@@ -1,7 +1,7 @@
 {
   "name": "book-memory",
   "private": true,
-  "version": "1.5.4",
+  "version": "1.6.0",
   "packageManager": "pnpm@11.3.0",
   "type": "module",
   "scripts": {
