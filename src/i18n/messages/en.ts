@@ -1,5 +1,11 @@
 export const en = {
   common: {
+    skipToContent: 'Skip to content',
+    readingJournal: 'Your reading journal',
+    yourSpace: 'Your space',
+    primaryNavigation: 'Main navigation',
+    accountNavigation: 'Account',
+
     bookMemory: 'Book Memory',
     language: 'Language',
     cancel: 'Cancel',
@@ -23,6 +29,26 @@ export const en = {
     scrollToTop: 'Back to top',
   },
   theme: {
+    appearance: 'Appearance',
+    appearanceHint: 'Make BookMemory your space. Changes apply instantly.',
+    modeLabel: 'Display mode',
+    paletteLabel: 'Color palette',
+    paletteHint: 'Every palette includes a light and a dark version.',
+    sync_local: 'Your selection is saved on this device. Sign in to save it to your account.',
+    sync_loading: 'Loading your account appearance…',
+    sync_saving: 'Saving appearance to your account…',
+    sync_saved: 'Appearance saved to your account. It will be restored when you sign in on other devices.',
+    sync_error: 'Appearance could not sync. Your selection remains available on this device. Check your connection and try again.',
+    retrySave: 'Retry saving',
+    palettes: {
+      forest: 'Forest',
+      ocean: 'Ocean',
+      lavender: 'Lavender',
+      terracotta: 'Terracotta',
+      rose: 'Rose',
+      slate: 'Slate',
+    },
+
     toggle: 'Change theme',
     setting: 'Theme',
     system: 'System theme',
@@ -30,9 +56,10 @@ export const en = {
     dark: 'Dark theme',
   },
   home: {
+    overview: 'Your reading at a glance',
     home: 'Home',
-    libraryHubTitle: 'Your library in one place',
-    libraryHubSubtitle: 'Review your books and jump quickly to reading or stats.',
+    libraryHubTitle: 'A moment to read',
+    libraryHubSubtitle: 'Return to your story, save what inspires you, and make room for your next read.',
     preferences: 'Preferences',
     dataSection: 'Data',
     sessionSection: 'Session',
@@ -79,11 +106,15 @@ export const en = {
     todayPlanTitle: 'Today',
     todayPlanSubtitle: 'Books that need attention to keep your reading plans moving.',
     todayPlanDelta: 'Pages vs plan',
-    earlyRiskTitle: 'Early risk',
+    earlyRiskTitle: 'Find your rhythm again',
     earlyRiskSubtitle: 'Books with two recent days missed against the reading plan.',
     earlyRiskHint: 'You can still correct the pace before falling behind.',
   },
   auth: {
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
+    submitting: 'Please wait…',
+
     section: 'Authentication',
     title: 'Welcome to Book Memory',
     subtitleLogin: 'Sign in to track your books, sessions, and streaks.',

@@ -37,3 +37,6 @@ dist-ssr/
 .DS_Store
 Thumbs.db
 .idea
+.agents
+output
+design-system

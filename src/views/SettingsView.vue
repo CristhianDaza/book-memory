@@ -1,20 +1,16 @@
 <script setup lang="ts">
-import { computed, type Component } from 'vue'
+import { computed } from 'vue'
 import {
   CloudUpload,
   Download,
   Globe2,
-  Laptop,
   LogOut,
-  Moon,
   ShieldAlert,
-  Sun,
 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '../components/ui/PageHeader.vue'
 import SurfaceCard from '../components/ui/SurfaceCard.vue'
-import { useTheme } from '../composables/useTheme'
-import type { ThemeMode } from '../types/theme'
+import AppearanceSettings from '../components/ui/AppearanceSettings.vue'
 
 defineProps<{
   nextLocaleLabel: string
@@ -32,33 +28,11 @@ defineEmits<{
 }>()
 
 const { t, locale } = useI18n()
-const { themeMode, setThemeMode } = useTheme()
-
-const nextThemeMode = computed<ThemeMode>(() => {
-  if (themeMode.value === 'system') return 'light'
-  if (themeMode.value === 'light') return 'dark'
-  return 'system'
-})
-
-const themeLabel = computed(() => {
-  if (themeMode.value === 'system') return t('theme.system')
-  if (themeMode.value === 'light') return t('theme.light')
-  return t('theme.dark')
-})
-
-const themeIcon = computed<Component>(() => {
-  if (themeMode.value === 'system') return Laptop
-  if (themeMode.value === 'light') return Sun
-  return Moon
-})
 
 const currentLanguageLabel = computed(() =>
   locale.value === 'es' ? t('common.spanishFull') : t('common.englishFull'),
 )
 
-function onToggleTheme() {
-  setThemeMode(nextThemeMode.value)
-}
 </script>
 
 <template>
@@ -70,6 +44,9 @@ function onToggleTheme() {
     />
 
     <div class="bm-settings-grid">
+      <SurfaceCard class="bm-settings-appearance">
+        <AppearanceSettings />
+      </SurfaceCard>
       <SurfaceCard>
         <div class="mb-4">
           <h2 class="bm-section-title">{{ t('settings.preferencesTitle') }}</h2>
@@ -77,25 +54,6 @@ function onToggleTheme() {
         </div>
 
         <div class="grid gap-3">
-          <button
-            type="button"
-            class="bm-settings-action"
-            :aria-label="t('theme.toggle')"
-            @click="onToggleTheme"
-          >
-            <span class="bm-settings-action-copy">
-              <span class="bm-settings-action-label">{{ t('theme.setting') }}</span>
-              <span class="bm-settings-action-value">{{ themeLabel }}</span>
-            </span>
-            <span class="bm-settings-action-icon">
-              <component
-                :is="themeIcon"
-                :size="19"
-                aria-hidden="true"
-              />
-            </span>
-          </button>
-
           <button
             type="button"
             class="bm-settings-action"

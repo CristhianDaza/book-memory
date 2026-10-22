@@ -14,6 +14,7 @@ defineProps<{
     :to="to"
     class="bm-nav-item"
     :class="{ 'is-active': active }"
+    :aria-current="active ? 'page' : undefined"
   >
     <component
       :is="icon"

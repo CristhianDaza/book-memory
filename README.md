@@ -22,7 +22,37 @@ BookMemory is a Vue 3 + TypeScript web app to manage a personal reading library,
 - Stats dashboard (`/stats`)
 - Sync center and offline queue conflict handling (`/sync`)
 - Global notifications and confirm modals
+- Six appearance palettes with light, dark, and system modes, saved per account
 - Footer with dynamic app version (`VITE_APP_VERSION`)
+
+## Appearance preferences
+
+Settings → Appearance offers Forest, Ocean, Lavender, Terracotta, Rose, and Slate.
+The palette and display mode are independent. Changes apply immediately, save
+automatically, and are restored on sign-in. The theme toggle in the app shell
+also saves the selected mode.
+
+Firestore stores `{ mode, palette, updatedAt }` at
+`users/{uid}/preferences/appearance`. The rules in `firestore.rules` restrict
+access to the owner and validate the supported modes and palette IDs.
+Appearance preferences are included in account exports and removed during
+account deletion.
+
+Local drafts are scoped by account. Failed saves remain pending across reloads
+and retry when connectivity returns; Settings also provides a retry action.
+Writes are serialized so rapid changes preserve the latest selection.
+
+**Deployment:** the current FTP workflow only publishes the frontend. Publish the
+updated Firestore rules to the intended Firebase project before releasing this
+feature, using an authenticated Firebase CLI:
+
+```bash
+firebase deploy --only firestore:rules --project <firebase-project-id>
+```
+
+The palette contrast tests check all six palettes in both modes. Account sync
+and Firestore service tests cover restoration, pending changes, failures, and
+account switching using mocked backend calls.
 
 ## Project Structure
 

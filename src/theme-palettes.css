@@ -1,0 +1,251 @@
+/* Semantic color variants. Forest uses the base tokens in style.css. */
+
+:root[data-palette="ocean"]:not([data-theme="dark"]) {
+  --app-bg: #f2f6fb;
+  --app-bg-soft: #e8f0f8;
+  --app-surface: #ffffff;
+  --app-surface-raised: #ffffff;
+  --app-surface-muted: #eaf1f9;
+  --app-border: #d7e1ed;
+  --app-border-strong: #8797ac;
+  --app-text: #24354b;
+  --app-text-muted: #52637b;
+  --app-text-soft: #5e6c80;
+  --app-primary: #245fa1;
+  --app-primary-strong: #194a82;
+  --app-primary-soft: #e0ecfa;
+  --app-primary-contrast: #ffffff;
+  --app-secondary: #876124;
+  --app-secondary-strong: #70501c;
+  --app-secondary-soft: #f7eedb;
+  --app-secondary-contrast: #ffffff;
+  --app-accent: #256b77;
+  --app-accent-strong: #1c5660;
+  --app-accent-soft: #e0f0f2;
+  --app-accent-contrast: #183a40;
+}
+
+:root[data-palette="ocean"][data-theme="dark"] {
+  --app-bg: #141c28;
+  --app-bg-soft: #192638;
+  --app-surface: #1d293b;
+  --app-surface-raised: #243248;
+  --app-surface-muted: #172234;
+  --app-border: #3c4c64;
+  --app-border-strong: #8091aa;
+  --app-text: #e8eff8;
+  --app-text-muted: #b9c8dc;
+  --app-text-soft: #acbdd4;
+  --app-primary: #9ecafa;
+  --app-primary-strong: #beddfd;
+  --app-primary-soft: #2a4261;
+  --app-primary-contrast: #15253b;
+  --app-secondary: #e5c387;
+  --app-secondary-strong: #f1d7ab;
+  --app-secondary-soft: #403523;
+  --app-secondary-contrast: #241c13;
+  --app-accent: #98d3dd;
+  --app-accent-strong: #b8e4eb;
+  --app-accent-soft: #243f48;
+  --app-accent-contrast: #152b32;
+}
+
+:root[data-palette="lavender"]:not([data-theme="dark"]) {
+  --app-bg: #f7f4fb;
+  --app-bg-soft: #eee7f6;
+  --app-surface: #fffefe;
+  --app-surface-raised: #fffefe;
+  --app-surface-muted: #f0eaf7;
+  --app-border: #e1d9eb;
+  --app-border-strong: #9a8ca9;
+  --app-text: #392b49;
+  --app-text-muted: #675774;
+  --app-text-soft: #72637f;
+  --app-primary: #6543a1;
+  --app-primary-strong: #513187;
+  --app-primary-soft: #ede4f8;
+  --app-primary-contrast: #ffffff;
+  --app-secondary: #8b5b2c;
+  --app-secondary-strong: #734820;
+  --app-secondary-soft: #f6ebdc;
+  --app-secondary-contrast: #ffffff;
+  --app-accent: #2f6b70;
+  --app-accent-strong: #24565a;
+  --app-accent-soft: #e2f0ef;
+  --app-accent-contrast: #193a3c;
+}
+
+:root[data-palette="lavender"][data-theme="dark"] {
+  --app-bg: #1d1828;
+  --app-bg-soft: #271f35;
+  --app-surface: #292137;
+  --app-surface-raised: #332943;
+  --app-surface-muted: #221c2f;
+  --app-border: #51435e;
+  --app-border-strong: #9b8aac;
+  --app-text: #f1eafa;
+  --app-text-muted: #cbbddc;
+  --app-text-soft: #bfaed1;
+  --app-primary: #cdb5f4;
+  --app-primary-strong: #dfcdf9;
+  --app-primary-soft: #49355f;
+  --app-primary-contrast: #291b3d;
+  --app-secondary: #e6bf90;
+  --app-secondary-strong: #f1d4b1;
+  --app-secondary-soft: #413125;
+  --app-secondary-contrast: #291d14;
+  --app-accent: #9ed5d0;
+  --app-accent-strong: #bce8e4;
+  --app-accent-soft: #28413f;
+  --app-accent-contrast: #19302e;
+}
+
+:root[data-palette="terracotta"]:not([data-theme="dark"]) {
+  --app-bg: #fbf4ef;
+  --app-bg-soft: #f5e9df;
+  --app-surface: #fffdfa;
+  --app-surface-raised: #fffdfa;
+  --app-surface-muted: #f6ece4;
+  --app-border: #eadccf;
+  --app-border-strong: #a18d7b;
+  --app-text: #462f25;
+  --app-text-muted: #735b4e;
+  --app-text-soft: #7d6659;
+  --app-primary: #984527;
+  --app-primary-strong: #7e351c;
+  --app-primary-soft: #f8e3d8;
+  --app-primary-contrast: #ffffff;
+  --app-secondary: #766027;
+  --app-secondary-strong: #604e1d;
+  --app-secondary-soft: #f2ecd9;
+  --app-secondary-contrast: #ffffff;
+  --app-accent: #2e6b70;
+  --app-accent-strong: #23565a;
+  --app-accent-soft: #e2efef;
+  --app-accent-contrast: #193a3c;
+}
+
+:root[data-palette="terracotta"][data-theme="dark"] {
+  --app-bg: #241b17;
+  --app-bg-soft: #30231c;
+  --app-surface: #32261f;
+  --app-surface-raised: #3d2e25;
+  --app-surface-muted: #2b201a;
+  --app-border: #5b483b;
+  --app-border-strong: #ac9584;
+  --app-text: #f7ece2;
+  --app-text-muted: #d8c3b4;
+  --app-text-soft: #cfb7a5;
+  --app-primary: #f0b39a;
+  --app-primary-strong: #facfbb;
+  --app-primary-soft: #5a3629;
+  --app-primary-contrast: #351d14;
+  --app-secondary: #d9c48c;
+  --app-secondary-strong: #e9d8ab;
+  --app-secondary-soft: #413823;
+  --app-secondary-contrast: #2d2616;
+  --app-accent: #9dd4d1;
+  --app-accent-strong: #bce5e2;
+  --app-accent-soft: #29413f;
+  --app-accent-contrast: #19302e;
+}
+
+:root[data-palette="rose"]:not([data-theme="dark"]) {
+  --app-bg: #fbf3f6;
+  --app-bg-soft: #f6e7ed;
+  --app-surface: #fffdfd;
+  --app-surface-raised: #fffdfd;
+  --app-surface-muted: #f8eaf0;
+  --app-border: #ead7df;
+  --app-border-strong: #ab8998;
+  --app-text: #472b39;
+  --app-text-muted: #775366;
+  --app-text-soft: #805f71;
+  --app-primary: #9c3f65;
+  --app-primary-strong: #802d50;
+  --app-primary-soft: #f7dfeb;
+  --app-primary-contrast: #ffffff;
+  --app-secondary: #776029;
+  --app-secondary-strong: #624d1d;
+  --app-secondary-soft: #f3ecd9;
+  --app-secondary-contrast: #ffffff;
+  --app-accent: #346777;
+  --app-accent-strong: #285360;
+  --app-accent-soft: #e4eef2;
+  --app-accent-contrast: #1b343c;
+}
+
+:root[data-palette="rose"][data-theme="dark"] {
+  --app-bg: #26191f;
+  --app-bg-soft: #32212a;
+  --app-surface: #33232c;
+  --app-surface-raised: #3f2b36;
+  --app-surface-muted: #2b1d25;
+  --app-border: #60424f;
+  --app-border-strong: #b28c9d;
+  --app-text: #fae9f1;
+  --app-text-muted: #dec1cf;
+  --app-text-soft: #d3b2c3;
+  --app-primary: #f0b0cb;
+  --app-primary-strong: #facde0;
+  --app-primary-soft: #603347;
+  --app-primary-contrast: #361c29;
+  --app-secondary: #dfc78f;
+  --app-secondary-strong: #efdab3;
+  --app-secondary-soft: #423723;
+  --app-secondary-contrast: #302516;
+  --app-accent: #a4ccdf;
+  --app-accent-strong: #c5e2ef;
+  --app-accent-soft: #2b3e49;
+  --app-accent-contrast: #1b2d37;
+}
+
+:root[data-palette="slate"]:not([data-theme="dark"]) {
+  --app-bg: #f4f6f8;
+  --app-bg-soft: #e9edf2;
+  --app-surface: #ffffff;
+  --app-surface-raised: #ffffff;
+  --app-surface-muted: #edf1f5;
+  --app-border: #d9e0e7;
+  --app-border-strong: #8b97a6;
+  --app-text: #293647;
+  --app-text-muted: #566477;
+  --app-text-soft: #606c7d;
+  --app-primary: #475569;
+  --app-primary-strong: #334155;
+  --app-primary-soft: #e5eaf0;
+  --app-primary-contrast: #ffffff;
+  --app-secondary: #815e37;
+  --app-secondary-strong: #694b29;
+  --app-secondary-soft: #f4eadf;
+  --app-secondary-contrast: #ffffff;
+  --app-accent: #346777;
+  --app-accent-strong: #285360;
+  --app-accent-soft: #e4eef2;
+  --app-accent-contrast: #1b343c;
+}
+
+:root[data-palette="slate"][data-theme="dark"] {
+  --app-bg: #181d24;
+  --app-bg-soft: #202833;
+  --app-surface: #242c37;
+  --app-surface-raised: #2b3542;
+  --app-surface-muted: #1e2530;
+  --app-border: #465362;
+  --app-border-strong: #8998aa;
+  --app-text: #edf1f7;
+  --app-text-muted: #c2cddd;
+  --app-text-soft: #b4c1d3;
+  --app-primary: #c1cbd9;
+  --app-primary-strong: #e0e7f1;
+  --app-primary-soft: #3b485d;
+  --app-primary-contrast: #202936;
+  --app-secondary: #ddc3a0;
+  --app-secondary-strong: #efdabf;
+  --app-secondary-soft: #42382c;
+  --app-secondary-contrast: #30271c;
+  --app-accent: #a6d0e1;
+  --app-accent-strong: #c6e5ef;
+  --app-accent-soft: #2b404c;
+  --app-accent-contrast: #1b2e37;
+}

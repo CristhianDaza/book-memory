@@ -3,6 +3,7 @@ import type { BookMemory } from './memories'
 import type { ReadingSessionRecord } from './reading'
 import type { CloudReadingState } from './reading-state'
 import type { StreakDayRecord } from './streak'
+import type { ThemePreferences } from './theme'
 
 export interface UserDataExport {
   exportedAt: string
@@ -16,4 +17,5 @@ export interface UserDataExport {
     monthlyMinutesGoal: number
   } | null
   streakDays: StreakDayRecord[]
+  appearance: ThemePreferences | null
 }
