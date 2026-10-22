@@ -320,6 +320,17 @@ service cloud.firestore {
     match /users/{uid} {
       allow read, write: if false;
 
+      match /preferences/{docId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && docId == 'appearance'
+          && request.resource.data.keys().hasOnly(['mode', 'palette', 'updatedAt'])
+          && request.resource.data.keys().hasAll(['mode', 'palette', 'updatedAt'])
+          && request.resource.data.mode in ['system', 'light', 'dark']
+          && request.resource.data.palette in ['forest', 'ocean', 'lavender', 'terracotta', 'rose', 'slate']
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if isOwner(uid);
+      }
+
       match /library/{bookId} {
         allow read: if isOwner(uid);
         allow create: if isOwner(uid)

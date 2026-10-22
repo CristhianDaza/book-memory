@@ -63,6 +63,7 @@ vi.mock('./stores/streak', () => ({
 }))
 
 vi.mock('./services/offlineQueueService', () => mockOfflineQueueService)
+vi.mock('./composables/useThemeSync', () => ({ useThemeSync: vi.fn() }))
 
 function makeI18n() {
   return createI18n({

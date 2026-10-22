@@ -27,6 +27,7 @@ import { useNotificationsStore } from './stores/notifications'
 import { useStreakStore } from './stores/streak'
 import { bookCompletionOverlay } from './composables/useBookCompletionOverlay'
 import { useReadingPlanReminders } from './composables/useReadingPlanReminders'
+import { useThemeSync } from './composables/useThemeSync'
 
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
@@ -38,6 +39,7 @@ const router = useRouter()
 const route = useRoute()
 const { t, locale } = useI18n()
 useReadingPlanReminders()
+useThemeSync()
 
 const initialRouteReady = ref(false)
 const showInitialAppLoader = computed(() => !authStore.initialized || !initialRouteReady.value)
@@ -376,7 +378,7 @@ onBeforeUnmount(() => {
           <component
             :is="Component"
             v-if="viewRoute.name === 'settings'"
-            :key="viewRoute.fullPath"
+            :key="`settings:${viewRoute.fullPath}`"
             :next-locale-label="nextLocaleLabel"
             :exporting-data="exportingData"
             :export-label="exportingData ? t('home.exportingData') : t('home.exportData')"
@@ -390,7 +392,7 @@ onBeforeUnmount(() => {
           <component
             :is="Component"
             v-else
-            :key="viewRoute.fullPath"
+            :key="`page:${viewRoute.fullPath}`"
           />
         </Transition>
       </RouterView>

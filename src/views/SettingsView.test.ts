@@ -6,11 +6,14 @@ import { en } from '../i18n/messages/en'
 import { es } from '../i18n/messages/es'
 
 const mockSetThemeMode = vi.hoisted(() => vi.fn())
+const mockSetThemePalette = vi.hoisted(() => vi.fn())
 
 vi.mock('../composables/useTheme', () => ({
   useTheme: () => ({
     themeMode: { value: 'system' },
+    themePalette: { value: 'forest' },
     setThemeMode: mockSetThemeMode,
+    setThemePalette: mockSetThemePalette,
   }),
 }))
 
@@ -62,5 +65,15 @@ describe('SettingsView', () => {
     expect(wrapper.emitted('exportData')).toHaveLength(1)
     expect(wrapper.emitted('signOut')).toHaveLength(1)
     expect(wrapper.emitted('deleteAccount')).toHaveLength(1)
+  })
+
+  it('offers six palettes and independent light, dark and system modes', async () => {
+    const wrapper = mountSettingsView()
+    expect(wrapper.findAll('input[name="appearance-palette"]')).toHaveLength(6)
+    expect(wrapper.findAll('input[name="appearance-mode"]')).toHaveLength(3)
+    await wrapper.get('input[value="ocean"]').setValue(true)
+    await wrapper.get('input[value="dark"]').setValue(true)
+    expect(mockSetThemePalette).toHaveBeenCalledWith('ocean')
+    expect(mockSetThemeMode).toHaveBeenCalledWith('dark')
   })
 })
