@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { BookOpen, Chrome, Globe2, KeyRound, LogIn, Mail, Send, UserPlus } from 'lucide-vue-next'
+import { BookOpen, Chrome, Eye, EyeOff, Globe2, KeyRound, LoaderCircle, LogIn, Mail, Send, UserPlus } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ThemeToggle from '../../../components/ui/ThemeToggle.vue'
@@ -20,19 +20,15 @@ const password = ref('')
 const mode = ref<'login' | 'register' | 'reset'>('login')
 const resetInfoMessage = ref<string | null>(null)
 const redirecting = ref(false)
+const submitting = ref(false)
+const showPassword = ref(false)
+const isBusy = computed(() => initializing.value || submitting.value)
 const floatingBooks = [
-  { id: 1, imageSrc: '/auth-books/book-01.webp', color: 'var(--app-primary)', left: '5%', delay: '-0.4s', duration: '11.4s', size: '3.5rem', rotate: '-15deg', z: 2, depth: '0.86' },
-  { id: 2, imageSrc: '/auth-books/book-02.webp', color: 'var(--app-secondary)', left: '23%', delay: '-5.1s', duration: '12.8s', size: '5rem', rotate: '9deg', z: 6, depth: '1.05' },
-  { id: 3, imageSrc: '/auth-books/book-03.webp', color: 'var(--app-accent)', left: '35%', delay: '-2.2s', duration: '10.7s', size: '3.2rem', rotate: '-4deg', z: 1, depth: '0.78' },
-  { id: 4, imageSrc: '/auth-books/book-04.webp', color: 'var(--app-primary-strong)', left: '58%', delay: '-8.9s', duration: '13.3s', size: '4.6rem', rotate: '16deg', z: 5, depth: '1' },
-  { id: 5, imageSrc: '/auth-books/book-05.webp', color: 'var(--app-secondary-strong)', left: '76%', delay: '-3.7s', duration: '11.9s', size: '3.9rem', rotate: '-18deg', z: 4, depth: '0.95' },
-  { id: 6, imageSrc: '/auth-books/book-06.webp', color: 'var(--app-accent-strong)', left: '88%', delay: '-10.6s', duration: '12.4s', size: '3rem', rotate: '6deg', z: 2, depth: '0.82' },
-  { id: 7, imageSrc: '/auth-books/book-07.webp', color: 'var(--app-primary)', left: '12%', delay: '-7.3s', duration: '13.7s', size: '4.2rem', rotate: '13deg', z: 5, depth: '0.98' },
-  { id: 8, imageSrc: '/auth-books/book-08.webp', color: 'var(--app-secondary)', left: '29%', delay: '-1.5s', duration: '11.1s', size: '4.4rem', rotate: '-11deg', z: 7, depth: '1.08' },
-  { id: 9, imageSrc: '/auth-books/book-09.webp', color: 'var(--app-accent)', left: '51%', delay: '-9.8s', duration: '12.1s', size: '3.4rem', rotate: '7deg', z: 3, depth: '0.88' },
-  { id: 10, imageSrc: '/auth-books/book-10.webp', color: 'var(--app-primary-strong)', left: '66%', delay: '-4.4s', duration: '10.9s', size: '4.9rem', rotate: '-13deg', z: 8, depth: '1.12' },
-  { id: 11, imageSrc: '/auth-books/book-11.webp', color: 'var(--app-secondary-strong)', left: '81%', delay: '-6.2s', duration: '13s', size: '3.6rem', rotate: '18deg', z: 3, depth: '0.9' },
-  { id: 12, imageSrc: '/auth-books/book-06.webp', color: 'var(--app-accent-strong)', left: '93%', delay: '-11.4s', duration: '11.6s', size: '3.3rem', rotate: '-7deg', z: 1, depth: '0.8' },
+  { id: 1, imageSrc: '/auth-books/book-01.webp', color: 'var(--app-primary)', left: '5%', size: '3.5rem', rotate: '-15deg', z: 2, depth: '0.86' },
+  { id: 2, imageSrc: '/auth-books/book-02.webp', color: 'var(--app-secondary)', left: '23%', size: '5rem', rotate: '9deg', z: 6, depth: '1.05' },
+  { id: 3, imageSrc: '/auth-books/book-03.webp', color: 'var(--app-accent)', left: '35%', size: '3.2rem', rotate: '-4deg', z: 1, depth: '0.78' },
+  { id: 4, imageSrc: '/auth-books/book-04.webp', color: 'var(--app-primary-strong)', left: '58%', size: '4.6rem', rotate: '16deg', z: 5, depth: '1' },
+  { id: 5, imageSrc: '/auth-books/book-05.webp', color: 'var(--app-secondary-strong)', left: '76%', size: '3.9rem', rotate: '-18deg', z: 4, depth: '0.95' },
 ]
 const modeSubtitle = computed(() =>
   mode.value === 'login'
@@ -76,20 +72,29 @@ watch(
 )
 
 async function onEmailSubmit() {
-  if (mode.value === 'reset') {
-    await onResetPassword()
-    return
-  }
-
-  if (mode.value === 'login') {
-    await authStore.loginWithEmail(email.value, password.value)
-  } else {
-    await authStore.registerWithEmail(email.value, password.value)
+  if (isBusy.value) return
+  submitting.value = true
+  try {
+    if (mode.value === 'reset') {
+      await onResetPassword()
+    } else if (mode.value === 'login') {
+      await authStore.loginWithEmail(email.value, password.value)
+    } else {
+      await authStore.registerWithEmail(email.value, password.value)
+    }
+  } finally {
+    submitting.value = false
   }
 }
 
 async function onGoogleSubmit() {
-  await authStore.loginWithGoogle()
+  if (isBusy.value) return
+  submitting.value = true
+  try {
+    await authStore.loginWithGoogle()
+  } finally {
+    submitting.value = false
+  }
 }
 
 function onOpenResetPassword() {
@@ -135,13 +140,11 @@ function onBackToLogin() {
         <span
           v-for="book in floatingBooks"
           :key="book.id"
-          class="login-floating-book absolute -bottom-20 left-(--book-left) z-(--book-z) h-[calc(var(--book-size)*1.28)] w-(--book-size) opacity-(--book-depth) drop-shadow-[0_calc(0.6rem*var(--book-depth))_calc(1rem*var(--book-depth))_rgba(15,23,42,0.18)] will-change-[transform,opacity] motion-reduce:opacity-90 max-[640px]:h-[calc(var(--book-size)*1.05)] max-[640px]:w-[calc(var(--book-size)*0.82)]"
+          class="login-floating-book absolute -bottom-20 left-(--book-left) z-(--book-z) h-[calc(var(--book-size)*1.28)] w-(--book-size) opacity-(--book-depth) drop-shadow-[0_calc(0.6rem*var(--book-depth))_calc(1rem*var(--book-depth))_rgba(15,23,42,0.18)] motion-reduce:opacity-90 max-[640px]:h-[calc(var(--book-size)*1.05)] max-[640px]:w-[calc(var(--book-size)*0.82)]"
           :style="{
             '--book-color': book.color,
             '--book-image': `url(${book.imageSrc})`,
             '--book-left': book.left,
-            '--book-delay': book.delay,
-            '--book-duration': book.duration,
             '--book-size': book.size,
             '--book-rotate': book.rotate,
             '--book-z': book.z,
@@ -197,6 +200,7 @@ function onBackToLogin() {
 
     <form
       class="login-form mt-6 space-y-3 max-[640px]:mt-4 max-[640px]:space-y-2.5"
+      :aria-busy="isBusy"
       @submit.prevent="onEmailSubmit"
     >
       <label class="block">
@@ -206,45 +210,54 @@ function onBackToLogin() {
           type="email"
           required
           autocomplete="email"
+          :readonly="isBusy"
           class="bm-input text-sm"
         >
       </label>
 
-      <label
+      <div
         v-if="mode !== 'reset'"
         class="block"
       >
-        <span class="bm-label mb-1 block">{{ t('auth.password') }}</span>
-        <input
-          v-model="password"
-          type="password"
-          required
-          minlength="6"
-          :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
-          class="bm-input text-sm"
-        >
-      </label>
+        <label for="auth-password" class="bm-label mb-1 block">{{ t('auth.password') }}</label>
+        <div class="relative">
+          <input
+            id="auth-password"
+            v-model="password"
+            :type="showPassword ? 'text' : 'password'"
+            required
+            minlength="6"
+            :readonly="isBusy"
+            :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
+            class="bm-input pr-14 text-sm"
+          >
+          <button type="button" class="bm-password-toggle" :aria-label="t(showPassword ? 'auth.hidePassword' : 'auth.showPassword')" @click="showPassword = !showPassword">
+            <component :is="showPassword ? EyeOff : Eye" :size="18" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
 
-      <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 max-[640px]:grid-cols-2">
+      <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 max-[640px]:grid-cols-1">
         <button
           type="submit"
           class="login-action-button bm-button bm-button-primary flex-1 max-[640px]:w-full"
+          :disabled="isBusy"
         >
+          <LoaderCircle v-if="isBusy" :size="17" class="animate-spin" aria-hidden="true" />
           <component
             :is="mode === 'login' ? Mail : mode === 'reset' ? Send : UserPlus"
+            v-else
             :size="17"
             aria-hidden="true"
           />
-          <span class="max-[640px]:hidden">
-            {{ mode === 'login' ? t('auth.signInWithEmail') : mode === 'reset' ? t('auth.sendResetLink') : t('auth.createAccount') }}
-          </span>
-          <span class="hidden max-[640px]:inline">
-            {{ mode === 'login' ? t('auth.email') : mode === 'reset' ? t('auth.send') : t('auth.register') }}
+          <span>
+            {{ isBusy ? t('auth.submitting') : mode === 'login' ? t('auth.signInWithEmail') : mode === 'reset' ? t('auth.sendResetLink') : t('auth.createAccount') }}
           </span>
         </button>
         <button
           type="button"
           class="login-action-button bm-button max-[640px]:w-full"
+          :disabled="isBusy"
           @click="mode === 'reset' ? onBackToLogin() : onToggleMode()"
         >
           <component
@@ -265,7 +278,7 @@ function onBackToLogin() {
         type="button"
         class="login-action-button bm-button bm-button-success w-full"
         :class="{ 'col-span-2': mode !== 'login' }"
-        :disabled="initializing"
+        :disabled="isBusy"
         @click="onGoogleSubmit"
       >
         <Chrome
@@ -282,6 +295,7 @@ function onBackToLogin() {
         class="login-action-button bm-button w-full"
         :aria-label="t('auth.forgotPassword')"
         :title="t('auth.forgotPassword')"
+        :disabled="isBusy"
         @click="onOpenResetPassword"
       >
         <KeyRound
@@ -295,6 +309,7 @@ function onBackToLogin() {
 
     <p
       v-if="errorMessage"
+      role="alert"
       class="mt-3 rounded-lg border border-(--app-danger) bg-(--app-danger-soft) p-2 text-xs text-(--app-danger)"
     >
       {{ errorMessage }}
@@ -302,6 +317,7 @@ function onBackToLogin() {
 
     <p
       v-if="resetInfoMessage"
+      role="status"
       class="mt-3 rounded-lg border border-(--app-success) bg-(--app-success-soft) p-2 text-xs text-(--app-success)"
     >
       {{ resetInfoMessage }}
@@ -312,36 +328,14 @@ function onBackToLogin() {
 
 <style scoped>
 .login-floating-book {
-  --book-rotate: 0deg;
-  --book-duration: 12s;
-  --book-delay: 0s;
-  --book-depth: 1;
-
+  bottom: 1.25rem;
+  opacity: 1;
   transform: rotate(var(--book-rotate));
-  animation: book-rise var(--book-duration) linear infinite;
-  animation-delay: var(--book-delay);
-  animation-fill-mode: both;
+  animation: none;
 }
 
 .login-hero-copy :deep(.bm-title) {
   font-size: clamp(2rem, 2.5vw, 2.35rem);
-}
-
-@keyframes book-rise {
-  0% {
-    transform: translate3d(0, 0, 0) rotate(var(--book-rotate)) scale(calc(var(--book-depth) * 0.88));
-    opacity: 0;
-  }
-
-  4%,
-  92% {
-    opacity: 1;
-  }
-
-  100% {
-    transform: translate3d(0, -24rem, 0) rotate(calc(var(--book-rotate) * -1)) scale(calc(var(--book-depth) * 1.08));
-    opacity: 0;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -378,7 +372,7 @@ function onBackToLogin() {
   }
 
   .login-hero-copy :deep(.bm-eyebrow) {
-    font-size: 0.64rem;
+    font-size: 0.75rem;
   }
 
   .login-form-panel :deep(.bm-section-title) {
@@ -388,25 +382,9 @@ function onBackToLogin() {
   .login-action-button {
     min-width: 0;
     gap: 0.35rem;
-    white-space: nowrap;
+    white-space: normal;
   }
 
-  @keyframes book-rise {
-    0% {
-      transform: translate3d(0, 0, 0) rotate(var(--book-rotate)) scale(calc(var(--book-depth) * 0.78));
-      opacity: 0;
-    }
-
-    6%,
-    90% {
-      opacity: 1;
-    }
-
-    100% {
-      transform: translate3d(0, -9rem, 0) rotate(calc(var(--book-rotate) * -1)) scale(calc(var(--book-depth) * 0.9));
-      opacity: 0;
-    }
-  }
 }
 
 @media (max-width: 640px) and (max-height: 780px) {
@@ -457,7 +435,7 @@ function onBackToLogin() {
   }
 
   .login-form-panel :deep(.bm-button) {
-    min-height: 2rem;
+    min-height: 2.75rem;
     padding-block: 0.36rem;
   }
 
@@ -467,24 +445,8 @@ function onBackToLogin() {
 
   .login-form-panel :deep(.bm-eyebrow),
   .login-form-panel :deep(.bm-label) {
-    font-size: 0.64rem;
+    font-size: 0.75rem;
   }
 
-  @keyframes book-rise {
-    0% {
-      transform: translate3d(0, 0, 0) rotate(var(--book-rotate)) scale(calc(var(--book-depth) * 0.72));
-      opacity: 0;
-    }
-
-    6%,
-    90% {
-      opacity: 1;
-    }
-
-    100% {
-      transform: translate3d(0, -7rem, 0) rotate(calc(var(--book-rotate) * -1)) scale(calc(var(--book-depth) * 0.84));
-      opacity: 0;
-    }
-  }
 }
 </style>

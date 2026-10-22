@@ -20,7 +20,7 @@ const booksStore = useBooksStore()
 const readingPlanHistoryStore = useReadingPlanHistoryStore()
 const sessionsStore = useSessionsStore()
 const streakStore = useStreakStore()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const { user } = storeToRefs(authStore)
 const { library, loadingLibrary, favoriteUpdatingIds } = storeToRefs(booksStore)
@@ -97,8 +97,15 @@ const lastActivityLabel = computed(() => {
   if (!book) return null
   const millis = latestSessionMillisByBook.value[book.id]
   if (!millis) return t('home.noRecentSession')
-  return new Date(millis).toLocaleDateString()
+  return new Date(millis).toLocaleDateString(locale.value)
 })
+const dashboardStats = computed(() => [
+  { label: t('home.kpiBooks'), value: totalBooks.value, icon: Library },
+  { label: t('home.kpiFavorites'), value: favoriteBooks.value, icon: Heart },
+  { label: t('home.kpiReading'), value: readingBooks.value, icon: BookOpen },
+  { label: t('streak.current'), value: currentStreakDays.value, icon: Flame },
+  { label: t('streak.best'), value: bestStreakDays.value, icon: Trophy },
+])
 
 function isFavoriteUpdating(bookId: string): boolean {
   return favoriteUpdatingIds.value.includes(bookId)
@@ -138,122 +145,21 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="bm-page">
+  <div class="bm-page bm-home-page">
     <PageHeader
       :eyebrow="t('common.bookMemory')"
       :title="t('home.libraryHubTitle')"
       :subtitle="t('home.libraryHubSubtitle')"
     >
       <template #actions>
-        <StatusBadge>{{ user?.email ?? t('home.fallbackUser') }}</StatusBadge>
+        <RouterLink class="bm-button" to="/books">
+          <Library :size="17" aria-hidden="true" />
+          {{ t('home.viewAllBooks') }}
+        </RouterLink>
       </template>
     </PageHeader>
 
-    <div class="bm-home-stats grid grid-cols-3 gap-2 sm:hidden">
-      <article class="bm-stat-card bm-home-stat-card">
-        <Library
-          :size="19"
-          class="bm-home-stat-icon text-(--app-primary-strong)"
-          aria-hidden="true"
-        />
-        <p class="bm-stat-label bm-home-stat-label">{{ t('home.kpiBooks') }}</p>
-        <p class="bm-stat-value bm-home-stat-value">{{ totalBooks }}</p>
-      </article>
-      <article class="bm-stat-card bm-home-stat-card">
-        <Heart
-          :size="19"
-          class="bm-home-stat-icon text-(--app-warm)"
-          aria-hidden="true"
-        />
-        <p class="bm-stat-label bm-home-stat-label">{{ t('home.kpiFavorites') }}</p>
-        <p class="bm-stat-value bm-home-stat-value text-(--app-warm)">{{ favoriteBooks }}</p>
-      </article>
-      <article class="bm-stat-card bm-home-stat-card">
-        <BookOpen
-          :size="19"
-          class="bm-home-stat-icon text-(--app-primary-strong)"
-          aria-hidden="true"
-        />
-        <p class="bm-stat-label bm-home-stat-label">{{ t('home.kpiReading') }}</p>
-        <p class="bm-stat-value bm-home-stat-value">{{ readingBooks }}</p>
-      </article>
-    </div>
-
-    <article class="bm-stat-card flex items-center justify-around gap-2 px-3 py-2.5 sm:hidden">
-      <div class="flex min-w-0 items-center gap-2">
-        <Flame
-          :size="18"
-          class="flex-none text-(--app-warning)"
-          aria-hidden="true"
-        />
-        <div class="min-w-0">
-          <p class="bm-stat-label text-[10px] leading-tight">{{ t('streak.current') }}</p>
-          <p class="text-xl font-black leading-none text-(--app-warning)">{{ currentStreakDays }}</p>
-        </div>
-      </div>
-      <div class="h-9 w-px bg-(--app-border)" />
-      <div class="flex min-w-0 items-center gap-2">
-        <Trophy
-          :size="18"
-          class="flex-none text-(--app-accent-strong)"
-          aria-hidden="true"
-        />
-        <div class="min-w-0">
-          <p class="bm-stat-label text-[10px] leading-tight">{{ t('streak.best') }}</p>
-          <p class="text-xl font-black leading-none text-(--app-text)">{{ bestStreakDays }}</p>
-        </div>
-      </div>
-    </article>
-
-    <div class="bm-home-stats hidden gap-2 sm:grid sm:grid-cols-5 sm:gap-3">
-      <article class="bm-stat-card bm-home-stat-card">
-        <Library
-          :size="19"
-          class="bm-home-stat-icon text-(--app-primary-strong)"
-          aria-hidden="true"
-        />
-        <p class="bm-stat-label bm-home-stat-label">{{ t('home.kpiBooks') }}</p>
-        <p class="bm-stat-value bm-home-stat-value">{{ totalBooks }}</p>
-      </article>
-      <article class="bm-stat-card bm-home-stat-card">
-        <Heart
-          :size="19"
-          class="bm-home-stat-icon text-(--app-warm)"
-          aria-hidden="true"
-        />
-        <p class="bm-stat-label bm-home-stat-label">{{ t('home.kpiFavorites') }}</p>
-        <p class="bm-stat-value bm-home-stat-value text-(--app-warm)">{{ favoriteBooks }}</p>
-      </article>
-      <article class="bm-stat-card bm-home-stat-card">
-        <BookOpen
-          :size="19"
-          class="bm-home-stat-icon text-(--app-primary-strong)"
-          aria-hidden="true"
-        />
-        <p class="bm-stat-label bm-home-stat-label">{{ t('home.kpiReading') }}</p>
-        <p class="bm-stat-value bm-home-stat-value">{{ readingBooks }}</p>
-      </article>
-      <article class="bm-stat-card bm-home-stat-card">
-        <Flame
-          :size="19"
-          class="bm-home-stat-icon text-(--app-warning)"
-          aria-hidden="true"
-        />
-        <p class="bm-stat-label bm-home-stat-label">{{ t('streak.current') }}</p>
-        <p class="bm-stat-value bm-home-stat-value text-(--app-warning)">{{ currentStreakDays }}</p>
-      </article>
-      <article class="bm-stat-card bm-home-stat-card">
-        <Trophy
-          :size="19"
-          class="bm-home-stat-icon text-(--app-accent-strong)"
-          aria-hidden="true"
-        />
-        <p class="bm-stat-label bm-home-stat-label">{{ t('streak.best') }}</p>
-        <p class="bm-stat-value bm-home-stat-value">{{ bestStreakDays }}</p>
-      </article>
-    </div>
-
-    <SurfaceCard>
+    <SurfaceCard class="bm-continue-panel">
       <div class="mb-3 flex items-center justify-between gap-2">
         <div>
           <h2 class="bm-section-title">{{ t('home.continueReadingTitle') }}</h2>
@@ -262,9 +168,13 @@ onUnmounted(() => {
       </div>
       <div
         v-if="continueReadingBook"
-        class="grid gap-4 rounded-2xl border border-(--app-border) bg-(--app-surface-muted) p-4 sm:grid-cols-[minmax(0,1fr)_auto]"
+        class="bm-continue-book"
       >
-        <div>
+        <div class="bm-continue-cover">
+          <img v-if="continueReadingBook.coverUrl" :src="continueReadingBook.coverUrl" :alt="continueReadingBook.title" width="120" height="180" />
+          <BookOpen v-else :size="40" aria-hidden="true" />
+        </div>
+        <div class="min-w-0">
           <StatusBadge tone="success">
             <TimerReset
               :size="14"
@@ -282,6 +192,13 @@ onUnmounted(() => {
             {{ t('books.progress') }}: {{ continueReadingBook.currentPage }}
             <template v-if="continueReadingBook.totalPages"> / {{ continueReadingBook.totalPages }}</template>
           </p>
+          <progress
+            v-if="continueReadingBook.totalPages && continueReadingBook.totalPages > 0"
+            class="bm-reading-progress"
+            :value="continueReadingBook.currentPage"
+            :max="continueReadingBook.totalPages"
+            :aria-label="t('books.progress')"
+          />
           <p class="bm-soft mt-1 text-xs">
             {{ t('home.lastActivity') }}: {{ lastActivityLabel }}
           </p>
@@ -339,6 +256,22 @@ onUnmounted(() => {
         </RouterLink>
       </EmptyState>
     </SurfaceCard>
+
+    <section
+      class="bm-home-stats"
+      :aria-label="t('home.overview')"
+      :aria-busy="dashboardLoading || loadingLibrary"
+    >
+      <article
+        v-for="stat in dashboardStats"
+        :key="stat.label"
+        class="bm-stat-card bm-home-stat-card"
+      >
+        <component :is="stat.icon" :size="19" class="bm-home-stat-icon" aria-hidden="true" />
+        <p class="bm-stat-label bm-home-stat-label">{{ stat.label }}</p>
+        <p class="bm-stat-value bm-home-stat-value">{{ dashboardLoading || loadingLibrary ? '—' : stat.value }}</p>
+      </article>
+    </section>
 
     <SurfaceCard v-if="atRiskBooks.length > 0">
       <div class="mb-3">
@@ -478,31 +411,36 @@ onUnmounted(() => {
         tag="div"
         class="bm-book-grid"
       >
-        <RouterLink
+        <article
           v-for="(item, index) in previewBooks"
           :key="item.id"
           class="bm-book-card"
-          :to="{ name: 'book-detail', params: { id: item.id } }"
           :style="{ transitionDelay: `${Math.min(index, 10) * 24}ms` }"
         >
           <button
             type="button"
-            class="absolute right-2 top-2 z-10 cursor-pointer rounded-full border bg-(--app-surface) px-2 py-1 text-sm shadow transition disabled:cursor-not-allowed disabled:opacity-60"
+            class="bm-icon-button absolute right-2 top-2 z-10 rounded-full shadow"
             :class="
               item.favorite
                 ? 'border-(--app-danger) text-(--app-danger)'
                 : 'border-(--app-border) text-(--app-text-muted) hover:text-(--app-danger)'
             "
             :disabled="isFavoriteUpdating(item.id)"
+            :aria-label="`${t(item.favorite ? 'books.unmarkFavorite' : 'books.markFavorite')}: ${item.title}`"
+            :aria-pressed="item.favorite"
             @click.prevent.stop="onToggleFavorite(item.id)"
           >
-            <span class="text-sm leading-none">{{ item.favorite ? '♥' : '♡' }}</span>
+            <Heart :size="18" :fill="item.favorite ? 'currentColor' : 'none'" aria-hidden="true" />
           </button>
+          <RouterLink class="block" :to="{ name: 'book-detail', params: { id: item.id } }">
           <div class="bm-book-cover">
             <img
               v-if="item.coverUrl"
               :src="item.coverUrl"
               :alt="item.title"
+              loading="lazy"
+              width="160"
+              height="240"
               class="h-full w-full object-cover"
             >
             <div
@@ -517,7 +455,7 @@ onUnmounted(() => {
             <p class="line-clamp-2 min-h-10 font-serif text-sm font-semibold text-(--app-text)">
               {{ item.title }}
             </p>
-            <p class="bm-muted line-clamp-1 text-[11px]">
+            <p class="bm-muted text-xs">
               {{ t('books.by') }} {{ item.authors.join(', ') || t('books.unknownAuthor') }}
             </p>
             <div v-if="item.rating !== null">
@@ -528,7 +466,8 @@ onUnmounted(() => {
               />
             </div>
           </div>
-        </RouterLink>
+          </RouterLink>
+        </article>
       </TransitionGroup>
 
       <EmptyState

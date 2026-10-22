@@ -1,5 +1,11 @@
 export const es = {
   common: {
+    skipToContent: 'Saltar al contenido',
+    readingJournal: 'Tu diario de lectura',
+    yourSpace: 'Tu espacio',
+    primaryNavigation: 'Navegación principal',
+    accountNavigation: 'Cuenta',
+
     bookMemory: 'Book Memory',
     language: 'Idioma',
     cancel: 'Cancelar',
@@ -30,9 +36,10 @@ export const es = {
     dark: 'Tema oscuro',
   },
   home: {
+    overview: 'Tu lectura en cifras',
     home: 'Inicio',
-    libraryHubTitle: 'Tu biblioteca en un solo lugar',
-    libraryHubSubtitle: 'Revisa tus libros y entra rápido a lectura o estadísticas.',
+    libraryHubTitle: 'Un momento para leer',
+    libraryHubSubtitle: 'Retoma tu historia, guarda lo que te inspira y haz espacio para tu próxima lectura.',
     preferences: 'Preferencias',
     dataSection: 'Datos',
     sessionSection: 'Sesión',
@@ -79,11 +86,15 @@ export const es = {
     todayPlanTitle: 'Hoy',
     todayPlanSubtitle: 'Libros que necesitan atención para mantener tus planes de lectura.',
     todayPlanDelta: 'Páginas vs plan',
-    earlyRiskTitle: 'Riesgo temprano',
+    earlyRiskTitle: 'Recupera tu ritmo',
     earlyRiskSubtitle: 'Libros con dos días recientes sin cumplir el objetivo del plan.',
     earlyRiskHint: 'Todavía puedes corregir el ritmo antes de quedar atrasado.',
   },
   auth: {
+    showPassword: 'Mostrar contraseña',
+    hidePassword: 'Ocultar contraseña',
+    submitting: 'Un momento…',
+
     section: 'Autenticación',
     title: 'Bienvenido a Book Memory',
     subtitleLogin: 'Inicia sesión para registrar libros, sesiones y rachas.',

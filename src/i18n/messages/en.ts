@@ -1,5 +1,11 @@
 export const en = {
   common: {
+    skipToContent: 'Skip to content',
+    readingJournal: 'Your reading journal',
+    yourSpace: 'Your space',
+    primaryNavigation: 'Main navigation',
+    accountNavigation: 'Account',
+
     bookMemory: 'Book Memory',
     language: 'Language',
     cancel: 'Cancel',
@@ -30,9 +36,10 @@ export const en = {
     dark: 'Dark theme',
   },
   home: {
+    overview: 'Your reading at a glance',
     home: 'Home',
-    libraryHubTitle: 'Your library in one place',
-    libraryHubSubtitle: 'Review your books and jump quickly to reading or stats.',
+    libraryHubTitle: 'A moment to read',
+    libraryHubSubtitle: 'Return to your story, save what inspires you, and make room for your next read.',
     preferences: 'Preferences',
     dataSection: 'Data',
     sessionSection: 'Session',
@@ -79,11 +86,15 @@ export const en = {
     todayPlanTitle: 'Today',
     todayPlanSubtitle: 'Books that need attention to keep your reading plans moving.',
     todayPlanDelta: 'Pages vs plan',
-    earlyRiskTitle: 'Early risk',
+    earlyRiskTitle: 'Find your rhythm again',
     earlyRiskSubtitle: 'Books with two recent days missed against the reading plan.',
     earlyRiskHint: 'You can still correct the pace before falling behind.',
   },
   auth: {
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
+    submitting: 'Please wait…',
+
     section: 'Authentication',
     title: 'Welcome to Book Memory',
     subtitleLogin: 'Sign in to track your books, sessions, and streaks.',

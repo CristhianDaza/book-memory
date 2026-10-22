@@ -8,7 +8,7 @@ defineProps<{
 
 <template>
   <header class="bm-page-header">
-    <div>
+    <div class="bm-page-heading">
       <p class="bm-eyebrow">{{ eyebrow }}</p>
       <h1 class="bm-title mt-2">{{ title }}</h1>
       <p
@@ -18,6 +18,8 @@ defineProps<{
         {{ subtitle }}
       </p>
     </div>
-    <slot name="actions" />
+    <div v-if="$slots.actions" class="bm-page-actions">
+      <slot name="actions" />
+    </div>
   </header>
 </template>

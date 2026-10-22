@@ -600,7 +600,7 @@ onBeforeUnmount(() => {
 
             <span
               v-if="item.status === 'finished'"
-              class="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full border border-white/80 bg-(--app-success) px-2 py-1 text-[10px] font-bold leading-none text-white shadow-lg"
+              class="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full border border-(--app-success) bg-(--app-success-soft) px-2 py-1 text-xs font-bold leading-none text-(--app-success) shadow-lg"
             >
               <Check
                 :size="12"
@@ -611,13 +611,15 @@ onBeforeUnmount(() => {
 
             <button
               type="button"
-              class="absolute right-2 top-2 z-10 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border bg-(--app-surface) shadow transition disabled:cursor-not-allowed disabled:opacity-60"
+              class="bm-icon-button absolute right-2 top-2 z-10 rounded-full shadow"
               :class="
                 item.favorite
                   ? 'border-(--app-danger) text-(--app-danger)'
                   : 'border-(--app-border) text-(--app-text-muted) hover:text-(--app-danger)'
               "
               :disabled="isFavoriteUpdating(item.id)"
+              :aria-label="`${t(item.favorite ? 'books.unmarkFavorite' : 'books.markFavorite')}: ${item.title}`"
+              :aria-pressed="item.favorite"
               @click.prevent.stop="onToggleFavorite(item.id)"
             >
               <Heart
@@ -636,7 +638,7 @@ onBeforeUnmount(() => {
               <p class="line-clamp-2 min-h-9 font-serif text-[13px] font-semibold text-(--app-text) sm:text-sm">
                 {{ item.title }}
               </p>
-              <p class="bm-muted line-clamp-1 text-[10px] sm:text-[11px]">
+              <p class="bm-muted text-xs">
                 {{ t('books.by') }} {{ item.authors.join(', ') || t('books.unknownAuthor') }}
               </p>
               <div

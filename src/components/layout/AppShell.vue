@@ -59,6 +59,10 @@ function scrollToTop() {
   })
 }
 
+function focusMain() {
+  mainScrollTarget.value?.focus({ preventScroll: true })
+}
+
 watch(mainScrollTarget, (scrollTarget, previousTarget) => {
   previousTarget?.removeEventListener('scroll', updateScrollTopVisibility)
   scrollTarget?.addEventListener('scroll', updateScrollTopVisibility, { passive: true })
@@ -70,7 +74,7 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  () => route.fullPath,
+  () => route.path,
   async () => {
     await nextTick()
     const scrollTarget = mainScrollTarget.value
@@ -82,12 +86,14 @@ watch(
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
     })
     showScrollTop.value = false
+    focusMain()
   },
 )
 </script>
 
 <template>
   <div class="bm-app">
+    <a class="bm-skip-link" href="#main-content" @click="focusMain">{{ t('common.skipToContent') }}</a>
     <template v-if="showChrome">
       <header class="bm-mobile-header">
         <RouterLink
@@ -106,7 +112,7 @@ watch(
           </span>
           <span>
             <span class="bm-brand-title">BookMemory</span>
-            <span class="bm-brand-subtitle">{{ appVersion }}</span>
+            <span class="bm-brand-subtitle">{{ t('common.readingJournal') }}</span>
           </span>
         </RouterLink>
         <div class="flex items-center gap-2">
@@ -144,13 +150,14 @@ watch(
             </span>
             <span>
               <span class="bm-brand-title">BookMemory</span>
-              <span class="bm-brand-subtitle">Reading journal</span>
+              <span class="bm-brand-subtitle">{{ t('common.readingJournal') }}</span>
             </span>
           </RouterLink>
 
+          <p class="bm-sidebar-section-title bm-nav-heading">{{ t('common.yourSpace') }}</p>
           <nav
             class="bm-nav-list"
-            aria-label="Primary"
+            :aria-label="t('common.primaryNavigation')"
           >
             <NavItem
               v-for="item in navItems"
@@ -159,8 +166,8 @@ watch(
             />
           </nav>
           <nav
-            class="bm-nav-list"
-            aria-label="Account"
+            class="bm-nav-list bm-account-nav"
+            :aria-label="t('common.accountNavigation')"
           >
             <NavItem
               to="/settings"
@@ -169,6 +176,11 @@ watch(
               :icon="Settings"
             />
           </nav>
+
+          <div class="bm-sidebar-appearance">
+            <span class="bm-muted text-sm">{{ t('theme.setting') }}</span>
+            <ThemeToggle />
+          </div>
 
           <div
             v-if="syncVisible"
@@ -186,7 +198,9 @@ watch(
         </aside>
 
         <main
+          id="main-content"
           ref="mainScrollTarget"
+          tabindex="-1"
           class="bm-main"
         >
           <div class="bm-content">
@@ -219,7 +233,7 @@ watch(
 
       <nav
         class="bm-bottom-nav"
-        aria-label="Mobile primary"
+        :aria-label="t('common.primaryNavigation')"
       >
         <NavItem
           v-for="item in mobileNavItems"
@@ -231,7 +245,9 @@ watch(
 
     <main
       v-else
+      id="main-content"
       ref="mainScrollTarget"
+      tabindex="-1"
       class="bm-main bm-main-auth bm-auth-layout"
     >
       <div class="bm-content">
